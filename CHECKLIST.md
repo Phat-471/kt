@@ -1,23 +1,30 @@
 # CHECKLIST CÔNG VIỆC HÀNG NGÀY - PHẦN MỀM KẾ TOÁN
 
-Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Phân Tích Hoàn Thuế GTGT & Quản Trị Chi Phí Giá Thành Hợp Đồng (Test Suite 52/52 PASSED 100%)
+Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Version 2.0 Engine Xử Lý Dữ Liệu Sai & Lịch Sử Version Dữ Liệu Cũ (Test Suite 57/57 PASSED 100%)
 
 ---
 
 ## 🔴 Cần Làm Ngay (To-Do)
 
 ### Module mới
-- [ ] Phân tích báo cáo quản trị chi phí giá thành hợp đồng dịch vụ.
+- [ ] Tích hợp tính năng ký số hóa đơn điện tử trực tiếp trên ứng dụng.
 
 ---
 
 ## 🟡 Đang Thực Hiện (In Progress)
 
-- [ ] Phân tích rủi ro kiểm tra hồ sơ hoàn thuế GTGT tự động.
+- [ ] Phân tích báo cáo quản trị chi phí giá thành hợp đồng dịch vụ.
 
 ---
 
 ## 🟢 Đã Hoàn Thành (Done)
+
+### 🆕 Version 2.0: Engine Xử Lý Dữ Liệu Sai & Quản Lý Version Dữ Liệu Cũ (`adjustmentEntryService.ts`, `dataVersioningService.ts`, `aiAnomalyDetector.ts`, `DataVersionHistoryView.tsx`)
+- [x] **✏️ Engine Lập Bút Toán Điều Chỉnh (`adjustmentEntryService.ts`)**: Tự động sinh chứng từ điều chỉnh theo chuẩn kế toán (Ghi đỏ số âm `DC-`, Ghi bổ sung, và Chứng từ thay thế), bảo vệ toàn vẹn lịch sử chứng từ kỳ đã khóa sổ.
+- [x] **⏳ Snapshot & Time Machine Dữ Liệu Cũ (`dataVersioningService.ts`)**: Tự động lưu Snapshot phiên bản dữ liệu tại mỗi kỳ khóa sổ và So sánh Diff chênh lệch `Old vs Current` trực quan.
+- [x] **🤖 AI Quét Phát Hiện Dữ Liệu Sai Lệch (`aiAnomalyDetector.ts`)**: Tự động phát hiện lỗi gõ thừa/thiếu số 0 (nhập 10M thành 100M), ngược chiều Nợ/Có, ngày chứng từ bất hợp lý.
+- [x] **✨ Giao Diện Mới DataVersionHistoryView (`DataVersionHistoryView.tsx`)**: Màn hình quản lý phiên bản tích hợp menu **GitBranch 🌿 Lịch Sử Version & Điều Chỉnh Dữ Liệu** trên Sidebar.
+- [x] **57/57 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 23 phần nghiệp vụ.
 
 ### 🆕 Đợt Nâng Cấp Hoàn Thuế GTGT & Quản Trị Giá Thành Hợp Đồng (`vatRefundAuditService.ts`, `contractCostingService.ts`, `ContractCostingView.tsx`)
 - [x] **🛡 Rà Soát 6 Điều Kiện Hoàn Thuế GTGT (`vatRefundAuditService.ts`)**: Tự động đánh giá 6 tiêu chí pháp lý (Thông tư 80/2021/TT-BTC) gồm ngưỡng $\ge 300M$, thanh toán ngân hàng $\ge 20M$, liên tục chuyển kỳ sau [43], rà soát hóa đơn doanh nghiệp bỏ địa điểm kinh doanh, và tờ khai hải quan xuất khẩu.
