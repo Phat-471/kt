@@ -39,6 +39,7 @@ import {
   getAllFixedAssets,
   ASSET_GROUP_DEFAULTS,
 } from '../services/fixedAssetService';
+import { generateGTGTXML, generatePITXML } from '../services/eTaxXMLGenerator';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -491,6 +492,66 @@ async function runAllTests() {
   assert(ASSET_GROUP_DEFAULTS.THIET_BI_DIEN_TU.minYears === 3, 'TT45: Máy tính/thiết bị điện tử tối thiểu 3 năm KH');
   assert(ASSET_GROUP_DEFAULTS.PHUONG_TIEN.minYears === 6, 'TT45: Phương tiện vận tải tối thiểu 6 năm KH');
   assert(ASSET_GROUP_DEFAULTS.NHADAT_NHAXA.minYears === 10, 'TT45: Nhà xưởng tối thiểu 10 năm KH');
+
+  console.log('\n📌 PHẦN 40: TEST ENGINE KHAI THUẾ eTax (XML 01/GTGT)');
+  const mockClient = {
+    id: 'c-test-xml',
+    code: 'TEST01',
+    name: 'Công ty TNHH Giải Pháp Thuế XML',
+    taxCode: '0109999999',
+    address: 'Số 100 Phố Thuế, Hà Nội',
+    financialYear: 2026,
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  };
+  const mockOutputRows = [
+    {
+      invoiceDate: '2026-07-10',
+      invoiceNo: 'HD01',
+      sellerName: 'Khách Hàng A',
+      sellerTaxCode: '0101111111',
+      goodsDescription: 'Bán phần mềm',
+      taxableAmount: 100_000_000,
+      vatAmount: 10_000_000,
+      vatRate: 10 as const,
+    },
+  ];
+  const mockInputRows = [
+    {
+      invoiceDate: '2026-07-05',
+      invoiceNo: 'HD02',
+      sellerName: 'Nhà Cung Cấp B',
+      sellerTaxCode: '0102222222',
+      goodsDescription: 'Thuê máy chủ',
+      taxableAmount: 20_000_000,
+      vatAmount: 2_000_000,
+      vatRate: 10 as const,
+    },
+  ];
+  const gtgtXml = generateGTGTXML({
+    client: mockClient,
+    taxPeriod: { year: 2026, quarter: 3 },
+    outputRows: mockOutputRows,
+    inputRows: mockInputRows,
+    prevCreditCarryover: 1_000_000,
+  });
+  assert(gtgtXml.includes('01/GTGT'), 'XML 01/GTGT chứa đúng mã loại tờ khai');
+  assert(gtgtXml.includes('0109999999'), 'XML 01/GTGT chứa MST doanh nghiệp');
+  assert(gtgtXml.includes('10000000'), 'XML 01/GTGT ghi nhận tổng thuế GTGT đầu ra (10,000,000)');
+  assert(gtgtXml.includes('7000000'), 'XML 01/GTGT tính đúng số thuế GTGT còn phải nộp (10M - 2M - 1M = 7M)');
+
+  console.log('\n📌 PHẦN 41: TEST ENGINE QUYẾT TOÁN THUẾ TNCN eTax (XML 05/KK-TNCN)');
+  const pitEmps = getAllEmployees();
+  const pitSummary = calculatePayrollSummary(pitEmps, '07/2026', mockClient.id);
+  const pitXml = generatePITXML({
+    client: mockClient,
+    taxYear: 2026,
+    payrollSummary: pitSummary,
+  });
+  assert(pitXml.includes('05/KK-TNCN'), 'XML 05/KK-TNCN chứa đúng mã loại tờ khai');
+  assert(pitXml.includes('0109999999'), 'XML 05/KK-TNCN chứa MST doanh nghiệp');
+  assert(pitXml.includes(`NamTinh2026`), 'XML 05/KK-TNCN ghi nhận đúng năm quyết toán');
+  assert(pitXml.includes(`<TongSoNguoiLaoDong>${pitEmps.length}</TongSoNguoiLaoDong>`), 'XML 05/KK-TNCN ghi nhận đúng số lượng lao động');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

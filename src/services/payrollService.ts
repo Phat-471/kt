@@ -33,6 +33,8 @@ export interface Employee {
 export interface PayrollEntry {
   employeeId: string;
   employeeName: string;
+  taxCode: string;            // Mã số thuế cá nhân
+  dependentsCount: number;    // Số người phụ thuộc
   position: string;
   department: string;
   // Thu nhập
@@ -191,6 +193,8 @@ export function calculatePayrollEntry(employee: Employee): PayrollEntry {
   return {
     employeeId: employee.id,
     employeeName: employee.name,
+    taxCode: employee.taxCode || '',
+    dependentsCount: employee.dependentsCount || 0,
     position: employee.position,
     department: employee.department,
     basicSalary,

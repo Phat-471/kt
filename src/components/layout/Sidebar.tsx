@@ -51,6 +51,7 @@ export type TabType =
   | 'accounting-ledger'
   | 'payroll'
   | 'fixed-assets'
+  | 'etax'
   | 'help';
 
 interface SidebarProps {
@@ -101,6 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'correction-ledger' as TabType, label: 'Bút Toán Điều Chỉnh', icon: FilePenLine },
     { id: 'payroll' as TabType, label: 'Bảng Lương & BHXH', icon: Users },
     { id: 'fixed-assets' as TabType, label: 'Tài Sản Cố Định & Khấu Hao', icon: Building2 },
+    { id: 'etax' as TabType, label: 'Khai Thuế eTax (XML)', icon: FileSpreadsheet },
     { id: 'audit' as TabType, label: 'Audit Log Thao Tác', icon: History },
     { id: 'backup' as TabType, label: 'Sao lưu & Khôi phục', icon: DatabaseBackup },
     { id: 'help' as TabType, label: 'Hướng dẫn sử dụng', icon: HelpCircle },

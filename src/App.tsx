@@ -36,6 +36,7 @@ import { CorrectionLedgerView } from './components/audit/CorrectionLedgerView';
 import { AccountingLedgerView } from './components/reports/AccountingLedgerView';
 import { PayrollView } from './components/payroll/PayrollView';
 import { FixedAssetView } from './components/assets/FixedAssetView';
+import { ETaxView } from './components/tax/ETaxView';
 import { UserRole } from './services/rolePermissionService';
 import { IndustryPresetType } from './services/industryPresetService';
 
@@ -484,6 +485,10 @@ export default function App() {
 
           {activeTab === 'fixed-assets' && (
             <FixedAssetView activeClient={activeClient} />
+          )}
+
+          {activeTab === 'etax' && (
+            <ETaxView activeClient={activeClient} transactions={transactions} />
           )}
 
           {activeTab === 'legal-search' && (
