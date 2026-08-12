@@ -11,6 +11,9 @@ import { calculateContractCostingReport } from '../services/contractCostingServi
 import { createAdjustmentEntry } from '../services/adjustmentEntryService';
 import { createDataSnapshot, compareDataSnapshots } from '../services/dataVersioningService';
 import { detectDataAnomalies } from '../services/aiAnomalyDetector';
+import { getPostJuly2026TaxPolicies } from '../services/taxPolicySyncService';
+import { calculatePersonalIncomeTax } from '../services/pitCalculationEngine';
+import { generateForm01VATReport } from '../services/officialFormTemplates';
 import { analyzeFinancialVariances } from '../services/varianceAnalysisService';
 import { calculateCashflowForecast } from '../services/cashflowForecastService';
 import { generateGeneralLedgerReport } from '../services/generalLedgerService';
@@ -260,6 +263,21 @@ async function runAllTests() {
   console.log('\n📌 PHẦN 23: TEST TRỢ LÝ AI TỰ ĐỘNG QUÉT PHÁT HIỆN DỮ LIỆU NHẬP SAI LỆCH');
   const anomaliesTest = detectDataAnomalies(mockTransactions);
   assert(anomaliesTest.length >= 0, 'AI quét tự động các điểm bất thường dữ liệu gõ thừa số 0 hoặc ngược Nợ/Có');
+
+  console.log('\n📌 PHẦN 24: TEST RÀ SOÁT CẢNH BÁO CHÍNH SÁCH THUẾ MỚI SAU 01/07/2026');
+  const taxPolicies = getPostJuly2026TaxPolicies(mockTransactions);
+  assert(taxPolicies.length >= 2, 'Tự động trích xuất các cảnh báo quy định Luật Thuế mới sau 01/07/2026');
+
+  console.log('\n📌 PHẦN 25: TEST ENGINE TÍNH THUẾ TNCN LŨY TIẾN 7 BẬC (MỨC GIẢM TRỪ MỚI 2026)');
+  const pitTest = calculatePersonalIncomeTax(30000000, 1, true);
+  assert(pitTest.personalDeduction === 15500000, 'Áp dụng mức giảm trừ bản thân 15.5M/tháng');
+  assert(pitTest.dependentDeduction === 5500000, 'Áp dụng mức giảm trừ 1 người phụ thuộc 5.5M/tháng');
+  assert(pitTest.pitAmount >= 0, `Tính toán chính xác số thuế TNCN phải nộp (${pitTest.pitAmount.toLocaleString()} VNĐ)`);
+
+  console.log('\n📌 PHẦN 26: TEST SINH DỮ LIỆU TỜ KHAI THUẾ GTGT MẪU 01/GTGT CHUẨN THÔNG TƯ 80/2021');
+  const form01Vat = generateForm01VATReport(mockTransactions, 'Quý 3/2026');
+  assert(form01Vat.totalSalesValue === 50000000, 'Tổng doanh số bán ra tính chính xác (50M)');
+  assert(form01Vat.taxPeriod === 'Quý 3/2026', 'Xác định kỳ kê khai Thuế GTGT 01/GTGT Quý 3/2026');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

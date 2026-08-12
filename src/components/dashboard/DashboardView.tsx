@@ -16,6 +16,7 @@ import {
 import { TabType } from '../layout/Sidebar';
 import { SmartAlertPanel } from './SmartAlertPanel';
 import { DashboardCharts } from './DashboardCharts';
+import { TaxLawPolicyAlertBanner } from '../tax/TaxLawPolicyAlertBanner';
 
 interface DashboardViewProps {
   activeClient: Client | null;
@@ -83,6 +84,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Tax Law Policy Alert */}
+      <TaxLawPolicyAlertBanner transactions={transactions} />
 
       {/* Top 4 Stat Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
