@@ -1,23 +1,29 @@
 # CHECKLIST CÔNG VIỆC HÀNG NGÀY - PHẦN MỀM KẾ TOÁN
 
-Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Đọc Phân Tích Dữ Liệu Executive, Sleek Glassmorphic UI/UX & BEP Engine (Test Suite 48/48 PASSED 100%)
+Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Phân Tích Hoàn Thuế GTGT & Quản Trị Chi Phí Giá Thành Hợp Đồng (Test Suite 52/52 PASSED 100%)
 
 ---
 
 ## 🔴 Cần Làm Ngay (To-Do)
 
 ### Module mới
-- [ ] Phân tích rủi ro kiểm tra hồ sơ hoàn thuế GTGT tự động.
+- [ ] Phân tích báo cáo quản trị chi phí giá thành hợp đồng dịch vụ.
 
 ---
 
 ## 🟡 Đang Thực Hiện (In Progress)
 
-- [ ] Phân tích báo cáo quản trị chi phí giá thành hợp đồng dịch vụ.
+- [ ] Phân tích rủi ro kiểm tra hồ sơ hoàn thuế GTGT tự động.
 
 ---
 
 ## 🟢 Đã Hoàn Thành (Done)
+
+### 🆕 Đợt Nâng Cấp Hoàn Thuế GTGT & Quản Trị Giá Thành Hợp Đồng (`vatRefundAuditService.ts`, `contractCostingService.ts`, `ContractCostingView.tsx`)
+- [x] **🛡 Rà Soát 6 Điều Kiện Hoàn Thuế GTGT (`vatRefundAuditService.ts`)**: Tự động đánh giá 6 tiêu chí pháp lý (Thông tư 80/2021/TT-BTC) gồm ngưỡng $\ge 300M$, thanh toán ngân hàng $\ge 20M$, liên tục chuyển kỳ sau [43], rà soát hóa đơn doanh nghiệp bỏ địa điểm kinh doanh, và tờ khai hải quan xuất khẩu.
+- [x] **🏗 Quản Trị Chi Phí Giá Thành Hợp Đồng / Công Trình (`contractCostingService.ts`)**: Tự động tập hợp chi phí NVL trực tiếp (1541), Nhân công (1542), Máy thi công & Mua ngoài (1543) cho từng mã Hợp Đồng/Công Trình, tính Lợi Nhuận Gộp % và Cảnh báo vượt định mức chi phí.
+- [x] **✨ Giao Diện Mới ContractCostingView (`ContractCostingView.tsx`)**: Màn hình quản trị tích hợp tab menu **Briefcase 💼 Giá Thành Hợp Đồng & Hoàn Thuế** trên Sidebar.
+- [x] **52/52 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 20 phần nghiệp vụ.
 
 ### 🆕 Đợt Nâng Cấp Executive Analytics, Sleek Glassmorphic UI/UX & Engine Tính Toán BEP (`executiveAnalyticsService.ts`, `financialCalculationEngine.ts`, `ExecutiveAnalyticsDashboardView.tsx`)
 - [x] **📊 Đọc & Phân Tích Dữ Liệu Executive 360° (`executiveAnalyticsService.ts`)**: Tự động phân tích chỉ số **EBITDA**, Biên lợi nhuận gộp/ròng %, Tỷ trọng 4 nhóm chi phí doanh nghiệp, và **Điểm Sức Khỏe Tài Chính 0-100 (Financial Health Score)**.

@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Lock,
   PieChart,
-  Briefcase
+  Briefcase,
+  BookOpenCheck
 } from 'lucide-react';
 
 export type TabType = 
@@ -60,11 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'dashboard' as TabType, label: 'Tổng quan Dashboard', icon: LayoutDashboard },
-    { id: 'executive-analytics' as TabType, label: 'Phân Tích Quản Trị & BEP', icon: PieChart, badge: 'AI 360', badgeColor: 'bg-purple-600 text-white' },
-    { id: 'contract-costing' as TabType, label: 'Giá Thành Hợp Đồng & Hoàn Thuế', icon: Briefcase, badge: 'COSTING', badgeColor: 'bg-indigo-600 text-white' },
-    { id: 'month-end-closing' as TabType, label: 'Checklist Khóa Sổ Tháng', icon: Lock, badge: 'NEW', badgeColor: 'bg-emerald-600 text-white' },
-    { id: 'financial-reports' as TabType, label: 'Báo Cáo Tài Chính & Pivot', icon: BarChart3, badge: 'HOT', badgeColor: 'bg-indigo-600 text-white' },
-    { id: 'master-accounting' as TabType, label: 'Bộ 4 Nghiệp Vụ Kế Toán', icon: Layers, badge: 'PRO', badgeColor: 'bg-amber-500 text-white' },
+    { id: 'executive-analytics' as TabType, label: 'Phân Tích Quản Trị & BEP', icon: PieChart },
+    { id: 'contract-costing' as TabType, label: 'Giá Thành Hợp Đồng & Hoàn Thuế', icon: Briefcase },
+    { id: 'month-end-closing' as TabType, label: 'Checklist Khóa Sổ Tháng', icon: Lock },
+    { id: 'financial-reports' as TabType, label: 'Báo Cáo Tài Chính & Pivot', icon: BarChart3 },
+    { id: 'master-accounting' as TabType, label: 'Bộ 4 Nghiệp Vụ Kế Toán', icon: Layers },
     { id: 'clients' as TabType, label: 'Quản lý Khách/Job', icon: Building2 },
     { id: 'import' as TabType, label: 'Import & Map Excel', icon: FileSpreadsheet },
     { 
@@ -94,20 +95,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between select-none relative z-20 transition-all duration-300 ease-in-out flex-shrink-0`}>
       <div>
-        {/* Brand App Header */}
+        {/* Brand App Header - LOGO MỚI ĐẲNG CẤP */}
         <div className={`p-4 border-b border-slate-200 dark:border-slate-800 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          <div className={`flex items-center gap-3.5 ${isCollapsed ? 'hidden' : 'flex'}`}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 ring-1 ring-white/20">
-              <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+          <div className={`flex items-center gap-3 ${isCollapsed ? 'hidden' : 'flex'}`}>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-400/40 relative overflow-hidden group">
+              <BookOpenCheck className="w-5 h-5 text-amber-300 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+              <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight leading-tight">Kế Toán</h1>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-500/30">
-                  PRO
-                </span>
+                <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                  Kế Toán <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">PRO</span>
+                </h1>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Phần Mềm Kế Toán Offline</p>
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wide uppercase mt-1">Hệ Thống Quản Trị Offline</p>
             </div>
           </div>
           <button 
