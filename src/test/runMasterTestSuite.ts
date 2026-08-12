@@ -32,6 +32,7 @@ import {
   getCorrectionStats,
 } from '../services/correctionEntryService';
 import { TAX_DEADLINES } from '../services/legalDatabase';
+import { calculatePayrollEntry, calculatePayrollSummary, getAllEmployees } from '../services/payrollService';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -321,6 +322,7 @@ async function runAllTests() {
   const mockWrongTx: NormalizedTransaction = {
     id: 'tx-test-wrong-01',
     clientId: 'client-test',
+    importDate: '2026-07-15',
     date: '2026-07-15',
     voucherNo: 'PC-0715',
     description: 'Chi phí văn phòng (ghi nhầm TK 642 thay vì 641)',
@@ -328,10 +330,12 @@ async function runAllTests() {
     creditAcc: '111',
     amount: 3_500_000,
     type: 'EXPENSE',
-    currency: 'VND',
-    exchangeRate: 1,
+    partnerName: '',
+    partnerTaxCode: '',
+    rawRow: {},
+    errors: [],
     sourceFileName: 'test.xlsx',
-    validationStatus: 'OK',
+    validationStatus: 'VALID',
     userApproved: false,
   };
   const correction = createReverseEntry(
@@ -356,9 +360,9 @@ async function runAllTests() {
   console.log('\n📌 PHẦN 34: TEST SỔ KẾ TOÁN CHUẨN TT200 — NHẬT KÝ CHUNG & SỔ CÁI');
   // Test logic sổ cái — nhóm giao dịch theo tài khoản
   const testTxs: NormalizedTransaction[] = [
-    { id: 't1', clientId: 'c1', date: '2026-07-01', voucherNo: 'PT01', description: 'Thu tiền mặt', debitAcc: '111', creditAcc: '131', amount: 10_000_000, type: 'INCOME', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
-    { id: 't2', clientId: 'c1', date: '2026-07-02', voucherNo: 'PC01', description: 'Chi phí văn phòng', debitAcc: '642', creditAcc: '111', amount: 2_000_000, type: 'EXPENSE', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
-    { id: 't3', clientId: 'c1', date: '2026-07-05', voucherNo: 'PT02', description: 'Thu tiền từ khách hàng', debitAcc: '112', creditAcc: '131', amount: 25_000_000, type: 'INCOME', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
+    { id: 't1', clientId: 'c1', importDate: '2026-07-01', date: '2026-07-01', voucherNo: 'PT01', description: 'Thu tiền mặt', debitAcc: '111', creditAcc: '131', amount: 10_000_000, type: 'INCOME', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    { id: 't2', clientId: 'c1', importDate: '2026-07-02', date: '2026-07-02', voucherNo: 'PC01', description: 'Chi phí văn phòng', debitAcc: '642', creditAcc: '111', amount: 2_000_000, type: 'EXPENSE', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    { id: 't3', clientId: 'c1', importDate: '2026-07-05', date: '2026-07-05', voucherNo: 'PT02', description: 'Thu tiền từ khách hàng', debitAcc: '112', creditAcc: '131', amount: 25_000_000, type: 'INCOME', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
   ];
   // Kiểm tra logic nhóm sổ cái TK 111
   const tk111Txs = testTxs.filter(t => t.debitAcc?.startsWith('111') || t.creditAcc?.startsWith('111'));
@@ -375,10 +379,60 @@ async function runAllTests() {
   const stats = getCorrectionStats();
   assert(stats.total >= 1, `Thống kê tổng số phiếu điều chỉnh ghi nhận đúng (${stats.total} phiếu)`);
 
+  console.log('\n📌 PHẦN 35: TEST ENGINE TÍNH BẢNG LƯƠNG & BHXH/BHYT/BHTN 2026');
+  // Nhân viên chính thức: lương 12M, 1 người PT
+  const testEmp = {
+    id: 'emp-t1',
+    name: 'Nguyễn Kiểm Thử',
+    position: 'KTV',
+    department: 'KT',
+    contractType: 'OFFICIAL' as const,
+    basicSalary: 12_000_000,
+    allowances: { position: 1_000_000, transport: 500_000, meal: 730_000, phone: 0, other: 0 },
+    dependentsCount: 1,
+    taxCode: '0000000001',
+    bankAccount: '1234567890',
+    startDate: '2024-01-01',
+  };
+  const payEntry = calculatePayrollEntry(testEmp);
+  // Gross = 12M + 1M + 0.5M + 0.73M = 14,230,000
+  assert(payEntry.grossSalary === 14_230_000, `Gross = basicSalary + phụ cấp (${payEntry.grossSalary.toLocaleString('vi-VN')} đ)`);
+  // BHXH NLĐ 8% * 12M = 960,000
+  assert(payEntry.bhxhEmployee === 960_000, `BHXH NLĐ 8% trên lương cơ bản 12M = 960,000 đ (${payEntry.bhxhEmployee.toLocaleString('vi-VN')} đ)`);
+  // BHYT NLĐ 1.5% * 12M = 180,000
+  assert(payEntry.bhytEmployee === 180_000, `BHYT NLĐ 1.5% = 180,000 đ (${payEntry.bhytEmployee.toLocaleString('vi-VN')} đ)`);
+  // BHTN NLĐ 1% * 12M = 120,000
+  assert(payEntry.bhtnEmployee === 120_000, `BHTN NLĐ 1% = 120,000 đ (${payEntry.bhtnEmployee.toLocaleString('vi-VN')} đ)`);
+  // Tổng BH NLĐ = 10.5% * 12M = 1,260,000
+  assert(payEntry.totalInsuranceEmployee === 1_260_000, `Tổng BH NLĐ 10.5% = 1,260,000 đ (${payEntry.totalInsuranceEmployee.toLocaleString('vi-VN')} đ)`);
+  // BH NSDLĐ: 21.5% * 12M = 2,580,000
+  assert(payEntry.totalInsuranceEmployer === 2_580_000, `Tổng BH NSDLĐ 21.5% = 2,580,000 đ (${payEntry.totalInsuranceEmployer.toLocaleString('vi-VN')} đ)`);
+  // TNCN: Gross 14.23M - BH 1.26M = taxable 12.97M; - GT bản thân 15.5M → TNCN = 0
+  assert(payEntry.pitAmount === 0, `TNCN = 0 khi thu nhập sau giảm trừ < 0 (dưới ngưỡng chịu thuế)`);
+  // Net = Gross - BH NLĐ - TNCN = 14,230,000 - 1,260,000 - 0
+  assert(payEntry.netSalary === 12_970_000, `Lương Net = 12,970,000 đ (${payEntry.netSalary.toLocaleString('vi-VN')} đ)`);
+  // Bút toán lương đủ ít nhất 3 dòng
+  assert(payEntry.accountingEntries.length >= 3, `Sinh đủ bút toán hạch toán lương (${payEntry.accountingEntries.length} bút toán)`);
+  // Kiểm tra bút toán ghi nhận lương (Nợ 622/Có 334)
+  const salaryEntry = payEntry.accountingEntries.find(e => e.debitAcc === '622' && e.creditAcc === '334');
+  assert(!!salaryEntry, 'Bút toán ghi nhận lương phải trả: Nợ 622 / Có 334');
+  // Kiểm tra bút toán chi lương thực (Nợ 334/Có 112)
+  const payEntry112 = payEntry.accountingEntries.find(e => e.debitAcc === '334' && e.creditAcc === '112');
+  assert(!!payEntry112, 'Bút toán chi lương thực nhận: Nợ 334 / Có 112');
+
+  console.log('\n📌 PHẦN 36: TEST BẢNG LƯƠNG NHIỀU NHÂN VIÊN & TỔNG HỢP');
+  const employees = getAllEmployees();
+  assert(employees.length >= 3, `Hệ thống có nhân viên mẫu sẵn (${employees.length} người)`);
+  const summary = calculatePayrollSummary(employees, '07/2026', 'client-test');
+  assert(summary.entries.length === employees.length, 'Bảng lương tạo đủ 1 dòng cho mỗi nhân viên');
+  assert(summary.totalGross > 0, `Tổng Gross toàn bộ nhân viên > 0 (${summary.totalGross.toLocaleString('vi-VN')} đ)`);
+  assert(summary.totalNetSalary < summary.totalGross, 'Tổng Net < Tổng Gross (đã trừ BH và TNCN)');
+  assert(summary.totalEmployerCost > summary.totalGross, 'Chi phí NSDLĐ > Gross (bao gồm BH NSDLĐ 21.5%)');
+  assert(summary.totalInsuranceEmployer === summary.entries.reduce((s, e) => s + e.totalInsuranceEmployer, 0), 'Tổng BH NSDLĐ khớp giữa summary và từng dòng');
+
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
   console.log('====================================================\n');
 }
 
 runAllTests();
-

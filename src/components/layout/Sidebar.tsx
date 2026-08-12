@@ -24,7 +24,8 @@ import {
   BookOpenCheck,
   GitBranch,
   FilePenLine,
-  BookMarked
+  BookMarked,
+  Users
 } from 'lucide-react';
 
 export type TabType = 
@@ -48,6 +49,7 @@ export type TabType =
   | 'financial-reports'
   | 'correction-ledger'
   | 'accounting-ledger'
+  | 'payroll'
   | 'help';
 
 interface SidebarProps {
@@ -96,6 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'legal-search' as TabType, label: 'Tra Cứu Luật & Thuế', icon: Scale },
     { id: 'accounting-ledger' as TabType, label: 'Sổ Kế Toán TT200', icon: BookMarked },
     { id: 'correction-ledger' as TabType, label: 'Bút Toán Điều Chỉnh', icon: FilePenLine },
+    { id: 'payroll' as TabType, label: 'Bảng Lương & BHXH', icon: Users },
     { id: 'audit' as TabType, label: 'Audit Log Thao Tác', icon: History },
     { id: 'backup' as TabType, label: 'Sao lưu & Khôi phục', icon: DatabaseBackup },
     { id: 'help' as TabType, label: 'Hướng dẫn sử dụng', icon: HelpCircle },

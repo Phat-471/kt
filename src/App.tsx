@@ -34,6 +34,7 @@ import { DigitalSigningModal } from './components/common/DigitalSigningModal';
 import { MiniFloatingToolbar } from './components/common/MiniFloatingToolbar';
 import { CorrectionLedgerView } from './components/audit/CorrectionLedgerView';
 import { AccountingLedgerView } from './components/reports/AccountingLedgerView';
+import { PayrollView } from './components/payroll/PayrollView';
 import { UserRole } from './services/rolePermissionService';
 import { IndustryPresetType } from './services/industryPresetService';
 
@@ -474,6 +475,10 @@ export default function App() {
 
           {activeTab === 'accounting-ledger' && (
             <AccountingLedgerView transactions={transactions} activeClient={activeClient} />
+          )}
+
+          {activeTab === 'payroll' && (
+            <PayrollView activeClient={activeClient} />
           )}
 
           {activeTab === 'legal-search' && (
