@@ -40,6 +40,7 @@ import {
   ASSET_GROUP_DEFAULTS,
 } from '../services/fixedAssetService';
 import { generateGTGTXML, generatePITXML } from '../services/eTaxXMLGenerator';
+import { calculateTrialBalance } from '../services/trialBalancePivotEngine';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -552,6 +553,38 @@ async function runAllTests() {
   assert(pitXml.includes('0109999999'), 'XML 05/KK-TNCN chứa MST doanh nghiệp');
   assert(pitXml.includes(`NamTinh2026`), 'XML 05/KK-TNCN ghi nhận đúng năm quyết toán');
   assert(pitXml.includes(`<TongSoNguoiLaoDong>${pitEmps.length}</TongSoNguoiLaoDong>`), 'XML 05/KK-TNCN ghi nhận đúng số lượng lao động');
+
+  console.log('\n📌 PHẦN 42: TEST ENGINE BẢNG CÂN ĐỐI PHÁT SINH TÀI KHOẢN (PIVOT TT200)');
+  const tbTxs: NormalizedTransaction[] = [
+    { id: 'tb1', clientId: 'c1', importDate: '2026-07-01', date: '2026-07-01', voucherNo: 'PT01', description: 'Thu tiền bán hàng', debitAcc: '111', creditAcc: '511', amount: 50_000_000, type: 'INCOME', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    { id: 'tb2', clientId: 'c1', importDate: '2026-07-02', date: '2026-07-02', voucherNo: 'PC01', description: 'Rút tiền gửi ngân hàng nộp quỹ tiền mặt', debitAcc: '111', creditAcc: '112', amount: 10_000_000, type: 'INCOME', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    { id: 'tb3', clientId: 'c1', importDate: '2026-07-03', date: '2026-07-03', voucherNo: 'PC02', description: 'Chi trả tiền điện nước', debitAcc: '642', creditAcc: '111', amount: 5_000_000, type: 'EXPENSE', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+  ];
+  const tbReport = calculateTrialBalance(tbTxs);
+  assert(tbReport.isBalanced === true, 'Bảng cân đối phát sinh đảm bảo nguyên tắc Tổng Nợ = Tổng Có');
+  assert(tbReport.totalPeriodDebit === 65_000_000, 'Tổng phát sinh Nợ khớp chính xác (65,000,000)');
+  assert(tbReport.totalPeriodCredit === 65_000_000, 'Tổng phát sinh Có khớp chính xác (65,000,000)');
+
+  const row111 = tbReport.rows.find(r => r.accountCode === '111');
+  assert(!!row111, 'Bảng cân đối chứa tài khoản 111 (Tiền mặt)');
+  assert(row111?.periodDebit === 60_000_000, 'Phát sinh Nợ TK 111 tính đúng (50M + 10M = 60M)');
+  assert(row111?.periodCredit === 5_000_000, 'Phát sinh Có TK 111 tính đúng (5M)');
+  assert(row111?.closingDebit === 55_000_000, 'Dư Nợ cuối kỳ TK 111 tính đúng (55M)');
+
+  console.log('\n📌 PHẦN 43: TEST SỐ DƯ ĐẦU KỲ VÀ DƯ CUỐI KỲ TÀI KHOẢN');
+  const openReport = calculateTrialBalance(tbTxs, undefined, undefined, {
+    '111': { debit: 15_000_000, credit: 0 },
+  });
+  const rowOpen111 = openReport.rows.find(r => r.accountCode === '111');
+  assert(rowOpen111?.openingDebit === 15_000_000, 'Ghi nhận đúng số dư đầu kỳ Nợ TK 111 (15M)');
+  assert(rowOpen111?.closingDebit === 70_000_000, 'Dư Nợ cuối kỳ TK 111 gồm cả số dư đầu kỳ (15M + 55M = 70M)');
+
+  console.log('\n📌 PHẦN 44: TEST KIỂM TRA TỰ ĐỘNG LỖI BẤT CÂN BẰNG TÀI KHOẢN');
+  const unbalancedTxs: NormalizedTransaction[] = [
+    { id: 'ub1', clientId: 'c1', importDate: '2026-07-01', date: '2026-07-01', voucherNo: 'L01', description: 'Giao dịch thiếu TK Có', debitAcc: '111', creditAcc: '', amount: 10_000_000, type: 'INCOME', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+  ];
+  const unbalancedReport = calculateTrialBalance(unbalancedTxs);
+  assert(unbalancedReport.isBalanced === false, 'Phát hiện chính xác trạng thái không cân bằng khi chứng từ thiếu đối ứng');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

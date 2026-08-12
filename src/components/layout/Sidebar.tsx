@@ -52,6 +52,7 @@ export type TabType =
   | 'payroll'
   | 'fixed-assets'
   | 'etax'
+  | 'trial-balance-pivot'
   | 'help';
 
 interface SidebarProps {
@@ -103,6 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'payroll' as TabType, label: 'Bảng Lương & BHXH', icon: Users },
     { id: 'fixed-assets' as TabType, label: 'Tài Sản Cố Định & Khấu Hao', icon: Building2 },
     { id: 'etax' as TabType, label: 'Khai Thuế eTax (XML)', icon: FileSpreadsheet },
+    { id: 'trial-balance-pivot' as TabType, label: 'Bảng Cân Đối Phát Sinh Pivot', icon: Scale },
     { id: 'audit' as TabType, label: 'Audit Log Thao Tác', icon: History },
     { id: 'backup' as TabType, label: 'Sao lưu & Khôi phục', icon: DatabaseBackup },
     { id: 'help' as TabType, label: 'Hướng dẫn sử dụng', icon: HelpCircle },

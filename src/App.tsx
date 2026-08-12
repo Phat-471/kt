@@ -37,6 +37,7 @@ import { AccountingLedgerView } from './components/reports/AccountingLedgerView'
 import { PayrollView } from './components/payroll/PayrollView';
 import { FixedAssetView } from './components/assets/FixedAssetView';
 import { ETaxView } from './components/tax/ETaxView';
+import { TrialBalancePivotView } from './components/reports/TrialBalancePivotView';
 import { UserRole } from './services/rolePermissionService';
 import { IndustryPresetType } from './services/industryPresetService';
 
@@ -489,6 +490,10 @@ export default function App() {
 
           {activeTab === 'etax' && (
             <ETaxView activeClient={activeClient} transactions={transactions} />
+          )}
+
+          {activeTab === 'trial-balance-pivot' && (
+            <TrialBalancePivotView transactions={transactions} activeClient={activeClient} />
           )}
 
           {activeTab === 'legal-search' && (
