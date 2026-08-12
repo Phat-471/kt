@@ -49,8 +49,8 @@ export const LegalKnowledgeBaseView: React.FC = () => {
             <Scale className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-extrabold tracking-tight">Tra Cứu Luật Kế Toán & Văn Bản Thuế Mới Nhất</h2>
-            <p className="text-[11px] text-slate-300">NĐ 123, TT 78 hóa đơn điện tử, thuế GTGT 8%, chế độ TT200/TT133 & NĐ 125 — Offline 100%</p>
+            <h2 className="text-sm font-extrabold tracking-tight">Tra Cứu Luật Kế Toán & Văn Bản Thuế Mới Nhất 2026</h2>
+            <p className="text-[11px] text-slate-300">Luật Kế toán 88, NĐ 125 xử phạt thuế, TT 80 quản lý thuế, NĐ 123 hóa đơn điện tử & TT 200/133 — Offline 100%</p>
           </div>
         </div>
 

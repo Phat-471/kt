@@ -30,6 +30,50 @@ export interface AccountGuide {
 // 1. Cơ sở dữ liệu văn bản pháp luật kế toán & thuế mới nhất
 export const LEGAL_DOCUMENTS: LegalDocument[] = [
   {
+    id: 'doc-luat-ketoan-2015',
+    code: 'Luật Kế toán 88/2015/QH13',
+    title: 'Luật Kế toán (Hiện hành)',
+    category: 'CHEDO_KETOAN',
+    effectiveDate: '01/01/2017',
+    summary: 'Quy định chung về chứng từ kế toán, tài khoản kế toán, sổ kế toán, báo cáo tài chính và kiểm tra kế toán.',
+    keyPoints: [
+      'Nguyên tắc kế toán: Giá gốc, Phù hợp, Thận trọng, Nhất quán, Khách quan, Liêm chính.',
+      'Chứng từ kế toán là gốc của mọi bút toán, phải lập rõ ràng, trung thực, đầy đủ và kịp thời.',
+      'Sổ kế toán phải đóng thành quyển hoặc lưu trữ trên dữ liệu điện tử an toàn bảo mật.',
+      'Thời hạn lưu trữ chứng từ kế toán: Tối thiểu 5 năm (chứng từ dùng cho quản lý) và 10 năm (chứng từ kế toán trực tiếp sử dụng để ghi sổ và lập BCTC).',
+    ],
+    content: 'Luật Kế toán số 88/2015/QH13 quy định về nội dung công tác kế toán, tổ chức bộ máy kế toán, người làm kế toán, hoạt động kinh doanh dịch vụ kế toán...',
+  },
+  {
+    id: 'doc-nd125-2020',
+    code: 'Nghị định 125/2020/NĐ-CP',
+    title: 'Quy định xử phạt vi phạm hành chính về thuế, hóa đơn',
+    category: 'PHAT_HANH_CHINH',
+    effectiveDate: '05/12/2020',
+    summary: 'Quy định chi tiết các mức phạt tiền, biện pháp khắc phục hậu quả đối với hành vi vi phạm thủ tục thuế và hóa đơn.',
+    keyPoints: [
+      'Phạt từ 2M - 5M: Khai sai không dẫn đến thiếu số tiền thuế phải nộp.',
+      'Phạt 20% số tiền thuế khai thiếu: Đối với hành vi khai sai dẫn đến thiếu số tiền thuế phải nộp hoặc tăng số tiền thuế được hoàn.',
+      'Phạt từ 1 đến 3 lần số tiền thuế trốn: Đối với hành vi trốn thuế, gian lận thuế.',
+      'Phạt từ 4M - 8M: Lập hóa đơn không đúng thời điểm hoặc không lập hóa đơn khi bán hàng hóa, dịch vụ.',
+    ],
+    content: 'Nghị định 125/2020/NĐ-CP quy định cụ thể mức phạt hành chính đối với các hành vi vi phạm thời hạn nộp hồ sơ khai thuế, lập hóa đơn không đúng quy định...',
+  },
+  {
+    id: 'doc-tt80-2021',
+    code: 'Thông tư 80/2021/TT-BTC',
+    title: 'Hướng dẫn Luật Quản lý thuế & Nghị định 126/2020/NĐ-CP',
+    category: 'THUE_GTGT',
+    effectiveDate: '01/01/2022',
+    summary: 'Hướng dẫn chi tiết quản lý thuế, kê khai phân bổ thuế, thủ tục hoàn thuế GTGT, miễn giảm thuế và thanh tra kiểm tra thuế.',
+    keyPoints: [
+      'Phân bổ nghĩa vụ thuế GTGT, TNDN, TNCN đối với doanh nghiệp có đơn vị phụ thuộc, chi nhánh khác tỉnh.',
+      'Thủ tục hồ sơ hoàn thuế GTGT dự án đầu tư & hàng hóa dịch vụ xuất khẩu.',
+      'Quy trình quản lý rủi ro và phân loại hồ sơ hoàn thuế thuộc diện Hoàn thuế trước kiểm tra sau hoặc Kiểm tra trước hoàn thuế sau.',
+    ],
+    content: 'Thông tư 80/2021/TT-BTC hướng dẫn thực hiện Luật Quản lý thuế số 38/2019/QH14 và Nghị định 126/2020/NĐ-CP...',
+  },
+  {
     id: 'doc-nd72-2024',
     code: 'Nghị định 72/2024/NĐ-CP',
     title: 'Quy định chính sách giảm thuế giá trị gia tăng (GTGT) 8%',
