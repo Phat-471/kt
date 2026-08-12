@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { NormalizedTransaction } from '../../types/accounting';
 import { Client } from '../../types/accounting';
-import { BookOpen, Printer, Filter, ChevronDown, FileText, Search } from 'lucide-react';
+import { BookOpen, Printer, Filter, ChevronDown, FileText, Search, FileDown } from 'lucide-react';
+import {
+  exportNhatKyChungPDF,
+  exportSoCaiPDF,
+  exportSoChiTietPDF,
+} from '../../services/ledgerPdfExporter';
 
 interface AccountingLedgerViewProps {
   transactions: NormalizedTransaction[];
@@ -74,6 +79,19 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
     window.print();
   };
 
+  const handleExportPDF = () => {
+    const pdfOpts = {
+      transactions: filtered,
+      client: activeClient,
+      period: (dateFrom || dateTo) ? { from: dateFrom || '2000-01-01', to: dateTo || '2099-12-31' } : undefined,
+      filterAccount: accountFilter || undefined,
+      preparedBy: '',
+    };
+    if (ledgerType === 'NHAT_KY_CHUNG') exportNhatKyChungPDF(pdfOpts);
+    else if (ledgerType === 'SO_CAI') exportSoCaiPDF(pdfOpts);
+    else exportSoChiTietPDF(pdfOpts);
+  };
+
   const ledgerTabs: { key: LedgerType; label: string; desc: string }[] = [
     { key: 'NHAT_KY_CHUNG', label: 'Nhật Ký Chung', desc: 'Tất cả bút toán theo thứ tự thời gian' },
     { key: 'SO_CAI', label: 'Sổ Cái TK', desc: 'Theo dõi theo từng tài khoản kế toán' },
@@ -96,13 +114,22 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all active:scale-95 print:hidden"
-          >
-            <Printer className="w-4 h-4" />
-            In Sổ
-          </button>
+          <div className="flex items-center gap-2 print:hidden">
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition-all active:scale-95"
+            >
+              <FileDown className="w-4 h-4" />
+              Xuất PDF
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all active:scale-95"
+            >
+              <Printer className="w-4 h-4" />
+              In Sổ
+            </button>
+          </div>
         </div>
       </div>
 
