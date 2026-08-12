@@ -33,6 +33,12 @@ import {
 } from '../services/correctionEntryService';
 import { TAX_DEADLINES } from '../services/legalDatabase';
 import { calculatePayrollEntry, calculatePayrollSummary, getAllEmployees } from '../services/payrollService';
+import {
+  calculateDepreciationSchedule,
+  getTotalMonthlyDepreciation,
+  getAllFixedAssets,
+  ASSET_GROUP_DEFAULTS,
+} from '../services/fixedAssetService';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -429,6 +435,62 @@ async function runAllTests() {
   assert(summary.totalNetSalary < summary.totalGross, 'Tổng Net < Tổng Gross (đã trừ BH và TNCN)');
   assert(summary.totalEmployerCost > summary.totalGross, 'Chi phí NSDLĐ > Gross (bao gồm BH NSDLĐ 21.5%)');
   assert(summary.totalInsuranceEmployer === summary.entries.reduce((s, e) => s + e.totalInsuranceEmployer, 0), 'Tổng BH NSDLĐ khớp giữa summary và từng dòng');
+
+  console.log('\n📌 PHẦN 37: TEST ENGINE KHẤU HAO TSCĐ — PHƯƠNG PHÁP ĐƯỜNG THẸNG (TT45/2013)');
+  // TSCĐ mẫu: Laptop Dell 28tr, KH 36 tháng, giá trị thu hồi 0
+  const testAsset = {
+    id: 'fa-test-01',
+    code: 'TSCĐ-TEST',
+    name: 'Laptop Dell Test',
+    group: 'THIET_BI_DIEN_TU' as const,
+    department: 'Kế toán',
+    purchaseDate: '2024-01-01',
+    useDate: '2024-01-01',
+    originalCost: 36_000_000,
+    salvageValue: 0,
+    usefulLifeMonths: 36,
+    accountDebit: '642',
+    accountCredit: '214',
+    accountAsset: '211',
+    status: 'ACTIVE' as const,
+  };
+  const sch = calculateDepreciationSchedule(testAsset);
+  // KH/tháng = 36,000,000 / 36 = 1,000,000
+  assert(sch.monthlyAmount === 1_000_000, `KH/tháng = 36tr / 36 = 1,000,000 đ (${sch.monthlyAmount.toLocaleString('vi-VN')} đ)`);
+  // KH/năm = 12,000,000
+  assert(sch.annualAmount === 12_000_000, `KH/năm = 12,000,000 đ (${sch.annualAmount.toLocaleString('vi-VN')} đ)`);
+  // Tỷ lệ KH = 33.33%
+  assert(sch.depreciationRate === 33.33, `Tỷ lệ KH = 33.33%/năm (${sch.depreciationRate}%)`);
+  // Tổng tháng = 36
+  assert(sch.schedule.length === 36, `Bảng KH có đủ 36 dòng tháng (${sch.schedule.length} dòng)`);
+  // Số dư tháng đầu = 36,000,000 - 1,000,000 = 35,000,000
+  assert(sch.schedule[0].bookValue === 35_000_000, `Giá trị còn lại sau tháng 1 = 35,000,000 đ`);
+  // Số dư tháng cuối = 0
+  assert(sch.schedule[35].bookValue === 0, 'Giá trị còn lại sau tháng 36 = 0 (khấu hao hết)');
+  // Bút toán: Nợ 642 / Có 214
+  assert(sch.schedule[0].accountingEntry.debitAcc === '642', 'Bút toán KH: Nợ TK 642 (chi phí QLDN)');
+  assert(sch.schedule[0].accountingEntry.creditAcc === '214', 'Bút toán KH: Có TK 214 (KH TSCĐ)');
+  assert(sch.schedule[0].accountingEntry.amount === 1_000_000, 'Số tiền bút toán KH đúng = 1,000,000 đ');
+
+  console.log('\n📌 PHẦN 38: TEST KHẤU HAO LŨY KẾ VÀ TỔNG HỢP');
+  // Tháng 6: KH lũy kế = 6 * 1,000,000 = 6,000,000
+  assert(sch.schedule[5].accumulatedDepreciation === 6_000_000, 'KH lũy kế tháng 6 = 6,000,000 đ');
+  assert(sch.schedule[5].bookValue === 30_000_000, 'Giá trị còn lại tháng 6 = 30,000,000 đ');
+  assert(!sch.schedule[5].isFullyDepreciated, 'TSCĐ chưa KH hết sau 6 tháng');
+  assert(sch.schedule[35].isFullyDepreciated, 'TSCĐ KH hết sau tháng 36');
+  // Tổng KH = 36M
+  assert(sch.totalDepreciation === 36_000_000, 'Tổng KH = 36,000,000 đ (= Nguyên giá - GT thu hồi)');
+
+  console.log('\n📌 PHẦN 39: TEST TỔNG HỢP KHẤU HAO NHIỀU TSCĐ THEO THÁNG');
+  const allAssets = getAllFixedAssets();
+  assert(allAssets.length >= 3, `Hệ thống có TSCĐ mẫu sẵn (${allAssets.length} tài sản)`);
+  const khJul2026 = getTotalMonthlyDepreciation(allAssets, '2026-07');
+  assert(khJul2026.total > 0, `Tổng KH tháng 07/2026 > 0 (${khJul2026.total.toLocaleString('vi-VN')} đ)`);
+  assert(khJul2026.entries.length >= 1, `Có ít nhất 1 TSCĐ đang khấu hao trong tháng 07/2026`);
+  // Kiểm tra khung thời gian TT45: Máy tính tối thiểu 3 năm
+  assert(ASSET_GROUP_DEFAULTS.THIET_BI_DIEN_TU.minYears === 3, 'TT45: Máy tính/thiết bị điện tử tối thiểu 3 năm KH');
+  assert(ASSET_GROUP_DEFAULTS.PHUONG_TIEN.minYears === 6, 'TT45: Phương tiện vận tải tối thiểu 6 năm KH');
+  assert(ASSET_GROUP_DEFAULTS.NHADAT_NHAXA.minYears === 10, 'TT45: Nhà xưởng tối thiểu 10 năm KH');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

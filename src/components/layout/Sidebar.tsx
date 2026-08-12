@@ -50,6 +50,7 @@ export type TabType =
   | 'correction-ledger'
   | 'accounting-ledger'
   | 'payroll'
+  | 'fixed-assets'
   | 'help';
 
 interface SidebarProps {
@@ -99,6 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'accounting-ledger' as TabType, label: 'Sổ Kế Toán TT200', icon: BookMarked },
     { id: 'correction-ledger' as TabType, label: 'Bút Toán Điều Chỉnh', icon: FilePenLine },
     { id: 'payroll' as TabType, label: 'Bảng Lương & BHXH', icon: Users },
+    { id: 'fixed-assets' as TabType, label: 'Tài Sản Cố Định & Khấu Hao', icon: Building2 },
     { id: 'audit' as TabType, label: 'Audit Log Thao Tác', icon: History },
     { id: 'backup' as TabType, label: 'Sao lưu & Khôi phục', icon: DatabaseBackup },
     { id: 'help' as TabType, label: 'Hướng dẫn sử dụng', icon: HelpCircle },
