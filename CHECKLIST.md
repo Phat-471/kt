@@ -1,13 +1,13 @@
 # CHECKLIST CÔNG VIỆC HÀNG NGÀY - PHẦN MỀM KẾ TOÁN
 
-Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Luật Thuế Mới Sau 01/07/2026, Engine Thuế TNCN Lũy Tiến & Tờ Khai 01/GTGT TT80 (Test Suite 63/63 PASSED 100%)
+Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Engine Ký Số Hóa Đơn Điện Tử XML & Quản Lý Chứng Thư Số Doanh Nghiệp (Test Suite 67/67 PASSED 100%)
 
 ---
 
 ## 🔴 Cần Làm Ngay (To-Do)
 
 ### Module mới
-- [ ] Tích hợp tính năng ký số hóa đơn điện tử trực tiếp trên ứng dụng.
+- [ ] Mở rộng xuất dữ liệu XML / Excel tờ khai thuế nộp trực tiếp Cổng Thống kê & Thuế.
 
 ---
 
@@ -18,6 +18,12 @@ Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Luật Thu
 ---
 
 ## 🟢 Đã Hoàn Thành (Done)
+
+### 🆕 Nâng Cấp Ký Số Hóa Đơn Điện Tử & Quản Lý Chứng Thư Số Doanh Nghiệp (`digitalSignatureService.ts`, `certificateManagerService.ts`, `DigitalSigningModal.tsx`)
+- [x] **🔑 Engine Ký Số XML Signature (`digitalSignatureService.ts`)**: Tự động đóng gói cấu trúc thẻ chữ ký số XML `<ds:Signature>` theo tiêu chuẩn Nghị định 123/2020/NĐ-CP & Thông tư 78/2021/TT-BTC.
+- [x] **🛡 Trình Quản Lý & Cảnh Báo Hạn Dùng Chữ Ký Số (`certificateManagerService.ts`)**: Rà soát theo dõi ngày hết hạn Chữ Ký Số X.509 doanh nghiệp, tự động phát cảnh báo khi sắp hết hạn dưới 30 ngày.
+- [x] **✨ Giao Diện Mới DigitalSigningModal (`DigitalSigningModal.tsx`)**: Modal giao diện ký số 1-Click tích hợp trực tiếp trên Header với nút **KeyRound 🔑 Ký Số HĐ**.
+- [x] **67/67 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 28 phần nghiệp vụ.
 
 ### 🆕 Nâng Cấp Luật Thuế Mới Sau 01/07/2026, Thuế TNCN Lũy Tiến & Tờ Khai Thuế GTGT TT80 (`taxPolicySyncService.ts`, `pitCalculationEngine.ts`, `officialFormTemplates.ts`, `TaxLawPolicyAlertBanner.tsx`)
 - [x] **🔔 Thẻ Cảnh Báo Thay Đổi Luật Thuế Tự Động (`taxPolicySyncService.ts` & `TaxLawPolicyAlertBanner.tsx`)**: Tự động hiển thị Thẻ Cảnh Báo Nổi Nổi ngay trên Dashboard rà soát các chính sách mới thay đổi sau ngày **01/07/2026** (Thuế GTGT 8%, thời điểm ký HĐĐT NĐ123, giảm trừ gia cảnh TNCN).

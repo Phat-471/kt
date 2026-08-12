@@ -22,7 +22,9 @@ import {
   PieChart,
   Briefcase,
   BookOpenCheck,
-  GitBranch
+  GitBranch,
+  FilePenLine,
+  BookMarked
 } from 'lucide-react';
 
 export type TabType = 
@@ -44,6 +46,8 @@ export type TabType =
   | 'tax-reports'
   | 'master-accounting'
   | 'financial-reports'
+  | 'correction-ledger'
+  | 'accounting-ledger'
   | 'help';
 
 interface SidebarProps {
@@ -90,6 +94,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'generator' as TabType, label: 'Tạo Mẫu Chứng Từ', icon: Printer },
     { id: 'xml-import' as TabType, label: 'Đọc Hóa Đơn XML', icon: FileSpreadsheet },
     { id: 'legal-search' as TabType, label: 'Tra Cứu Luật & Thuế', icon: Scale },
+    { id: 'accounting-ledger' as TabType, label: 'Sổ Kế Toán TT200', icon: BookMarked },
+    { id: 'correction-ledger' as TabType, label: 'Bút Toán Điều Chỉnh', icon: FilePenLine },
     { id: 'audit' as TabType, label: 'Audit Log Thao Tác', icon: History },
     { id: 'backup' as TabType, label: 'Sao lưu & Khôi phục', icon: DatabaseBackup },
     { id: 'help' as TabType, label: 'Hướng dẫn sử dụng', icon: HelpCircle },

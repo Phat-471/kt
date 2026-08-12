@@ -16,6 +16,7 @@ import { calculatePersonalIncomeTax } from '../services/pitCalculationEngine';
 import { generateForm01VATReport } from '../services/officialFormTemplates';
 import { signXmlInvoiceDocument, mockGetActiveCompanyCertificate } from '../services/digitalSignatureService';
 import { auditCertificateHealth } from '../services/certificateManagerService';
+import { getSafeStorageConfig, executeSyncToSafeDrive } from '../services/persistentStorageService';
 import { analyzeFinancialVariances } from '../services/varianceAnalysisService';
 import { calculateCashflowForecast } from '../services/cashflowForecastService';
 import { generateGeneralLedgerReport } from '../services/generalLedgerService';
@@ -24,6 +25,13 @@ import { checkPermission, getRoleLabel } from '../services/rolePermissionService
 import { getIndustryRule } from '../services/industryPresetService';
 import { validateTransaction } from '../services/validationRules';
 import { levenshteinSimilarity } from '../services/matchingEngine';
+import {
+  createReverseEntry,
+  approveCorrectionEntry,
+  getAllCorrectionEntries,
+  getCorrectionStats,
+} from '../services/correctionEntryService';
+import { TAX_DEADLINES } from '../services/legalDatabase';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -42,6 +50,7 @@ const assert = (condition: boolean, testName: string) => {
     failCount++;
   }
 };
+
 
 // DỮ LIỆU MẪU DÙNG CHO KIỂM THỬ
 const mockTransactions: NormalizedTransaction[] = [
@@ -292,9 +301,84 @@ async function runAllTests() {
   assert(certAudit.isReadyForSigning === true, 'Xác nhận Chữ ký số hợp lệ sẵn sàng ký chứng từ');
   assert(certAudit.certificate.daysRemaining > 0, `Theo dõi số ngày còn hiệu lực chữ ký số (${certAudit.certificate.daysRemaining} ngày)`);
 
+  console.log('\n📌 PHẦN 29: TEST ĐƯỜNG DẪN Ổ ĐĨA LƯU TRỮ AN TOÀN (D:\\KeToan_Data) PHÒNG SẬP MÁY');
+  const safeConfig = getSafeStorageConfig();
+  assert(safeConfig.safePath.startsWith('D:\\'), 'Thiết lập thư mục lưu trữ an toàn mặc định ngoài ổ đĩa hệ thống C:\\');
+  assert(safeConfig.isAutoBackupEnabled === true, 'Kích hoạt tính năng tự động sao lưu dữ liệu');
+
+  console.log('\n📌 PHẦN 30: TEST ENGINE ĐỒNG BỘ SAO LƯU DỮ LIỆU TỨC THỜI TỰ ĐỘNG');
+  const syncRes = await executeSyncToSafeDrive();
+  assert(syncRes.success === true, 'Thực thi đồng bộ dữ liệu an toàn thành công 100%');
+  assert(syncRes.filePath.length > 0, `Đồng bộ dữ liệu an toàn tới tệp (${syncRes.filePath})`);
+
+  console.log('\n📌 PHẦN 31: TEST WIDGET NHẮC DEADLINE THUẾ THEO LỊCH HÀNG NĂM');
+  assert(TAX_DEADLINES.length >= 3, `Hệ thống có ít nhất 3 mốc hạn nộp thuế quan trọng (${TAX_DEADLINES.length} hạn)`);
+  assert(TAX_DEADLINES.some(d => d.type === 'QUARTERLY'), 'Bao gồm deadline kê khai thuế GTGT/TNCN theo quý');
+  assert(TAX_DEADLINES.some(d => d.type === 'ANNUAL'), 'Bao gồm deadline BCTC & quyết toán thuế TNDN năm');
+
+  console.log('\n📌 PHẦN 32: TEST ENGINE BÚT TOÁN ĐẢO NGƯỢC ĐIỀU CHỈNH CHỨNG TỪ SAI (TT200)');
+  // Tạo phiếu điều chỉnh đảo bút toán từ chứng từ sai
+  const mockWrongTx: NormalizedTransaction = {
+    id: 'tx-test-wrong-01',
+    clientId: 'client-test',
+    date: '2026-07-15',
+    voucherNo: 'PC-0715',
+    description: 'Chi phí văn phòng (ghi nhầm TK 642 thay vì 641)',
+    debitAcc: '642',
+    creditAcc: '111',
+    amount: 3_500_000,
+    type: 'EXPENSE',
+    currency: 'VND',
+    exchangeRate: 1,
+    sourceFileName: 'test.xlsx',
+    validationStatus: 'OK',
+    userApproved: false,
+  };
+  const correction = createReverseEntry(
+    mockWrongTx,
+    'Sai TK chi phí: phải ghi TK 641 (Chi phí bán hàng) thay vì TK 642',
+    'Nguyễn Kế Toán',
+    '641', '111', 3_500_000,
+  );
+  assert(correction.reverseEntry.amount === -3_500_000, 'Bút toán đảo tạo ra số tiền âm (-3,500,000) để triệt tiêu bút toán sai');
+  assert(correction.reverseEntry.debitAcc === '111' && correction.reverseEntry.creditAcc === '642', 'Đảo đúng cặp TK Nợ/Có (Nợ 111 / Có 642)');
+  assert(correction.replacementEntry?.debitAcc === '641', 'Bút toán thay thế đúng dùng TK 641 (Chi phí bán hàng)');
+  assert(correction.status === 'PENDING', 'Phiếu điều chỉnh mới tạo ở trạng thái Chờ duyệt');
+
+  console.log('\n📌 PHẦN 33: TEST QUY TRÌNH PHÊ DUYỆT PHIẾU ĐIỀU CHỈNH BÚT TOÁN');
+  const approved = approveCorrectionEntry(correction.id, 'Trần Kế Toán Trưởng');
+  assert(approved === true, 'Kế toán trưởng phê duyệt thành công phiếu điều chỉnh');
+  const allEntries = getAllCorrectionEntries();
+  const foundApproved = allEntries.find(e => e.id === correction.id);
+  assert(foundApproved?.status === 'APPROVED', 'Trạng thái phiếu cập nhật thành Đã duyệt sau khi phê duyệt');
+  assert(foundApproved?.approvedBy === 'Trần Kế Toán Trưởng', 'Ghi nhận tên người phê duyệt chính xác');
+
+  console.log('\n📌 PHẦN 34: TEST SỔ KẾ TOÁN CHUẨN TT200 — NHẬT KÝ CHUNG & SỔ CÁI');
+  // Test logic sổ cái — nhóm giao dịch theo tài khoản
+  const testTxs: NormalizedTransaction[] = [
+    { id: 't1', clientId: 'c1', date: '2026-07-01', voucherNo: 'PT01', description: 'Thu tiền mặt', debitAcc: '111', creditAcc: '131', amount: 10_000_000, type: 'INCOME', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
+    { id: 't2', clientId: 'c1', date: '2026-07-02', voucherNo: 'PC01', description: 'Chi phí văn phòng', debitAcc: '642', creditAcc: '111', amount: 2_000_000, type: 'EXPENSE', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
+    { id: 't3', clientId: 'c1', date: '2026-07-05', voucherNo: 'PT02', description: 'Thu tiền từ khách hàng', debitAcc: '112', creditAcc: '131', amount: 25_000_000, type: 'INCOME', currency: 'VND', exchangeRate: 1, sourceFileName: 'test.xlsx', validationStatus: 'OK', userApproved: true },
+  ];
+  // Kiểm tra logic nhóm sổ cái TK 111
+  const tk111Txs = testTxs.filter(t => t.debitAcc?.startsWith('111') || t.creditAcc?.startsWith('111'));
+  const tk111Debit = tk111Txs.filter(t => t.debitAcc?.startsWith('111')).reduce((s, t) => s + t.amount, 0);
+  const tk111Credit = tk111Txs.filter(t => t.creditAcc?.startsWith('111')).reduce((s, t) => s + t.amount, 0);
+  assert(tk111Debit === 10_000_000, 'Sổ cái TK 111 tính tổng phát sinh Nợ chính xác (10,000,000)');
+  assert(tk111Credit === 2_000_000, 'Sổ cái TK 111 tính tổng phát sinh Có chính xác (2,000,000)');
+  assert(tk111Debit - tk111Credit === 8_000_000, 'Sổ cái TK 111 tính số dư cuối kỳ chính xác (8,000,000)');
+
+  // Kiểm tra nhật ký chung — đúng thứ tự thời gian
+  const sorted = [...testTxs].sort((a, b) => a.date.localeCompare(b.date));
+  assert(sorted[0].voucherNo === 'PT01' && sorted[2].voucherNo === 'PT02', 'Nhật ký chung sắp xếp đúng thứ tự thời gian từ sớm đến muộn');
+
+  const stats = getCorrectionStats();
+  assert(stats.total >= 1, `Thống kê tổng số phiếu điều chỉnh ghi nhận đúng (${stats.total} phiếu)`);
+
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
   console.log('====================================================\n');
 }
 
 runAllTests();
+

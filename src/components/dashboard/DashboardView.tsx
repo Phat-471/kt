@@ -17,6 +17,7 @@ import { TabType } from '../layout/Sidebar';
 import { SmartAlertPanel } from './SmartAlertPanel';
 import { DashboardCharts } from './DashboardCharts';
 import { TaxLawPolicyAlertBanner } from '../tax/TaxLawPolicyAlertBanner';
+import { TaxDeadlineWidget } from './TaxDeadlineWidget';
 
 interface DashboardViewProps {
   activeClient: Client | null;
@@ -191,6 +192,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* BI Charts Section */}
       <DashboardCharts transactions={transactions} />
+
+      {/* Tax Deadline Countdown Widget */}
+      <TaxDeadlineWidget />
 
       {/* Smart Alert Panel */}
       <SmartAlertPanel transactions={transactions} onNavigateTab={onNavigateTab} />

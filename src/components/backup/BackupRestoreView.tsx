@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { exportFullDatabaseJSON, restoreFullDatabaseJSON } from '../../services/storage';
 import { encryptBackupJSON, decryptBackupJSON } from '../../services/cryptoBackupService';
-import { DatabaseBackup, Download, Upload, ShieldCheck, HardDriveDownload, Lock, KeyRound } from 'lucide-react';
+import { getSafeStorageConfig, saveSafeStorageConfig, executeSyncToSafeDrive, StorageLocationConfig } from '../../services/persistentStorageService';
+import { DatabaseBackup, Download, Upload, ShieldCheck, HardDriveDownload, Lock, KeyRound, HardDrive, Save, RefreshCw, FolderCheck, CheckCircle2 } from 'lucide-react';
 
 interface BackupRestoreViewProps {
   onRefreshDatabase: () => void;
@@ -11,6 +12,8 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
   const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
   const [useEncryption, setUseEncryption] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
+  const [storageConfig, setStorageConfig] = useState<StorageLocationConfig>(getSafeStorageConfig());
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
 
   // Export Backup File
   const handleExportBackup = async () => {
@@ -147,6 +150,58 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
             <HardDriveDownload className="w-4 h-4" />
             <span>Tải Tệp Sao Lưu (.accobak) Về Máy</span>
           </button>
+        </div>
+
+        {/* Safe Storage Drive D:\ Configuration Card */}
+        <div className="bg-slate-900 text-white border border-indigo-500/30 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-lg col-span-1 md:col-span-2">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+                  <HardDrive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                    <span>Lưu Trữ Dữ Liệu An Toàn Ổ Đĩa D:\ hoặc E:\ (Phòng Sập Máy)</span>
+                    <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full">AN TOÀN MẤT DỮ LIỆU</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-300">Tự động đồng bộ dữ liệu xuống ổ đĩa không bị ảnh hưởng khi Windows lỗi hoặc format ổ C:\</p>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  const res = await executeSyncToSafeDrive();
+                  if (res.success) {
+                    setStorageConfig(getSafeStorageConfig());
+                    setSyncStatusMsg(`Đã đồng bộ thành công xuống ${res.filePath} lúc ${res.timestamp}`);
+                  }
+                }}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Đồng Bộ Ngay Xuống Ổ D:\</span>
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Đường dẫn tệp lưu trữ an toàn:</span>
+                <code className="text-amber-300 font-mono font-bold">{storageConfig.safePath}</code>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Thời gian đồng bộ sao lưu gần nhất:</span>
+                <span className="text-emerald-400 font-bold">{storageConfig.lastBackupTime || 'Chưa thực hiện'}</span>
+              </div>
+            </div>
+
+            {syncStatusMsg && (
+              <div className="p-2.5 bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-lg flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>{syncStatusMsg}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Restore Backup Card */}

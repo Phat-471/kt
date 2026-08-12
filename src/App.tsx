@@ -32,8 +32,12 @@ import { ShortcutModal } from './components/common/ShortcutModal';
 import { AISuggestionModal } from './components/common/AISuggestionModal';
 import { DigitalSigningModal } from './components/common/DigitalSigningModal';
 import { MiniFloatingToolbar } from './components/common/MiniFloatingToolbar';
+import { CorrectionLedgerView } from './components/audit/CorrectionLedgerView';
+import { AccountingLedgerView } from './components/reports/AccountingLedgerView';
 import { UserRole } from './services/rolePermissionService';
 import { IndustryPresetType } from './services/industryPresetService';
+
+import { startAutoBackupScheduler, stopAutoBackupScheduler } from './services/autoBackupScheduler';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -48,6 +52,12 @@ export default function App() {
     return localStorage.getItem('accodesk_hide_header') === 'true';
   });
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
+
+  // Kích hoạt Scheduler Tự động sao lưu dữ liệu an toàn chạy ngầm mỗi 15 phút
+  useEffect(() => {
+    startAutoBackupScheduler();
+    return () => stopAutoBackupScheduler();
+  }, []);
 
   // Phím tắt Ctrl+Shift+F để Ẩn/Hiện Header nhanh
   useEffect(() => {
@@ -456,6 +466,14 @@ export default function App() {
                 setActiveTab('dashboard');
               }}
             />
+          )}
+
+          {activeTab === 'correction-ledger' && (
+            <CorrectionLedgerView transactions={transactions} />
+          )}
+
+          {activeTab === 'accounting-ledger' && (
+            <AccountingLedgerView transactions={transactions} activeClient={activeClient} />
           )}
 
           {activeTab === 'legal-search' && (
