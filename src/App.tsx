@@ -25,6 +25,7 @@ import { TaxAndInventoryReportView } from './components/reports/TaxAndInventoryR
 import { MasterAccountingHub } from './components/accounting/MasterAccountingHub';
 import { ExecutiveAnalyticsDashboardView } from './components/analytics/ExecutiveAnalyticsDashboardView';
 import { ContractCostingView } from './components/costing/ContractCostingView';
+import { DataVersionHistoryView } from './components/audit/DataVersionHistoryView';
 import { MonthEndClosingView } from './components/closing/MonthEndClosingView';
 import { FinancialStatementsView } from './components/reports/FinancialStatementsView';
 import { ShortcutModal } from './components/common/ShortcutModal';
@@ -339,6 +340,13 @@ export default function App() {
 
           {activeTab === 'contract-costing' && (
             <ContractCostingView
+              transactions={transactions}
+              activeClient={activeClient}
+            />
+          )}
+
+          {activeTab === 'data-version-history' && (
+            <DataVersionHistoryView
               transactions={transactions}
               activeClient={activeClient}
             />

@@ -21,13 +21,15 @@ import {
   Lock,
   PieChart,
   Briefcase,
-  BookOpenCheck
+  BookOpenCheck,
+  GitBranch
 } from 'lucide-react';
 
 export type TabType = 
   | 'dashboard'
   | 'executive-analytics'
   | 'contract-costing'
+  | 'data-version-history'
   | 'month-end-closing'
   | 'clients'
   | 'import'
@@ -63,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard' as TabType, label: 'Tổng quan Dashboard', icon: LayoutDashboard },
     { id: 'executive-analytics' as TabType, label: 'Phân Tích Quản Trị & BEP', icon: PieChart },
     { id: 'contract-costing' as TabType, label: 'Giá Thành Hợp Đồng & Hoàn Thuế', icon: Briefcase },
+    { id: 'data-version-history' as TabType, label: 'Lịch Sử Version & Điều Chỉnh Dữ Liệu', icon: GitBranch },
     { id: 'month-end-closing' as TabType, label: 'Checklist Khóa Sổ Tháng', icon: Lock },
     { id: 'financial-reports' as TabType, label: 'Báo Cáo Tài Chính & Pivot', icon: BarChart3 },
     { id: 'master-accounting' as TabType, label: 'Bộ 4 Nghiệp Vụ Kế Toán', icon: Layers },

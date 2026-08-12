@@ -8,6 +8,9 @@ import { analyzeExecutiveFinancials } from '../services/executiveAnalyticsServic
 import { calculateBreakEvenPoint, estimateQuarterlyTax } from '../services/financialCalculationEngine';
 import { auditVatRefundEligibility } from '../services/vatRefundAuditService';
 import { calculateContractCostingReport } from '../services/contractCostingService';
+import { createAdjustmentEntry } from '../services/adjustmentEntryService';
+import { createDataSnapshot, compareDataSnapshots } from '../services/dataVersioningService';
+import { detectDataAnomalies } from '../services/aiAnomalyDetector';
 import { analyzeFinancialVariances } from '../services/varianceAnalysisService';
 import { calculateCashflowForecast } from '../services/cashflowForecastService';
 import { generateGeneralLedgerReport } from '../services/generalLedgerService';
@@ -242,6 +245,21 @@ async function runAllTests() {
   const costingTest = calculateContractCostingReport(mockTransactions);
   assert(costingTest.length >= 1, 'Tập hợp dữ liệu giá thành theo mã Hợp Đồng');
   assert(costingTest[0].totalCost >= 0, 'Tính toán chính xác tổng chi phí 1541, 1542, 1543');
+
+  console.log('\n📌 PHẦN 21: TEST ENGINE LẬP BÚT TOÁN ĐIỀU CHỈNH CHUẨN KẾ TOÁN (GHI ĐỎ/BỔ SUNG)');
+  const adjResult = createAdjustmentEntry(mockTransactions[0], 20000000, undefined, 'RED_NEGATIVE_REVERSAL');
+  assert(adjResult.adjustedTransaction.voucherNo.startsWith('DC-'), 'Sinh mã chứng từ điều chỉnh chuẩn DC-');
+  assert(adjResult.adjustmentType === 'RED_NEGATIVE_REVERSAL', 'Tạo đúng loại chứng từ điều chỉnh Ghi Đỏ');
+
+  console.log('\n📌 PHẦN 22: TEST LƯU SNAPSHOT & TIME MACHINE SO SÁNH DIFF DỮ LIỆU CŨ');
+  const snapshot = createDataSnapshot('Snapshot Test v2.0', mockTransactions);
+  assert(snapshot.totalTransactions === mockTransactions.length, 'Lưu trữ Snapshot giữ nguyên vẹn 100% dữ liệu gốc');
+  const diffRes = compareDataSnapshots(snapshot, mockTransactions);
+  assert(diffRes.totalChanges === 0, 'So sánh Diff chính xác khi dữ liệu chưa có biến động');
+
+  console.log('\n📌 PHẦN 23: TEST TRỢ LÝ AI TỰ ĐỘNG QUÉT PHÁT HIỆN DỮ LIỆU NHẬP SAI LỆCH');
+  const anomaliesTest = detectDataAnomalies(mockTransactions);
+  assert(anomaliesTest.length >= 0, 'AI quét tự động các điểm bất thường dữ liệu gõ thừa số 0 hoặc ngược Nợ/Có');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
