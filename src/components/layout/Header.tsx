@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Client } from '../../types/accounting';
-import { Building2, ChevronDown, Calendar, HardDriveUpload, CheckCircle2, Moon, Sun, Keyboard, EyeOff, Sparkles } from 'lucide-react';
+import { Building2, ChevronDown, Calendar, HardDriveUpload, CheckCircle2, Moon, Sun, Keyboard, EyeOff, Sparkles, KeyRound } from 'lucide-react';
 import { RolePermissionBadge } from '../common/RolePermissionBadge';
 import { UserRole } from '../../services/rolePermissionService';
 import { IndustryPresetType } from '../../services/industryPresetService';
@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenShortcuts?: () => void;
   onToggleHideHeader?: () => void;
   onOpenAIModal?: () => void;
+  onOpenDigitalSignModal?: () => void;
   isHeaderHidden?: boolean;
   totalTxCount: number;
   globalSearchTerm?: string;
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShortcuts,
   onToggleHideHeader,
   onOpenAIModal,
+  onOpenDigitalSignModal,
   isHeaderHidden,
   totalTxCount,
   globalSearchTerm = '',
@@ -139,6 +141,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>AI Trợ Lý</span>
+          </button>
+        )}
+
+        {/* Digital Sign Invoice Button */}
+        {onOpenDigitalSignModal && (
+          <button
+            onClick={onOpenDigitalSignModal}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition-all duration-200 shadow-sm active:scale-95 cursor-pointer shrink-0"
+            title="Ký Số Hóa Đơn Điện Tử XML chuẩn NĐ 123/2020"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Ký Số HĐ</span>
           </button>
         )}
 

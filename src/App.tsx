@@ -30,6 +30,7 @@ import { MonthEndClosingView } from './components/closing/MonthEndClosingView';
 import { FinancialStatementsView } from './components/reports/FinancialStatementsView';
 import { ShortcutModal } from './components/common/ShortcutModal';
 import { AISuggestionModal } from './components/common/AISuggestionModal';
+import { DigitalSigningModal } from './components/common/DigitalSigningModal';
 import { MiniFloatingToolbar } from './components/common/MiniFloatingToolbar';
 import { UserRole } from './services/rolePermissionService';
 import { IndustryPresetType } from './services/industryPresetService';
@@ -40,6 +41,7 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState<string>('');
   const [isShortcutOpen, setIsShortcutOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isDigitalSignModalOpen, setIsDigitalSignModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [currentIndustry, setCurrentIndustry] = useState<IndustryPresetType>('COMMERCE');
   const [isHeaderHidden, setIsHeaderHidden] = useState<boolean>(() => {
@@ -305,6 +307,7 @@ export default function App() {
             onQuickBackup={() => setActiveTab('backup')}
             onOpenShortcuts={() => setIsShortcutOpen(true)}
             onOpenAIModal={() => setIsAIModalOpen(true)}
+            onOpenDigitalSignModal={() => setIsDigitalSignModalOpen(true)}
             onToggleHideHeader={() => {
               setIsHeaderHidden(true);
               localStorage.setItem('accodesk_hide_header', 'true');
@@ -478,6 +481,10 @@ export default function App() {
         isOpen={isAIModalOpen}
         onClose={() => setIsAIModalOpen(false)}
         transactions={transactions}
+      />
+      <DigitalSigningModal
+        isOpen={isDigitalSignModalOpen}
+        onClose={() => setIsDigitalSignModalOpen(false)}
       />
     </div>
   );

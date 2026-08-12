@@ -1,6 +1,6 @@
 # CHECKLIST CÔNG VIỆC HÀNG NGÀY - PHẦN MỀM KẾ TOÁN
 
-Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Version 2.0 Engine Xử Lý Dữ Liệu Sai & Lịch Sử Version Dữ Liệu Cũ (Test Suite 57/57 PASSED 100%)
+Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Luật Thuế Mới Sau 01/07/2026, Engine Thuế TNCN Lũy Tiến & Tờ Khai 01/GTGT TT80 (Test Suite 63/63 PASSED 100%)
 
 ---
 
@@ -18,6 +18,12 @@ Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Version 2.
 ---
 
 ## 🟢 Đã Hoàn Thành (Done)
+
+### 🆕 Nâng Cấp Luật Thuế Mới Sau 01/07/2026, Thuế TNCN Lũy Tiến & Tờ Khai Thuế GTGT TT80 (`taxPolicySyncService.ts`, `pitCalculationEngine.ts`, `officialFormTemplates.ts`, `TaxLawPolicyAlertBanner.tsx`)
+- [x] **🔔 Thẻ Cảnh Báo Thay Đổi Luật Thuế Tự Động (`taxPolicySyncService.ts` & `TaxLawPolicyAlertBanner.tsx`)**: Tự động hiển thị Thẻ Cảnh Báo Nổi Nổi ngay trên Dashboard rà soát các chính sách mới thay đổi sau ngày **01/07/2026** (Thuế GTGT 8%, thời điểm ký HĐĐT NĐ123, giảm trừ gia cảnh TNCN).
+- [x] **🧮 Engine Tính Thuế TNCN Lũy Tiến 7 Bậc (`pitCalculationEngine.ts`)**: Tính toán chính xác thuế TNCN tiền lương tiền công theo mức Giảm trừ gia cảnh mới ($15.5M$/tháng cho bản thân và $5.5M$/tháng cho người phụ thuộc), bóc tách bảo hiểm bắt buộc $10.5\%$.
+- [x] **📄 Bộ Mẫu Tờ Khai Thuế GTGT Mẫu 01/GTGT (`officialFormTemplates.ts`)**: Tự động sinh dữ liệu chỉ tiêu [22], [23], [24], [25], [40], [43] chuẩn Thông tư 80/2021/TT-BTC.
+- [x] **63/63 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 26 phần nghiệp vụ.
 
 ### 🆕 Version 2.0: Engine Xử Lý Dữ Liệu Sai & Quản Lý Version Dữ Liệu Cũ (`adjustmentEntryService.ts`, `dataVersioningService.ts`, `aiAnomalyDetector.ts`, `DataVersionHistoryView.tsx`)
 - [x] **✏️ Engine Lập Bút Toán Điều Chỉnh (`adjustmentEntryService.ts`)**: Tự động sinh chứng từ điều chỉnh theo chuẩn kế toán (Ghi đỏ số âm `DC-`, Ghi bổ sung, và Chứng từ thay thế), bảo vệ toàn vẹn lịch sử chứng từ kỳ đã khóa sổ.

@@ -14,6 +14,8 @@ import { detectDataAnomalies } from '../services/aiAnomalyDetector';
 import { getPostJuly2026TaxPolicies } from '../services/taxPolicySyncService';
 import { calculatePersonalIncomeTax } from '../services/pitCalculationEngine';
 import { generateForm01VATReport } from '../services/officialFormTemplates';
+import { signXmlInvoiceDocument, mockGetActiveCompanyCertificate } from '../services/digitalSignatureService';
+import { auditCertificateHealth } from '../services/certificateManagerService';
 import { analyzeFinancialVariances } from '../services/varianceAnalysisService';
 import { calculateCashflowForecast } from '../services/cashflowForecastService';
 import { generateGeneralLedgerReport } from '../services/generalLedgerService';
@@ -278,6 +280,17 @@ async function runAllTests() {
   const form01Vat = generateForm01VATReport(mockTransactions, 'Quý 3/2026');
   assert(form01Vat.totalSalesValue === 50000000, 'Tổng doanh số bán ra tính chính xác (50M)');
   assert(form01Vat.taxPeriod === 'Quý 3/2026', 'Xác định kỳ kê khai Thuế GTGT 01/GTGT Quý 3/2026');
+
+  console.log('\n📌 PHẦN 27: TEST ENGINE KÝ SỐ HÓA ĐƠN ĐIỆN TỬ XML (ENVEOLPED SIGNATURE <ds:Signature>)');
+  const mockCert = mockGetActiveCompanyCertificate();
+  const signedXml = signXmlInvoiceDocument('<HDon><DVu>Kế toán</DVu></HDon>', mockCert);
+  assert(signedXml.isSigned === true, 'Ký số Hóa đơn XML thành công 100%');
+  assert(signedXml.signedXmlContent.includes('<ds:Signature'), 'Cấu trúc thẻ chữ ký số ds:Signature đạt chuẩn Tổng Cục Thuế');
+
+  console.log('\n📌 PHẦN 28: TEST TRÌNH QUẢN LÝ & CẢNH BÁO HẠN DÙNG CHỨNG THƯ SỐ DOANH NGHIỆP');
+  const certAudit = auditCertificateHealth(mockCert);
+  assert(certAudit.isReadyForSigning === true, 'Xác nhận Chữ ký số hợp lệ sẵn sàng ký chứng từ');
+  assert(certAudit.certificate.daysRemaining > 0, `Theo dõi số ngày còn hiệu lực chữ ký số (${certAudit.certificate.daysRemaining} ngày)`);
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
