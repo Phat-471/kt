@@ -6,6 +6,8 @@ import { suggestAccountsByAI } from '../services/aiAccountSuggestionService';
 import { auditCrossLogicConsistency } from '../services/crossLogicAuditService';
 import { analyzeExecutiveFinancials } from '../services/executiveAnalyticsService';
 import { calculateBreakEvenPoint, estimateQuarterlyTax } from '../services/financialCalculationEngine';
+import { auditVatRefundEligibility } from '../services/vatRefundAuditService';
+import { calculateContractCostingReport } from '../services/contractCostingService';
 import { analyzeFinancialVariances } from '../services/varianceAnalysisService';
 import { calculateCashflowForecast } from '../services/cashflowForecastService';
 import { generateGeneralLedgerReport } from '../services/generalLedgerService';
@@ -230,6 +232,16 @@ async function runAllTests() {
   assert(bepTest.breakEvenRevenue >= 0, `Tính đúng Doanh Thu Hòa Vốn BEP (${bepTest.breakEvenRevenue.toLocaleString()} VNĐ)`);
   const taxTest = estimateQuarterlyTax(mockTransactions, 'Q3/2026');
   assert(taxTest.citTaxAmount >= 0, `Dự báo thuế TNDN quý tạm tính phải nộp (${taxTest.citTaxAmount.toLocaleString()} VNĐ)`);
+
+  console.log('\n📌 PHẦN 19: TEST RÀ SOÁT RỦI RO HỒ SƠ HOÀN THUẾ GTGT (6 ĐIỀU KIỆN TT 80/2021/TT-BTC)');
+  const vatRefundTest = auditVatRefundEligibility(mockTransactions);
+  assert(vatRefundTest.rules.length === 6, 'Tự động rà soát đủ 6 điều kiện pháp lý hoàn thuế GTGT');
+  assert(vatRefundTest.passedRulesCount >= 4, `Đánh giá số tiêu chí đạt chuẩn (${vatRefundTest.passedRulesCount}/6)`);
+
+  console.log('\n📌 PHẦN 20: TEST TẬP HỢP GIÁ THÀNH & LỢI NHUẬN HỢP ĐỒNG / CÔNG TRÌNH (TK 1541-1543)');
+  const costingTest = calculateContractCostingReport(mockTransactions);
+  assert(costingTest.length >= 1, 'Tập hợp dữ liệu giá thành theo mã Hợp Đồng');
+  assert(costingTest[0].totalCost >= 0, 'Tính toán chính xác tổng chi phí 1541, 1542, 1543');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

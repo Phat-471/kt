@@ -24,6 +24,7 @@ import { LegalKnowledgeBaseView } from './components/help/LegalKnowledgeBaseView
 import { TaxAndInventoryReportView } from './components/reports/TaxAndInventoryReportView';
 import { MasterAccountingHub } from './components/accounting/MasterAccountingHub';
 import { ExecutiveAnalyticsDashboardView } from './components/analytics/ExecutiveAnalyticsDashboardView';
+import { ContractCostingView } from './components/costing/ContractCostingView';
 import { MonthEndClosingView } from './components/closing/MonthEndClosingView';
 import { FinancialStatementsView } from './components/reports/FinancialStatementsView';
 import { ShortcutModal } from './components/common/ShortcutModal';
@@ -331,6 +332,13 @@ export default function App() {
 
           {activeTab === 'executive-analytics' && (
             <ExecutiveAnalyticsDashboardView
+              transactions={transactions}
+              activeClient={activeClient}
+            />
+          )}
+
+          {activeTab === 'contract-costing' && (
+            <ContractCostingView
               transactions={transactions}
               activeClient={activeClient}
             />

@@ -19,12 +19,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
-  PieChart
+  PieChart,
+  Briefcase
 } from 'lucide-react';
 
 export type TabType = 
   | 'dashboard'
   | 'executive-analytics'
+  | 'contract-costing'
   | 'month-end-closing'
   | 'clients'
   | 'import'
@@ -59,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'dashboard' as TabType, label: 'Tổng quan Dashboard', icon: LayoutDashboard },
     { id: 'executive-analytics' as TabType, label: 'Phân Tích Quản Trị & BEP', icon: PieChart, badge: 'AI 360', badgeColor: 'bg-purple-600 text-white' },
+    { id: 'contract-costing' as TabType, label: 'Giá Thành Hợp Đồng & Hoàn Thuế', icon: Briefcase, badge: 'COSTING', badgeColor: 'bg-indigo-600 text-white' },
     { id: 'month-end-closing' as TabType, label: 'Checklist Khóa Sổ Tháng', icon: Lock, badge: 'NEW', badgeColor: 'bg-emerald-600 text-white' },
     { id: 'financial-reports' as TabType, label: 'Báo Cáo Tài Chính & Pivot', icon: BarChart3, badge: 'HOT', badgeColor: 'bg-indigo-600 text-white' },
     { id: 'master-accounting' as TabType, label: 'Bộ 4 Nghiệp Vụ Kế Toán', icon: Layers, badge: 'PRO', badgeColor: 'bg-amber-500 text-white' },
