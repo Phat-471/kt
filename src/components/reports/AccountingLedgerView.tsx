@@ -14,7 +14,9 @@ interface AccountingLedgerViewProps {
   activeClient: Client | null;
 }
 
-type LedgerType = 'NHAT_KY_CHUNG' | 'SO_CAI' | 'SO_CHI_TIET';
+import { generateSpecialJournal, SpecialJournalType } from '../../services/specialJournalsService';
+
+type LedgerType = 'NHAT_KY_CHUNG' | 'SO_CAI' | 'SO_CHI_TIET' | 'NK_MUA_HANG' | 'NK_BAN_HANG' | 'NK_THU_TIEN' | 'NK_CHI_TIEN';
 
 export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
   transactions,
@@ -93,10 +95,33 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
   };
 
   const ledgerTabs: { key: LedgerType; label: string; desc: string }[] = [
-    { key: 'NHAT_KY_CHUNG', label: 'Nhật Ký Chung', desc: 'Tất cả bút toán theo thứ tự thời gian' },
+    { key: 'NHAT_KY_CHUNG', label: 'Nhật Ký Chung', desc: 'Tất cả bút toán theo thứ tự thời gian (S03a)' },
     { key: 'SO_CAI', label: 'Sổ Cái TK', desc: 'Theo dõi theo từng tài khoản kế toán' },
     { key: 'SO_CHI_TIET', label: 'Sổ Chi Tiết', desc: 'Chi tiết 1 tài khoản + số dư luỹ kế' },
+    { key: 'NK_MUA_HANG', label: 'NK Mua Hàng', desc: 'Sổ nhật ký mua hàng (S04a)' },
+    { key: 'NK_BAN_HANG', label: 'NK Bán Hàng', desc: 'Sổ nhật ký bán hàng (S04b)' },
+    { key: 'NK_THU_TIEN', label: 'NK Thu Tiền', desc: 'Sổ nhật ký thu tiền quỹ/NH (S04c)' },
+    { key: 'NK_CHI_TIEN', label: 'NK Chi Tiền', desc: 'Sổ nhật ký chi tiền quỹ/NH (S04d)' },
   ];
+
+  // Dữ liệu Sổ Nhật Ký Đặc Biệt
+  const specialJournalSummary = useMemo(() => {
+    let sjType: SpecialJournalType = 'PURCHASE';
+    if (ledgerType === 'NK_MUA_HANG') sjType = 'PURCHASE';
+    else if (ledgerType === 'NK_BAN_HANG') sjType = 'SALES';
+    else if (ledgerType === 'NK_THU_TIEN') sjType = 'CASH_RECEIPT';
+    else if (ledgerType === 'NK_CHI_TIEN') sjType = 'CASH_DISBURSEMENT';
+    else return null;
+
+    return generateSpecialJournal(filtered, sjType);
+  }, [filtered, ledgerType]);
+
+  const handleExportSpecialExcel = () => {
+    if (!specialJournalSummary) return;
+    import('../../services/specialJournalsService').then(mod => {
+      mod.exportSpecialJournalToExcel(specialJournalSummary, activeClient?.name || 'Doanh_Nghiep');
+    });
+  };
 
   return (
     <div className="p-4 space-y-4">
@@ -374,6 +399,80 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
               }
             />
           )}
+        </div>
+      )}
+
+      {/* === SỔ NHẬT KÝ ĐẶC BIỆT (MUA HÀNG / BÁN HÀNG / THU TIỀN / CHI TIỀN) === */}
+      {['NK_MUA_HANG', 'NK_BAN_HANG', 'NK_THU_TIEN', 'NK_CHI_TIEN'].includes(ledgerType) && specialJournalSummary && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm space-y-3">
+          <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                {specialJournalSummary.title}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Chuẩn Thông tư 200/2014/TT-BTC — Tổng số: <strong>{specialJournalSummary.rows.length}</strong> chứng từ
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportSpecialExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+              >
+                <FileDown className="w-3.5 h-3.5" /> Xuất Excel Sổ Này
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 pb-4">
+            <VirtualTable
+              data={specialJournalSummary.rows}
+              height={500}
+              estimateSize={44}
+              header={
+                <tr className="flex w-full">
+                  <th className="p-3 w-[60px] shrink-0 text-center">STT</th>
+                  <th className="p-3 w-[100px] shrink-0">Ngày CT</th>
+                  <th className="p-3 w-[110px] shrink-0">Số CT</th>
+                  <th className="p-3 flex-1 min-w-[180px]">Diễn Giải</th>
+                  <th className="p-3 w-[80px] shrink-0 text-center">TK Nợ</th>
+                  <th className="p-3 w-[80px] shrink-0 text-center">TK Có</th>
+                  <th className="p-3 w-[140px] shrink-0">Đối Tác</th>
+                  <th className="p-3 w-[120px] shrink-0 text-right">Tiền Chưa Thuế</th>
+                  <th className="p-3 w-[110px] shrink-0 text-right">Thuế GTGT</th>
+                  <th className="p-3 w-[130px] shrink-0 text-right">Tổng Thanh Toán</th>
+                </tr>
+              }
+              renderRow={(r) => (
+                <>
+                  <td className="p-3 w-[60px] shrink-0 text-center font-mono text-slate-500">{r.stt}</td>
+                  <td className="p-3 w-[100px] shrink-0 whitespace-nowrap font-semibold">{r.date}</td>
+                  <td className="p-3 w-[110px] shrink-0 text-emerald-700 dark:text-emerald-400 font-bold whitespace-nowrap">{r.voucherNo}</td>
+                  <td className="p-3 flex-1 min-w-[180px] truncate">{r.description}</td>
+                  <td className="p-3 w-[80px] shrink-0 text-center font-mono text-amber-700 dark:text-amber-400">{r.debitAcc || '—'}</td>
+                  <td className="p-3 w-[80px] shrink-0 text-center font-mono text-indigo-700 dark:text-indigo-400">{r.creditAcc || '—'}</td>
+                  <td className="p-3 w-[140px] shrink-0 truncate text-slate-600 dark:text-slate-400">{r.partnerName || '—'}</td>
+                  <td className="p-3 w-[120px] shrink-0 text-right tabular-num font-bold text-slate-800 dark:text-slate-200">{r.amount.toLocaleString('vi-VN')}</td>
+                  <td className="p-3 w-[110px] shrink-0 text-right tabular-num text-rose-600 dark:text-rose-400">{r.vatAmount > 0 ? r.vatAmount.toLocaleString('vi-VN') : '—'}</td>
+                  <td className="p-3 w-[130px] shrink-0 text-right tabular-num font-extrabold text-emerald-700 dark:text-emerald-400">{r.totalAmount.toLocaleString('vi-VN')}</td>
+                </>
+              )}
+              footer={
+                <tr className="flex w-full">
+                  <td className="p-3 flex-1 text-right text-xs uppercase font-extrabold tracking-wider text-slate-600 dark:text-slate-400">TỔNG CỘNG PHÁT SINH SỔ:</td>
+                  <td className="p-3 w-[120px] shrink-0 text-right tabular-num font-extrabold text-slate-900 dark:text-slate-100">
+                    {specialJournalSummary.totalAmount.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="p-3 w-[110px] shrink-0 text-right tabular-num font-extrabold text-rose-600 dark:text-rose-400">
+                    {specialJournalSummary.totalVAT.toLocaleString('vi-VN')}
+                  </td>
+                  <td className="p-3 w-[130px] shrink-0 text-right tabular-num font-extrabold text-emerald-700 dark:text-emerald-400">
+                    {specialJournalSummary.grandTotal.toLocaleString('vi-VN')}
+                  </td>
+                </tr>
+              }
+            />
+          </div>
         </div>
       )}
     </div>

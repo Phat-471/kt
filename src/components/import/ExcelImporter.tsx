@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Client, ColumnMapping, MappingTemplate, NormalizedTransaction, TransactionType } from '../../types/accounting';
 import { parseExcelFile, normalizeExcelRows, ExcelSheetParseResult } from '../../services/excelService';
-import { UploadCloud, FileSpreadsheet, Layers, ArrowRight, CheckCircle, Save, Table as TableIcon } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Layers, ArrowRight, CheckCircle, Save, Table as TableIcon, Plus, AlertTriangle, Building2 } from 'lucide-react';
+import { QuickCreateClientModal } from '../clients/QuickCreateClientModal';
 
 interface ExcelImporterProps {
   activeClient: Client | null;
@@ -19,6 +20,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
   const [fileBuffer, setFileBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState('');
   const [parseResult, setParseResult] = useState<ExcelSheetParseResult | null>(null);
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   
   // Mapping options
   const [txType, setTxType] = useState<TransactionType>('GENERAL');
@@ -163,7 +165,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
   // Generate Normalized Preview
   const handleGeneratePreview = () => {
     if (!activeClient) {
-      alert('Vui lòng chọn Khách hàng/Job ở phía trên trước khi import!');
+      setIsQuickCreateOpen(true);
       return;
     }
     if (!parseResult || parseResult.rawRows.length === 0) return;
@@ -200,7 +202,9 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
           <FileSpreadsheet className="w-6 h-6 text-brand-600 dark:text-brand-400" />
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Import File Excel & Chuẩn Hoá Dữ Liệu</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Đọc file Excel (.xlsx, .xls, .csv), ánh xạ linh hoạt cột dữ liệu theo mẫu</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {activeClient ? `Đang nạp cho: ${activeClient.name} (MST: ${activeClient.taxCode})` : 'Đọc file Excel (.xlsx, .xls, .csv), ánh xạ linh hoạt cột dữ liệu theo mẫu'}
+            </p>
           </div>
         </div>
 
@@ -219,6 +223,33 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Missing Active Client Warning Banner with 1-Click Create Button */}
+      {!activeClient && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-extrabold text-amber-900 dark:text-amber-200">
+                Chưa Chọn Doanh Nghiệp / Job Kế Toán
+              </h4>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                Vui lòng chọn doanh nghiệp trên thanh Header hoặc bấm nút bên cạnh để khởi tạo công ty mới ngay lập tức.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsQuickCreateOpen(true)}
+            className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Tạo Job / Doanh Nghiệp Ngay</span>
+          </button>
+        </div>
+      )}
 
       {/* STEP 1: UPLOAD FILE */}
       {step === 'UPLOAD' && (
@@ -576,6 +607,12 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
           </div>
         </div>
       )}
+
+      {/* Quick Create Client Modal */}
+      <QuickCreateClientModal
+        isOpen={isQuickCreateOpen}
+        onClose={() => setIsQuickCreateOpen(false)}
+      />
     </div>
   );
 };

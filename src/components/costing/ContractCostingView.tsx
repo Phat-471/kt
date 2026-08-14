@@ -52,6 +52,36 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
 
         {/* Tab Control Buttons */}
         <div className="flex items-center gap-2">
+          {activeTab === 'CONTRACTS' && (
+            <button
+              onClick={() => {
+                import('xlsx').then(XLSX => {
+                  const data = contracts.map(c => ({
+                    'Mã Hợp Đồng': c.contractCode,
+                    'Tên Hợp Đồng / Công Trình': c.contractName,
+                    'Đối Tác': c.partnerName,
+                    'Giá Trị HĐ (Doanh Thu)': c.contractValue,
+                    'NVL Trực Tiếp (1541)': c.materialCost1541,
+                    'Nhân Công (1542)': c.laborCost1542,
+                    'Máy Thi Công & SXC (1543)': c.overheadCost1543,
+                    'Tổng Giá Thành (154)': c.totalCost,
+                    'Lợi Nhuận Gộp': c.grossProfit,
+                    'Tỷ Suất LN (%)': c.profitMarginPercent,
+                    'Cảnh Báo Vượt Ngân Sách': c.isOverBudget ? 'CÓ' : 'KHÔNG',
+                  }));
+                  const ws = XLSX.utils.json_to_sheet(data);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Gia_Thanh_HD');
+                  XLSX.writeFile(wb, `BaoCao_GiaThanh_${activeClient?.taxCode || 'Costing'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                });
+              }}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Xuất Excel Giá Thành</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('CONTRACTS')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -143,6 +173,11 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
                     <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-[11px]">
                       <span className="text-slate-500">NVL Trực Tiếp (1541):</span>
                       <span className="font-bold text-slate-800 dark:text-slate-200 block">{item.materialCost1541.toLocaleString()} VNĐ</span>
+                      {item.materialBudget !== undefined && item.materialBudget > 0 && (
+                        <span className={`text-[10px] block mt-0.5 font-semibold ${item.isBOMAlert ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          Dự toán BOM: {item.materialBudget.toLocaleString()} đ ({item.materialVariance !== undefined && item.materialVariance > 0 ? `+${item.materialVariance.toLocaleString()} đ` : 'Đạt'})
+                        </span>
+                      )}
                     </div>
 
                     <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-[11px]">

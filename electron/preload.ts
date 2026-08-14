@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveBackupDialog: (defaultName: string) => ipcRenderer.invoke('dialog:saveBackup', defaultName),
   writeFile: (filePath: string, content: string) => ipcRenderer.invoke('file:write', { filePath, content }),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
   isElectron: true,
 });

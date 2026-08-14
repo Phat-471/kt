@@ -7,6 +7,8 @@ export interface Client {
   contactName?: string;
   phone?: string;
   financialYear: number; // Niên độ kế toán (ví dụ: 2026)
+  accountingStandard?: 'TT200' | 'TT133' | 'TT88_HKD';
+  industryPreset?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -58,6 +60,7 @@ export interface NormalizedTransaction {
   debitAcc: string;         // TK Nợ (VD: 111, 112, 131, 331, 642...)
   creditAcc: string;        // TK Có
   amount: number;           // Số tiền VND
+  vatAmount?: number;       // Số tiền thuế GTGT
   partnerName: string;      // Đối tác
   partnerTaxCode: string;   // MST đối tác
   bankAcc?: string;         // Số TK Ngân hàng

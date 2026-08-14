@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="HD0009999">
+    <TTChung>
+      <PBan>2.0.0</PBan>
+      <THDon>Hóa đơn giá trị gia tăng</THDon>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>1C26TMV</KHHDon>
+      <SHDon>0009999</SHDon>
+      <NLap>2026-07-30</NLap>
+      <DVTTe>VND</DVTTe>
+      <TGia>1</TGia>
+      <HTTToan>CK</HTTToan>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>CÔNG TY TNHH MA TRẬN VIỆT</Ten>
+        <MST>0109999888</MST>
+        <DChi>Hà Nội</DChi>
+      </NBan>
+      <NMua>
+        <Ten>CÔNG TY TNHH ĐẦU TƯ &amp; PHÁT TRIỂN AN PHÁT</Ten>
+        <MST>0101234567</MST>
+        <DChi>Hà Nội</DChi>
+      </NMua>
+      <DSHHDVu>
+        <HHDVu>
+          <STT>1</STT>
+          <THHDVu>Vật liệu xây dựng tổng hợp</THHDVu>
+          <DVTinh>Lô</DVTinh>
+          <SLuong>1</SLuong>
+          <DGia>30000000</DGia>
+          <Tien>30000000</Tien>
+          <TSuat>10%</TSuat>
+        </HHDVu>
+      </DSHHDVu>
+      <TToan>
+        <TgTCThue>30000000</TgTCThue>
+        <TgTThue>3000000</TgTThue>
+        <TgTTTBSo>33000000</TgTTTBSo>
+        <TgTTTBChu>Ba mươi ba triệu đồng</TgTTTBChu>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+</HDon>

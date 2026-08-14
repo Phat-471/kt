@@ -93,5 +93,29 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('app:getVersion', () => {
+    return app.getVersion();
+  });
+
+  ipcMain.handle('app:checkForUpdates', async () => {
+    try {
+      const { autoUpdater } = await import('electron-updater');
+      autoUpdater.autoDownload = false;
+      const result = await autoUpdater.checkForUpdates();
+      return {
+        updateAvailable: result?.updateInfo?.version !== app.getVersion(),
+        version: result?.updateInfo?.version || app.getVersion(),
+        releaseNotes: result?.updateInfo?.releaseNotes || 'Phiên bản mới nhất đã sẵn sàng.',
+      };
+    } catch (err: any) {
+      return {
+        updateAvailable: false,
+        version: app.getVersion(),
+        message: 'Không thể kết nối máy chủ cập nhật (bạn đang ở phiên bản mới nhất hoặc chế độ Offline).',
+        error: err.message,
+      };
+    }
+  });
+
   createWindow();
 });

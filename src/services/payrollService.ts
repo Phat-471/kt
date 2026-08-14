@@ -99,8 +99,10 @@ const BH_RATES = {
 
 // Lương cơ sở 2026: 2,340,000 đ/tháng (theo NĐ 73/2024)
 const LUONG_CO_SO_2026 = 2_340_000;
-// Mức trần lương đóng BHXH = 20 x lương cơ sở
+// Mức trần lương đóng BHXH/BHYT = 20 x lương cơ sở
 const BH_SALARY_CAP = LUONG_CO_SO_2026 * 20; // 46,800,000
+// Mức trần đóng BHTN (Bảo hiểm thất nghiệp) = 20 x Lương tối thiểu vùng I (4,960,000 đ)
+const BHTN_SALARY_CAP = 4_960_000 * 20; // 99,200,000
 
 // ============================================================
 // CORE CALCULATION
@@ -116,19 +118,21 @@ export function calculatePayrollEntry(employee: Employee): PayrollEntry {
   // Gross = Lương cơ bản + phụ cấp
   const grossSalary = basicSalary + totalAllowances;
 
-  // Lương đóng BH (capped)
+  // Lương đóng BHXH/BHYT (capped)
   const bhSalaryBase = Math.min(basicSalary, BH_SALARY_CAP);
+  // Lương đóng BHTN (capped)
+  const bhtnSalaryBase = Math.min(basicSalary, BHTN_SALARY_CAP);
 
   // --- BH NLĐ ---
   const bhxhEmployee = Math.round(bhSalaryBase * BH_RATES.bhxhEmployee);
   const bhytEmployee = Math.round(bhSalaryBase * BH_RATES.bhytEmployee);
-  const bhtnEmployee = contractType === 'PARTTIME' ? 0 : Math.round(bhSalaryBase * BH_RATES.bhtnEmployee);
+  const bhtnEmployee = contractType === 'PARTTIME' ? 0 : Math.round(bhtnSalaryBase * BH_RATES.bhtnEmployee);
   const totalInsuranceEmployee = bhxhEmployee + bhytEmployee + bhtnEmployee;
 
   // --- BH NSDLĐ ---
   const bhxhEmployer = Math.round(bhSalaryBase * BH_RATES.bhxhEmployer);
   const bhytEmployer = Math.round(bhSalaryBase * BH_RATES.bhytEmployer);
-  const bhtnEmployer = contractType === 'PARTTIME' ? 0 : Math.round(bhSalaryBase * BH_RATES.bhtnEmployer);
+  const bhtnEmployer = contractType === 'PARTTIME' ? 0 : Math.round(bhtnSalaryBase * BH_RATES.bhtnEmployer);
   const totalInsuranceEmployer = bhxhEmployer + bhytEmployer + bhtnEmployer;
 
   // --- TNCN tại nguồn ---

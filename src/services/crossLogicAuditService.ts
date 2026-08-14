@@ -30,7 +30,7 @@ export const auditCrossLogicConsistency = (
   // 1. Kiểm tra Lệch Doanh Thu P&L (TK 511) vs Tờ Khai Thuế GTGT
   const incomeStmt = calculateIncomeStatement(transactions);
   const vatRevenue = transactions
-    .filter(t => t.type === 'INCOME' || t.creditAcc.startsWith('511'))
+    .filter(t => t.type === 'INCOME' || t.creditAcc?.startsWith('511'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const revDiff = Math.abs(incomeStmt.grossRevenue - vatRevenue);
@@ -70,7 +70,7 @@ export const auditCrossLogicConsistency = (
   const assetsReport = calculateAssetDepreciationReport(transactions);
   const expectedMonthlyDep = assetsReport.reduce((sum, item) => sum + item.monthlyAmount, 0);
   const actualDepTx = transactions
-    .filter(t => t.creditAcc.startsWith('214') || t.creditAcc.startsWith('242'))
+    .filter(t => t.creditAcc?.startsWith('214') || t.creditAcc?.startsWith('242'))
     .reduce((sum, t) => sum + t.amount, 0);
 
   const depDiff = Math.abs(expectedMonthlyDep - actualDepTx);

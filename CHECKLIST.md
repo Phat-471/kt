@@ -1,12 +1,13 @@
 # CHECKLIST CÔNG VIỆC HÀNG NGÀY - PHẦN MỀM KẾ TOÁN
 
-Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Engine Ký Số Hóa Đơn Điện Tử XML & Quản Lý Chứng Thư Số Doanh Nghiệp (Test Suite 67/67 PASSED 100%)
+Cập nhật: **2026-08-14** | Phiên làm việc cuối: Tờ Khai Thuế TNDN Tạm Tính Quý (01/TNDN) & Xuất Excel Bảng Kê Phụ Lục GTGT 01-1, 01-2 Chuẩn HTKK eTax (Test Suite 203/203 PASSED 100%)
 
 ---
 
 ## 🔴 Cần Làm Ngay (To-Do)
 
 ### Module mới
+- [ ] Phân tích báo cáo quản trị chi phí giá thành hợp đồng dịch vụ / công trình chuyên sâu.
 - [ ] Mở rộng xuất dữ liệu XML / Excel tờ khai thuế nộp trực tiếp Cổng Thống kê & Thuế.
 
 ---
@@ -19,7 +20,13 @@ Cập nhật: **2026-08-12** | Phiên làm việc cuối: Nâng Cấp Engine Ký
 
 ## 🟢 Đã Hoàn Thành (Done)
 
-### 🆕 Nâng Cấp Ký Số Hóa Đơn Điện Tử & Quản Lý Chứng Thư Số Doanh Nghiệp (`digitalSignatureService.ts`, `certificateManagerService.ts`, `DigitalSigningModal.tsx`)
+### 🆕 Tờ Khai Thuế TNDN Tạm Tính Quý (01/TNDN) & Xuất Excel Phụ Lục GTGT 01-1, 01-2 (`eTaxXMLGenerator.ts`, `excelService.ts`, `ETaxView.tsx`)
+- [x] **🏢 Engine Tờ Khai Thuế TNDN Tạm Tính Quý (`generateTNDNXML`)**: Tự động tính toán và bóc tách đầy đủ các chỉ tiêu [21] đến [32] (Doanh thu, Chi phí, Lợi nhuận trước thuế, Điều chỉnh tăng chi phí không được trừ theo luật thuế TNDN [24], Thu nhập tính thuế [28], Thuế TNDN 20% phải nộp [30], [32]).
+- [x] **📄 Xuất File XML 01/TNDN Chuẩn eTax HTKK**: Sinh cấu trúc thẻ `<HSoKhaiThue>` & `<ToKhai_01_TNDN>` hợp lệ theo Thông tư 80/2021/TT-BTC nộp Cổng thuế hoặc nạp vào HTKK.
+- [x] **📊 Xuất Excel Bảng Kê Phụ Lục GTGT (PL 01-1 Bán ra & PL 01-2 Mua vào)**: Module `exportVATAnnexesToExcel` xuất file Excel 2-Sheet chuẩn định dạng HTKK.
+- [x] **📑 Xuất Excel Tờ Khai 01/TNDN (`exportTNDNExcel`)**: Xuất toàn bộ bảng chỉ tiêu [21] -> [32] ra tệp Excel `.xlsx`.
+- [x] **✨ Giao Diện Mới Tab 01/TNDN Tại ETaxView (`ETaxView.tsx`)**: Tích hợp 3 Tab (01/GTGT, 01/TNDN, 05/KK-TNCN), preview XML thời gian thực và nút tải XML / Excel 1-Click.
+- [x] **203/203 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 60 phần nghiệp vụ.
 - [x] **🔑 Engine Ký Số XML Signature (`digitalSignatureService.ts`)**: Tự động đóng gói cấu trúc thẻ chữ ký số XML `<ds:Signature>` theo tiêu chuẩn Nghị định 123/2020/NĐ-CP & Thông tư 78/2021/TT-BTC.
 - [x] **🛡 Trình Quản Lý & Cảnh Báo Hạn Dùng Chữ Ký Số (`certificateManagerService.ts`)**: Rà soát theo dõi ngày hết hạn Chữ Ký Số X.509 doanh nghiệp, tự động phát cảnh báo khi sắp hết hạn dưới 30 ngày.
 - [x] **✨ Giao Diện Mới DigitalSigningModal (`DigitalSigningModal.tsx`)**: Modal giao diện ký số 1-Click tích hợp trực tiếp trên Header với nút **KeyRound 🔑 Ký Số HĐ**.

@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { exportFullDatabaseJSON, restoreFullDatabaseJSON } from '../../services/storage';
 import { encryptBackupJSON, decryptBackupJSON } from '../../services/cryptoBackupService';
-import { getSafeStorageConfig, saveSafeStorageConfig, executeSyncToSafeDrive, StorageLocationConfig } from '../../services/persistentStorageService';
+import {
+  getSafeStorageConfig,
+  saveSafeStorageConfig,
+  executeSyncToSafeDrive,
+  StorageLocationConfig,
+  getBackupSnapshots,
+  deleteLocalSnapshot,
+  createLocalSnapshot,
+  BackupSnapshot,
+} from '../../services/persistentStorageService';
 import { DatabaseBackup, Download, Upload, ShieldCheck, HardDriveDownload, Lock, KeyRound, HardDrive, Save, RefreshCw, FolderCheck, CheckCircle2 } from 'lucide-react';
 
 interface BackupRestoreViewProps {
@@ -14,6 +23,7 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
   const [password, setPassword] = useState<string>('');
   const [storageConfig, setStorageConfig] = useState<StorageLocationConfig>(getSafeStorageConfig());
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<BackupSnapshot[]>(getBackupSnapshots());
 
   // Export Backup File
   const handleExportBackup = async () => {
@@ -233,6 +243,69 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
           <span>{restoreStatus}</span>
         </div>
       )}
+
+      {/* Snapshot History Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderCheck className="w-5 h-5 text-indigo-500" />
+            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+              Lịch Sử Bản Sao Lưu Cục Bộ (Local Snapshots)
+            </h3>
+          </div>
+          <button
+            onClick={async () => {
+              await createLocalSnapshot();
+              setSnapshots(getBackupSnapshots());
+              setSyncStatusMsg('Đã tạo bản Snapshot mới thành công!');
+              setTimeout(() => setSyncStatusMsg(null), 3000);
+            }}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+          >
+            <Save className="w-3.5 h-3.5" /> Tạo Snapshot Ngay
+          </button>
+        </div>
+
+        {snapshots.length === 0 ? (
+          <p className="text-xs text-slate-500 py-3">Chưa có bản snapshot nào được lưu trong bộ nhớ máy tính.</p>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[220px] overflow-y-auto">
+            {snapshots.map((s) => (
+              <div key={s.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
+                <div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{s.name}</span>
+                  <p className="text-[10px] text-slate-500">{s.timestamp} — {s.txCount} chứng từ, {s.clientCount} doanh nghiệp ({(s.sizeBytes / 1024).toFixed(1)} KB)</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Khôi phục dữ liệu từ bản '${s.name}'?`)) {
+                        const res = await restoreFullDatabaseJSON(s.dataJson);
+                        setRestoreStatus(res.message);
+                        if (res.success) onRefreshDatabase();
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg font-bold text-[11px] cursor-pointer"
+                  >
+                    Khôi Phục 1-Click
+                  </button>
+                  <button
+                    onClick={() => {
+                      deleteLocalSnapshot(s.id);
+                      setSnapshots(getBackupSnapshots());
+                      setSyncStatusMsg('Đã xóa bản snapshot');
+                      setTimeout(() => setSyncStatusMsg(null), 2000);
+                    }}
+                    className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold cursor-pointer"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Danger Zone: Reset All Data */}
       <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -6,6 +6,9 @@ import {
   calculateAssetDepreciationReport,
   AccountBalancePivotItem,
 } from '../../services/financialReportService';
+import { calculateBalanceSheet, BalanceSheetLineItem } from '../../services/balanceSheetService';
+import { calculateCashFlowStatement, CashFlowLineItem } from '../../services/cashFlowStatementService';
+import { generateFinancialNotes, FinancialNoteSection } from '../../services/financialNotesService';
 import { exportTransactionsToExcel } from '../../services/excelService';
 import {
   BarChart3,
@@ -20,6 +23,12 @@ import {
   CalendarCheck,
   Building2,
   DollarSign,
+  Scale,
+  Banknote,
+  BookOpen,
+  CheckCircle2,
+  AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 
 interface FinancialStatementsViewProps {
@@ -27,7 +36,7 @@ interface FinancialStatementsViewProps {
 }
 
 export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = ({ transactions }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'TRIAL_BALANCE' | 'INCOME_STATEMENT' | 'DEPRECIATION'>('TRIAL_BALANCE');
+  const [activeSubTab, setActiveSubTab] = useState<'TRIAL_BALANCE' | 'INCOME_STATEMENT' | 'DEPRECIATION' | 'BALANCE_SHEET' | 'CASH_FLOW' | 'FINANCIAL_NOTES'>('TRIAL_BALANCE');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAcc, setSelectedAcc] = useState<AccountBalancePivotItem | null>(null);
 
@@ -35,6 +44,9 @@ export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = (
   const trialBalance = calculateTrialBalancePivot(transactions);
   const incomeStatement = calculateIncomeStatement(transactions);
   const assets = calculateAssetDepreciationReport(transactions);
+  const balanceSheet = calculateBalanceSheet(transactions);
+  const cashFlowStatement = calculateCashFlowStatement(transactions);
+  const financialNotes = generateFinancialNotes(transactions, balanceSheet, incomeStatement, cashFlowStatement);
 
   // Totals for Trial Balance
   const totalPeriodDebit = trialBalance.reduce((sum, item) => sum + item.periodDebit, 0);
@@ -50,28 +62,35 @@ export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = (
 
   return (
     <div className="p-4 space-y-4">
-      {/* Modern High-Precision Compact Top Banner */}
-      <div className="bg-slate-900 dark:bg-slate-950 text-white px-4 py-2.5 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
-            <BarChart3 className="w-3.5 h-3.5" />
-          </div>
-          <div>
-            <h2 className="text-xs font-bold tracking-tight text-slate-100 flex items-center gap-2">
-              <span>Báo Cáo Tài Chính & Bảng Cân Đối (B01 & B02-DN)</span>
-            </h2>
-            <p className="text-[10px] text-slate-400">Cân đối phát sinh (1xx-9xx) • KQKD P&L • Khấu hao TSCĐ 211 & Phân bổ 242</p>
+      {/* Modern High-Precision Header Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-sm shrink-0">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2 whitespace-nowrap">
+                <span>Báo Cáo Tài Chính Tổng Hợp (B01 • B02 • B03 • B09-DN)</span>
+                <span className="text-[10px] bg-brand-50 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300 px-2 py-0.5 rounded-full font-bold">
+                  TT200 / TT133
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Bảng Cân Đối Kế Toán • Kết Quả Kinh Doanh • Lưu Chuyển Tiền Tệ • Thuyết Minh BCTC • Cân Đối Phát Sinh
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Sub Tabs Bar */}
-        <div className="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 shrink-0 text-xs font-bold gap-1 flex-wrap">
+        {/* Sub Tabs Navigation Bar */}
+        <div className="flex items-center bg-slate-100/90 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto gap-1 text-xs font-bold scrollbar-none">
           <button
             onClick={() => setActiveSubTab('TRIAL_BALANCE')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeSubTab === 'TRIAL_BALANCE'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -80,10 +99,10 @@ export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = (
 
           <button
             onClick={() => setActiveSubTab('INCOME_STATEMENT')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeSubTab === 'INCOME_STATEMENT'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
@@ -92,14 +111,50 @@ export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = (
 
           <button
             onClick={() => setActiveSubTab('DEPRECIATION')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeSubTab === 'DEPRECIATION'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
             }`}
           >
             <PieChart className="w-3.5 h-3.5" />
-            <span>3. Khấu Hao & Phân Bổ 242</span>
+            <span>3. Khấu Hao & Phân Bổ</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('BALANCE_SHEET')}
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeSubTab === 'BALANCE_SHEET'
+                ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>4. B01-DN CĐKT</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('CASH_FLOW')}
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeSubTab === 'CASH_FLOW'
+                ? 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
+            }`}
+          >
+            <Banknote className="w-3.5 h-3.5" />
+            <span>5. B03-DN LCTT</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('FINANCIAL_NOTES')}
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+              activeSubTab === 'FINANCIAL_NOTES'
+                ? 'bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 shadow-sm border border-slate-200 dark:border-slate-700 font-extrabold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>6. B09-DN Thuyết Minh BCTC</span>
           </button>
         </div>
       </div>
@@ -288,6 +343,244 @@ export const FinancialStatementsView: React.FC<FinancialStatementsViewProps> = (
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SUB-TAB 4: BẢNG CÂN ĐỐI KẾ TOÁN B01-DN --- */}
+      {activeSubTab === 'BALANCE_SHEET' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-extrabold uppercase text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-cyan-600" />
+                <span>Bảng Cân Đối Kế Toán (Mẫu B01-DN)</span>
+                <span className={`ml-2 px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
+                  balanceSheet.isBalanced
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                    : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                }`}>
+                  {balanceSheet.isBalanced ? '✅ Cân Bằng TS = NV' : `🚨 Lệch ${balanceSheet.balanceDifference.toLocaleString('vi-VN')} VNĐ`}
+                </span>
+              </h3>
+              <button
+                onClick={() => exportTransactionsToExcel(transactions, 'Bang_Can_Doi_Ke_Toan_B01_DN')}
+                className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Xuất B01-DN (Excel)</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[520px] scrollbar-thin">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[800px] border-collapse">
+                <thead className="bg-slate-100 dark:bg-slate-950 font-bold border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
+                  <tr>
+                    <th className="p-2.5 w-16">Mã số</th>
+                    <th className="p-2.5">Chỉ tiêu</th>
+                    <th className="p-2.5 text-right">Số cuối kỳ (VNĐ)</th>
+                    <th className="p-2.5 text-right">Số đầu năm (VNĐ)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
+                  {balanceSheet.assets.map((item, idx) => (
+                    <tr key={`a-${idx}`} className={`${
+                      item.isHeader ? 'bg-cyan-50 dark:bg-cyan-950/30' : ''
+                    } ${item.isBold ? 'font-extrabold' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50`}>
+                      <td className="p-2.5 font-mono text-cyan-600 dark:text-cyan-400">{item.code}</td>
+                      <td className={`p-2.5 ${item.isBold ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>{item.label}</td>
+                      <td className={`p-2.5 text-right font-mono tabular-nums ${item.endOfPeriod < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                        {item.endOfPeriod !== 0 ? item.endOfPeriod.toLocaleString('vi-VN') : '-'}
+                      </td>
+                      <td className="p-2.5 text-right font-mono tabular-nums text-slate-500">
+                        {item.beginOfYear !== 0 ? item.beginOfYear.toLocaleString('vi-VN') : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Separator */}
+                  <tr><td colSpan={4} className="h-2 bg-slate-50 dark:bg-slate-950"></td></tr>
+                  {balanceSheet.liabilitiesAndEquity.map((item, idx) => (
+                    <tr key={`l-${idx}`} className={`${
+                      item.isHeader ? 'bg-violet-50 dark:bg-violet-950/30' : ''
+                    } ${item.isBold ? 'font-extrabold' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50`}>
+                      <td className="p-2.5 font-mono text-violet-600 dark:text-violet-400">{item.code}</td>
+                      <td className={`p-2.5 ${item.isBold ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>{item.label}</td>
+                      <td className="p-2.5 text-right font-mono tabular-nums">
+                        {item.endOfPeriod !== 0 ? item.endOfPeriod.toLocaleString('vi-VN') : '-'}
+                      </td>
+                      <td className="p-2.5 text-right font-mono tabular-nums text-slate-500">
+                        {item.beginOfYear !== 0 ? item.beginOfYear.toLocaleString('vi-VN') : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SUB-TAB 5: BÁO CÁO LƯU CHUYỂN TIỀN TỆ B03-DN --- */}
+      {activeSubTab === 'CASH_FLOW' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-extrabold uppercase text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-violet-600" />
+                <span>Báo Cáo Lưu Chuyển Tiền Tệ (Mẫu B03-DN — Phương Pháp Gián Tiếp)</span>
+                <span className={`ml-2 px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
+                  cashFlowStatement.isReconciled
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                }`}>
+                  {cashFlowStatement.isReconciled ? '✅ Khớp TK 111+112' : '⚠️ Lệch so với TK 111+112'}
+                </span>
+              </h3>
+              <button
+                onClick={() => exportTransactionsToExcel(transactions, 'Bao_Cao_Luu_Chuyen_Tien_Te_B03_DN')}
+                className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Xuất B03-DN (Excel)</span>
+              </button>
+            </div>
+
+            {/* Cash Flow Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[520px] scrollbar-thin">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[700px] border-collapse">
+                <thead className="bg-slate-100 dark:bg-slate-950 font-bold border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
+                  <tr>
+                    <th className="p-2.5 w-14">Mã</th>
+                    <th className="p-2.5">Chỉ tiêu</th>
+                    <th className="p-2.5 text-right">Kỳ này (VNĐ)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-medium">
+                  {/* I. HĐKD */}
+                  {cashFlowStatement.operatingItems.map((item, idx) => (
+                    <tr key={`op-${idx}`} className={`${
+                      item.isHeader ? 'bg-emerald-50 dark:bg-emerald-950/20' : ''
+                    } ${item.isBold ? 'font-extrabold' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50`}>
+                      <td className="p-2.5 font-mono text-emerald-600 dark:text-emerald-400">{item.code}</td>
+                      <td className={`p-2.5 ${item.isBold ? 'text-slate-900 dark:text-slate-100' : ''}`}>{item.label}</td>
+                      <td className={`p-2.5 text-right font-mono tabular-nums ${item.currentPeriod < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                        {!item.isHeader ? item.currentPeriod.toLocaleString('vi-VN') : ''}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* II. HĐĐT */}
+                  {cashFlowStatement.investingItems.map((item, idx) => (
+                    <tr key={`inv-${idx}`} className={`${
+                      item.isHeader ? 'bg-amber-50 dark:bg-amber-950/20' : ''
+                    } ${item.isBold ? 'font-extrabold' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50`}>
+                      <td className="p-2.5 font-mono text-amber-600 dark:text-amber-400">{item.code}</td>
+                      <td className={`p-2.5 ${item.isBold ? 'text-slate-900 dark:text-slate-100' : ''}`}>{item.label}</td>
+                      <td className={`p-2.5 text-right font-mono tabular-nums ${item.currentPeriod < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                        {!item.isHeader ? item.currentPeriod.toLocaleString('vi-VN') : ''}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* III. HĐTC */}
+                  {cashFlowStatement.financingItems.map((item, idx) => (
+                    <tr key={`fin-${idx}`} className={`${
+                      item.isHeader ? 'bg-violet-50 dark:bg-violet-950/20' : ''
+                    } ${item.isBold ? 'font-extrabold' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50`}>
+                      <td className="p-2.5 font-mono text-violet-600 dark:text-violet-400">{item.code}</td>
+                      <td className={`p-2.5 ${item.isBold ? 'text-slate-900 dark:text-slate-100' : ''}`}>{item.label}</td>
+                      <td className={`p-2.5 text-right font-mono tabular-nums ${item.currentPeriod < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                        {!item.isHeader ? item.currentPeriod.toLocaleString('vi-VN') : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-slate-100 dark:bg-slate-950 font-extrabold border-t-2 border-slate-300 dark:border-slate-700 sticky bottom-0">
+                  <tr>
+                    <td className="p-2.5"></td>
+                    <td className="p-2.5 text-slate-900 dark:text-slate-100">Lưu chuyển tiền thuần trong kỳ (I+II+III)</td>
+                    <td className={`p-2.5 text-right font-mono text-sm tabular-nums ${cashFlowStatement.netCashChange < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {cashFlowStatement.netCashChange.toLocaleString('vi-VN')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5"></td>
+                    <td className="p-2.5 text-slate-600 dark:text-slate-400">Tiền đầu kỳ</td>
+                    <td className="p-2.5 text-right font-mono tabular-nums">{cashFlowStatement.cashBeginning.toLocaleString('vi-VN')}</td>
+                  </tr>
+                  <tr className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
+                    <td className="p-2.5"></td>
+                    <td className="p-2.5 uppercase">Tiền và tương đương tiền cuối kỳ</td>
+                    <td className="p-2.5 text-right font-mono text-sm tabular-nums">{cashFlowStatement.cashEnding.toLocaleString('vi-VN')}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SUB-TAB 6: THUYẾT MINH BCTC B09-DN --- */}
+      {activeSubTab === 'FINANCIAL_NOTES' && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-extrabold uppercase text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-pink-600" />
+                <span>Thuyết Minh Báo Cáo Tài Chính (Mẫu B09-DN)</span>
+              </h3>
+              <button
+                onClick={() => exportTransactionsToExcel(transactions, 'Thuyet_Minh_BCTC_B09_DN')}
+                className="px-3.5 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Xuất B09-DN (Excel)</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {financialNotes.sections.map((section, idx) => (
+                <div key={idx} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                  <div className="bg-slate-50 dark:bg-slate-950 px-4 py-2.5 flex items-center justify-between">
+                    <h4 className="text-xs font-extrabold text-slate-900 dark:text-slate-100">{section.title}</h4>
+                    {section.isEditable && (
+                      <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                        <Edit3 className="w-3 h-3" /> Có thể sửa
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    <pre className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+                      {section.content}
+                    </pre>
+                    {section.tableData && (
+                      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 mt-2">
+                        <table className="w-full text-xs border-collapse">
+                          <thead className="bg-slate-100 dark:bg-slate-950 font-bold">
+                            <tr>
+                              <th className="p-2 text-left">Chỉ tiêu</th>
+                              <th className="p-2 text-right">Số cuối kỳ (VNĐ)</th>
+                              <th className="p-2 text-right">Số đầu năm (VNĐ)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                            {section.tableData.map((row, rIdx) => (
+                              <tr key={rIdx} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${rIdx === section.tableData!.length - 1 ? 'font-extrabold' : ''}`}>
+                                <td className="p-2 text-slate-800 dark:text-slate-200">{row.label}</td>
+                                <td className={`p-2 text-right font-mono tabular-nums ${row.endOfPeriod < 0 ? 'text-rose-600' : ''}`}>
+                                  {row.endOfPeriod !== 0 ? row.endOfPeriod.toLocaleString('vi-VN') : '-'}
+                                </td>
+                                <td className="p-2 text-right font-mono tabular-nums text-slate-500">
+                                  {row.beginOfYear !== 0 ? row.beginOfYear.toLocaleString('vi-VN') : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

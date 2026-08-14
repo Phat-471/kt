@@ -60,7 +60,10 @@ export function parseXMLInvoice(
     let partnerTaxCode = nBanTaxCode;
     let type: TransactionType = 'EXPENSE';
 
-    if (clientTaxCode && nBanTaxCode && clientTaxCode === nBanTaxCode) {
+    const cleanClientTax = (clientTaxCode || '').trim().replace(/[^0-9A-Za-z]/g, '');
+    const cleanSellerTax = (nBanTaxCode || '').trim().replace(/[^0-9A-Za-z]/g, '');
+
+    if (cleanClientTax && cleanSellerTax && cleanClientTax.toLowerCase() === cleanSellerTax.toLowerCase()) {
       // Công ty là người bán => Hóa đơn Bán ra (Income)
       isPurchase = false;
       partnerName = nMuaName;

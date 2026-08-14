@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="HD0005678">
+    <TTChung>
+      <PBan>2.0.0</PBan>
+      <THDon>Hóa đơn giá trị gia tăng</THDon>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>1C26THT</KHHDon>
+      <SHDon>0005678</SHDon>
+      <NLap>2026-07-10</NLap>
+      <DVTTe>VND</DVTTe>
+      <TGia>1</TGia>
+      <HTTToan>CK</HTTToan>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>CÔNG TY XI MĂNG HÀ TIÊN</Ten>
+        <MST>0301234567</MST>
+        <DChi>TP. Hồ Chí Minh</DChi>
+      </NBan>
+      <NMua>
+        <Ten>CÔNG TY TNHH ĐẦU TƯ &amp; PHÁT TRIỂN AN PHÁT</Ten>
+        <MST>0101234567</MST>
+        <DChi>Số 123 Đường Láng, Đống Đa, Hà Nội</DChi>
+      </NMua>
+      <DSHHDVu>
+        <HHDVu>
+          <STT>1</STT>
+          <THHDVu>Xi măng PCB40 Hà Tiên bao 50kg</THHDVu>
+          <DVTinh>Tấn</DVTinh>
+          <SLuong>30</SLuong>
+          <DGia>1500000</DGia>
+          <Tien>45000000</Tien>
+          <TSuat>10%</TSuat>
+        </HHDVu>
+      </DSHHDVu>
+      <TToan>
+        <TgTCThue>45000000</TgTCThue>
+        <TgTThue>4500000</TgTThue>
+        <TgTTTBSo>49500000</TgTTTBSo>
+        <TgTTTBChu>Bốn mươi chín triệu năm trăm nghìn đồng chẵn</TgTTTBChu>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+</HDon>

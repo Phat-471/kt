@@ -1,4 +1,5 @@
 import { NormalizedTransaction, ValidationErrorItem, ValidationStatus } from '../types/accounting';
+import { checkRiskyTaxpayer } from './riskyTaxpayerDatabase';
 
 export function isValidTaxCode(taxCode: string): boolean {
   if (!taxCode) return true; // Optional field, skip if empty
@@ -17,9 +18,44 @@ export function isValidProvincePrefix(taxCode: string): boolean {
   const prefix = parseInt(digits.substring(0, 2), 10);
   return prefix >= 1 && prefix <= 96;
 }
+export function parseNumericValue(val: any): number {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return val;
+  const str = String(val).trim();
+  if (str.includes(',') && str.includes('.')) {
+    if (str.indexOf(',') < str.indexOf('.')) {
+      return parseFloat(str.replace(/,/g, '')) || 0;
+    } else {
+      return parseFloat(str.replace(/\./g, '').replace(/,/g, '.')) || 0;
+    }
+  }
+  if (str.includes(',')) {
+    if (str.split(',')[1]?.length === 2) {
+      return parseFloat(str.replace(/,/g, '.')) || 0;
+    }
+    return parseFloat(str.replace(/,/g, '')) || 0;
+  }
+  if (str.includes('.')) {
+    if (str.split('.')[1]?.length === 3) {
+      return parseFloat(str.replace(/\./g, '')) || 0;
+    }
+    return parseFloat(str) || 0;
+  }
+  return parseFloat(str) || 0;
+}
 
 // Validation Hash Cache Memoization cho >10.000 dòng chứng từ
 const validationCache = new Map<string, { status: ValidationStatus; errors: ValidationErrorItem[] }>();
+let lastTxsSignature = '';
+
+function computeTxsSignature(txs: NormalizedTransaction[]): string {
+  let score = txs.length;
+  for (let i = 0; i < txs.length; i++) {
+    const t = txs[i];
+    score += t.amount + (t.voucherNo ? t.voucherNo.length : 0) + (t.userApproved ? 1 : 0);
+  }
+  return String(score);
+}
 
 function hashTransaction(tx: NormalizedTransaction): string {
   return `${tx.id}_${tx.date}_${tx.voucherNo}_${tx.partnerTaxCode}_${tx.amount}_${tx.debitAcc}_${tx.creditAcc}_${tx.description}`;
@@ -27,6 +63,7 @@ function hashTransaction(tx: NormalizedTransaction): string {
 
 export function clearValidationCache(): void {
   validationCache.clear();
+  lastTxsSignature = '';
 }
 
 export function validateTransaction(
@@ -34,6 +71,12 @@ export function validateTransaction(
   allExistingTxs: NormalizedTransaction[] = []
 ): { status: ValidationStatus; errors: ValidationErrorItem[] } {
   // 0. Check Memoization Cache
+  const currentSig = computeTxsSignature(allExistingTxs);
+  if (currentSig !== lastTxsSignature) {
+    clearValidationCache();
+    lastTxsSignature = currentSig;
+  }
+
   const txHash = hashTransaction(tx);
   // Nếu số lượng chứng từ lớn (>500), dùng cache trừ khi có kiểm tra xung đột trùng số HĐ chéo
   if (allExistingTxs.length > 500 && validationCache.has(txHash)) {
@@ -164,6 +207,17 @@ export function validateTransaction(
         });
       }
 
+      // Rule 11: AI Smart Tax Alert — Tra cứu MST thuộc danh sách Doanh nghiệp Rủi ro / Bỏ trốn / Tạm ngừng
+      const riskyInfo = checkRiskyTaxpayer(cleanedTaxCode);
+      if (riskyInfo) {
+        errors.push({
+          field: 'partnerTaxCode',
+          code: 'ERR_RISKY_TAXPAYER',
+          message: `🚨 CẢNH BÁO THUẾ: Đối tác ${riskyInfo.name} (MST: ${riskyInfo.taxCode}) thuộc danh sách RỦI RO THUẾ (${riskyInfo.reason} - ${riskyInfo.announcementRef || ''})`,
+          severity: 'ERROR',
+        });
+      }
+
       // Check partner name conflict across transactions for the same MST
       if (tx.partnerName && tx.partnerName.trim() && allExistingTxs.length > 0) {
         const currentMst = cleanedTaxCode;
@@ -224,14 +278,16 @@ export function validateTransaction(
     }
   }
 
+
+
   // Feature 5: Smart Validation - Check Tax variance
   if (tx.rawRow && tx.rawRow.totalBeforeTax !== undefined && tx.rawRow.totalTax !== undefined) {
-    const totalBeforeTax = parseFloat(tx.rawRow.totalBeforeTax);
-    const totalTax = parseFloat(tx.rawRow.totalTax);
+    const totalBeforeTax = parseNumericValue(tx.rawRow.totalBeforeTax);
+    const totalTax = parseNumericValue(tx.rawRow.totalTax);
     const totalAmount = tx.amount;
     
     // Tổng trước thuế + Thuế phải khớp với Tổng thanh toán (cho phép lệch 10đ làm tròn)
-    if (!isNaN(totalBeforeTax) && !isNaN(totalTax) && Math.abs((totalBeforeTax + totalTax) - totalAmount) > 10) {
+    if (totalBeforeTax > 0 && totalTax > 0 && Math.abs((totalBeforeTax + totalTax) - totalAmount) > 10) {
       errors.push({
         field: 'amount',
         code: 'WARN_TAX_MATH_MISMATCH',
@@ -333,6 +389,19 @@ export function validateTransaction(
         field: 'amount',
         code: 'WARN_HIGH_EXPENSE_NO_INVOICE',
         message: `🚨 Nguy cơ bị loại chi phí thuế TNDN: Khoản chi ${tx.amount.toLocaleString('vi-VN')} đ (≥5tr) không có Số Hóa Đơn / Tệp XML hợp lệ.`,
+        severity: 'WARNING',
+      });
+    }
+  }
+
+  // Rule 12: Cảnh báo thanh toán tiền mặt ≥ 20.000.000 VNĐ (Nguy cơ bị loại Thuế GTGT khấu trừ & Chi phí TNDN)
+  if ((tx.type === 'EXPENSE' || tx.debitAcc?.startsWith('133') || tx.debitAcc?.startsWith('152') || tx.debitAcc?.startsWith('156') || tx.debitAcc?.startsWith('642')) && tx.amount >= 20000000) {
+    const isCashPayment = tx.creditAcc?.startsWith('111') || tx.description.toLowerCase().includes('tiền mặt') || tx.description.toLowerCase().includes('phiếu chi');
+    if (isCashPayment) {
+      errors.push({
+        field: 'amount',
+        code: 'ERR_CASH_PAYMENT_OVER_20M',
+        message: `🚨 NGUY CƠ BỊ LOẠI THUẾ GTGT & CHI PHÍ TNDN: Chứng từ mua hàng/chi phí ${tx.amount.toLocaleString('vi-VN')} đ (≥20M) thanh toán bằng tiền mặt (TK 111). Theo Luật Thuế GTGT & NĐ 72/2024, bắt buộc phải có chứng từ thanh toán qua ngân hàng (TK 112).`,
         severity: 'WARNING',
       });
     }

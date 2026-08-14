@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HDon>
+  <DLHDon Id="HD0001234">
+    <TTChung>
+      <PBan>2.0.0</PBan>
+      <THDon>Hóa đơn giá trị gia tăng</THDon>
+      <KHMSHDon>1</KHMSHDon>
+      <KHHDon>1C26TBB</KHHDon>
+      <SHDon>0001234</SHDon>
+      <NLap>2026-07-05</NLap>
+      <DVTTe>VND</DVTTe>
+      <TGia>1</TGia>
+      <HTTToan>TM/CK</HTTToan>
+    </TTChung>
+    <NDHDon>
+      <NBan>
+        <Ten>CÔNG TY TNHH ĐẦU TƯ &amp; PHÁT TRIỂN AN PHÁT</Ten>
+        <MST>0101234567</MST>
+        <DChi>Số 123 Đường Láng, Đống Đa, Hà Nội</DChi>
+      </NBan>
+      <NMua>
+        <Ten>CÔNG TY CP XÂY DỰNG NAM Á</Ten>
+        <MST>0108889999</MST>
+        <DChi>Quận Cầu Giấy, Hà Nội</DChi>
+      </NMua>
+      <DSHHDVu>
+        <HHDVu>
+          <STT>1</STT>
+          <THHDVu>Thi công xây dựng công trình HĐ01 giai đoạn 1</THHDVu>
+          <DVTinh>Gói</DVTinh>
+          <SLuong>1</SLuong>
+          <DGia>150000000</DGia>
+          <Tien>150000000</Tien>
+          <TSuat>10%</TSuat>
+        </HHDVu>
+      </DSHHDVu>
+      <TToan>
+        <TgTCThue>150000000</TgTCThue>
+        <TgTThue>15000000</TgTThue>
+        <TgTTTBSo>165000000</TgTTTBSo>
+        <TgTTTBChu>Một trăm sáu mươi lăm triệu đồng chẵn</TgTTTBChu>
+      </TToan>
+    </NDHDon>
+  </DLHDon>
+  <DSCKS>
+    <NBan>
+      <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <SignedInfo>
+          <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+          <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+          <Reference URI="#HD0001234">
+            <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+            <DigestValue>dGVzdFNpZ25hdHVyZVBhc3NlZDEwMA==</DigestValue>
+          </Reference>
+        </SignedInfo>
+        <SignatureValue>dGVzdFNpZ25hdHVyZVBhc3NlZDEwMA==</SignatureValue>
+      </Signature>
+    </NBan>
+  </DSCKS>
+</HDon>

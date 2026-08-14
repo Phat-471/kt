@@ -7,23 +7,33 @@ export interface SuggestionResult {
   reasons: string[];
 }
 
-// Thuật toán Levenshtein Distance tính độ tương đồng chuỗi
+// Memory Cache cho Levenshtein Similarity
+const levCache = new Map<string, number>();
+
+// Thuật toán Levenshtein Distance tính độ tương đồng chuỗi (có Memoization)
 export function levenshteinSimilarity(s1: string, s2: string): number {
   if (!s1 || !s2) return 0;
   const str1 = s1.toLowerCase().trim();
   const str2 = s2.toLowerCase().trim();
   if (str1 === str2) return 1;
 
+  const cacheKey = str1.length <= str2.length ? `${str1}::${str2}` : `${str2}::${str1}`;
+  if (levCache.has(cacheKey)) {
+    return levCache.get(cacheKey)!;
+  }
+
   const len1 = str1.length;
   const len2 = str2.length;
-  const matrix: number[][] = [];
+  
+  // Nếu chênh lệch độ dài quá lớn, similarity chắc chắn < 0.5 -> bỏ qua tính toán ma trận
+  if (Math.abs(len1 - len2) / Math.max(len1, len2) > 0.5) {
+    levCache.set(cacheKey, 0);
+    return 0;
+  }
 
-  for (let i = 0; i <= len1; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= len2; j++) {
-    matrix[0][j] = j;
-  }
+  const matrix: number[][] = [];
+  for (let i = 0; i <= len1; i++) matrix[i] = [i];
+  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
 
   for (let i = 1; i <= len1; i++) {
     for (let j = 1; j <= len2; j++) {
@@ -38,7 +48,33 @@ export function levenshteinSimilarity(s1: string, s2: string): number {
 
   const distance = matrix[len1][len2];
   const maxLen = Math.max(len1, len2);
-  return maxLen === 0 ? 1 : 1 - distance / maxLen;
+  const sim = maxLen === 0 ? 1 : 1 - distance / maxLen;
+
+  // Giới hạn cache tối đa 5000 phần tử để tránh tràn bộ nhớ
+  if (levCache.size > 5000) {
+    levCache.clear();
+  }
+  levCache.set(cacheKey, sim);
+  return sim;
+}
+
+/**
+ * Fast Jaccard Token Similarity (O(n) word match)
+ */
+export function jaccardSimilarity(s1: string, s2: string): number {
+  if (!s1 || !s2) return 0;
+  const words1 = new Set(s1.toLowerCase().split(/\s+/).filter(w => w.length > 1));
+  const words2 = new Set(s2.toLowerCase().split(/\s+/).filter(w => w.length > 1));
+  
+  if (words1.size === 0 || words2.size === 0) return 0;
+
+  let intersection = 0;
+  for (const w of words1) {
+    if (words2.has(w)) intersection++;
+  }
+
+  const union = words1.size + words2.size - intersection;
+  return union === 0 ? 0 : intersection / union;
 }
 
 export function findMatchingSuggestions(
@@ -52,12 +88,35 @@ export function findMatchingSuggestions(
   const availableVouchers = vouchers.filter(v => !matchedVoucherIds.has(v.id));
   const availableStatements = statements.filter(s => !matchedStatementIds.has(s.id));
 
+  // Fast pre-index available statements by amount range bucket (bucket size = 100k)
+  const statementBuckets = new Map<number, NormalizedTransaction[]>();
+  for (const s of availableStatements) {
+    const bucketKey = Math.floor(s.amount / 100000);
+    let list = statementBuckets.get(bucketKey);
+    if (!list) {
+      list = [];
+      statementBuckets.set(bucketKey, list);
+    }
+    list.push(s);
+  }
+
   const suggestions: SuggestionResult[] = [];
 
   for (const v of availableVouchers) {
     let bestMatch: SuggestionResult | null = null;
+    
+    // Lấy các statement trong dải số tiền gần kề (+/- 1 bucket)
+    const vBucket = Math.floor(v.amount / 100000);
+    const candidateStatements: NormalizedTransaction[] = [
+      ...(statementBuckets.get(vBucket - 1) || []),
+      ...(statementBuckets.get(vBucket) || []),
+      ...(statementBuckets.get(vBucket + 1) || []),
+    ];
 
-    for (const s of availableStatements) {
+    // Nếu không tìm thấy candidate theo bucket số tiền (ví dụ lệch nhiều), fallback về toàn bộ
+    const targetStatements = candidateStatements.length > 0 ? candidateStatements : availableStatements;
+
+    for (const s of targetStatements) {
       let score = 0;
       const reasons: string[] = [];
 
@@ -102,26 +161,40 @@ export function findMatchingSuggestions(
         reasons.push(`Trùng số chứng từ (${v.voucherNo}) trong nội dung sao kê`);
       }
 
-      // Fuzzy matching cho Tên Đối Tác
+      // Fast Jaccard / Levenshtein matching cho Tên Đối Tác
       if (v.partnerName && sDesc) {
-        if (sDesc.includes(v.partnerName.toLowerCase())) {
+        const pNameLower = v.partnerName.toLowerCase();
+        if (sDesc.includes(pNameLower)) {
           score += 15;
           reasons.push(`Khớp chính xác tên đối tác (${v.partnerName})`);
         } else {
-          const sim = levenshteinSimilarity(v.partnerName, sDesc);
-          if (sim >= 0.6) {
-            score += Math.round(sim * 15);
-            reasons.push(`Tên đối tác tương đồng mờ (${Math.round(sim * 100)}%)`);
+          // Thử Jaccard trước
+          const jaccardSim = jaccardSimilarity(v.partnerName, sDesc);
+          if (jaccardSim >= 0.5) {
+            score += Math.round(jaccardSim * 15);
+            reasons.push(`Tên đối tác tương đồng từ ngữ (${Math.round(jaccardSim * 100)}%)`);
+          } else {
+            const sim = levenshteinSimilarity(v.partnerName, sDesc);
+            if (sim >= 0.6) {
+              score += Math.round(sim * 15);
+              reasons.push(`Tên đối tác tương đồng mờ (${Math.round(sim * 100)}%)`);
+            }
           }
         }
       }
 
-      // Fuzzy matching cho Diễn Giải
+      // Matching cho Diễn Giải
       if (vDesc && sDesc) {
-        const descSim = levenshteinSimilarity(vDesc, sDesc);
-        if (descSim >= 0.5) {
+        const descSim = jaccardSimilarity(vDesc, sDesc);
+        if (descSim >= 0.4) {
           score += Math.round(descSim * 15);
-          reasons.push(`Nội dung diễn giải tương đồng mờ (${Math.round(descSim * 100)}%)`);
+          reasons.push(`Nội dung diễn giải tương đồng (${Math.round(descSim * 100)}%)`);
+        } else {
+          const sim = levenshteinSimilarity(vDesc, sDesc);
+          if (sim >= 0.5) {
+            score += Math.round(sim * 15);
+            reasons.push(`Nội dung diễn giải tương đồng mờ (${Math.round(sim * 100)}%)`);
+          }
         }
       }
 

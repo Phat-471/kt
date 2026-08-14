@@ -13,10 +13,16 @@ export interface ContractCostingItem {
   profitMarginPercent: number;  // Tỷ suất lợi nhuận gộp (%)
   completionRatePercent: number;// Tỷ lệ tiến độ hoàn thành (%)
   isOverBudget: boolean;        // Cảnh báo vượt định mức chi phí
+  materialBudget?: number;      // Định mức dự toán NVL (BOM)
+  materialVariance?: number;    // Chênh lệch thực tế vs dự toán NVL
+  isBOMAlert?: boolean;         // Cảnh báo vượt định mức BOM > 5%
   transactions: NormalizedTransaction[];
 }
 
-export const calculateContractCostingReport = (transactions: NormalizedTransaction[]): ContractCostingItem[] => {
+export const calculateContractCostingReport = (
+  transactions: NormalizedTransaction[],
+  bomBudgetMap?: Record<string, { materialBudget: number; laborBudget: number; overheadBudget: number }>
+): ContractCostingItem[] => {
   const contractMap: Record<string, ContractCostingItem> = {};
 
   transactions.forEach((t) => {
@@ -70,6 +76,12 @@ export const calculateContractCostingReport = (transactions: NormalizedTransacti
     const completionRatePercent = item.contractValue > 0 ? Math.min(100, (totalCost / (item.contractValue * 0.8)) * 100) : 50;
     const isOverBudget = totalCost > item.contractValue * 0.85 && item.contractValue > 0;
 
+    // BOM định mức dự toán
+    const bomConfig = bomBudgetMap ? bomBudgetMap[item.contractCode] : undefined;
+    const materialBudget = bomConfig?.materialBudget || (item.contractValue > 0 ? item.contractValue * 0.45 : 0);
+    const materialVariance = materialBudget > 0 ? item.materialCost1541 - materialBudget : 0;
+    const isBOMAlert = materialBudget > 0 && item.materialCost1541 > materialBudget * 1.05;
+
     return {
       ...item,
       totalCost,
@@ -77,6 +89,9 @@ export const calculateContractCostingReport = (transactions: NormalizedTransacti
       profitMarginPercent: Number(profitMarginPercent.toFixed(1)),
       completionRatePercent: Number(completionRatePercent.toFixed(1)),
       isOverBudget,
+      materialBudget,
+      materialVariance,
+      isBOMAlert,
     };
   });
 };

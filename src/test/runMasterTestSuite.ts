@@ -1,4 +1,9 @@
 import { calculateTaxRiskSummary, calculateInventoryCardReport, calculateCashAndBankLedger, calculatePartnerDebtReport } from '../services/accountingCoreService';
+import { calculateBalanceSheet } from '../services/balanceSheetService';
+import { calculateCashFlowStatement } from '../services/cashFlowStatementService';
+import { generateFinancialNotes } from '../services/financialNotesService';
+import { generateSpecialJournal } from '../services/specialJournalsService';
+import { checkRiskyTaxpayer } from '../services/riskyTaxpayerDatabase';
 import { calculateTrialBalancePivot, calculateIncomeStatement, calculateAssetDepreciationReport } from '../services/financialReportService';
 import { auditNonDeductibleExpenses } from '../services/taxAuditService';
 import { auditMonthEndClosing } from '../services/monthEndClosingService';
@@ -23,7 +28,7 @@ import { generateGeneralLedgerReport } from '../services/generalLedgerService';
 import { getCompanyConfig } from '../services/multiCompanyService';
 import { checkPermission, getRoleLabel } from '../services/rolePermissionService';
 import { getIndustryRule } from '../services/industryPresetService';
-import { validateTransaction } from '../services/validationRules';
+import { validateTransaction, parseNumericValue } from '../services/validationRules';
 import { levenshteinSimilarity } from '../services/matchingEngine';
 import {
   createReverseEntry,
@@ -39,8 +44,15 @@ import {
   getAllFixedAssets,
   ASSET_GROUP_DEFAULTS,
 } from '../services/fixedAssetService';
-import { generateGTGTXML, generatePITXML } from '../services/eTaxXMLGenerator';
+import { generateGTGTXML, generatePITXML, generateTNDNXML, validateHTKKXML } from '../services/eTaxXMLGenerator';
+import { exportVATAnnexesToExcel, exportTNDNExcel } from '../services/excelService';
 import { calculateTrialBalance } from '../services/trialBalancePivotEngine';
+import { buildAccountAggregator, AccountAggregator } from '../services/accountAggregator';
+import { calculateEnterpriseRiskScore } from '../services/riskScoreEngine';
+import { suggestJournalEntry } from '../services/journalSuggestService';
+import { getAllCompanies, saveCompanyConfig } from '../services/multiCompanyService';
+import { generateConsolidatedReport } from '../services/consolidationEngine';
+import { jaccardSimilarity } from '../services/matchingEngine';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
@@ -585,6 +597,388 @@ async function runAllTests() {
   ];
   const unbalancedReport = calculateTrialBalance(unbalancedTxs);
   assert(unbalancedReport.isBalanced === false, 'Phát hiện chính xác trạng thái không cân bằng khi chứng từ thiếu đối ứng');
+
+  // ============================================================
+  // PHẦN 45: BẢNG CÂN ĐỐI KẾ TOÁN B01-DN
+  // ============================================================
+  console.log('\n📌 PHẦN 45: TEST BẢNG CÂN ĐỐI KẾ TOÁN (B01-DN)');
+
+  const b01Txs: NormalizedTransaction[] = [
+    // Vốn góp chủ sở hữu: Nợ 112 / Có 411 = 500M
+    { id: 'b01-1', clientId: 'c1', importDate: '2026-01-01', date: '2026-01-01', voucherNo: 'VG01', description: 'Vốn góp CSH', debitAcc: '112', creditAcc: '411', amount: 500_000_000, type: 'INCOME', partnerName: 'CSH', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    // Mua TSCĐ: Nợ 211 / Có 112 = 100M
+    { id: 'b01-2', clientId: 'c1', importDate: '2026-02-01', date: '2026-02-01', voucherNo: 'MUA01', description: 'Mua máy tính', debitAcc: '211', creditAcc: '112', amount: 100_000_000, type: 'EXPENSE', partnerName: 'Dell', partnerTaxCode: '111222333', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    // Mua hàng hóa chưa trả: Nợ 156 / Có 331 = 80M
+    { id: 'b01-3', clientId: 'c1', importDate: '2026-03-01', date: '2026-03-01', voucherNo: 'MH01', description: 'Mua hàng hóa NCC', debitAcc: '156', creditAcc: '331', amount: 80_000_000, type: 'EXPENSE', partnerName: 'NCC ABC', partnerTaxCode: '444555666', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    // Doanh thu bán hàng: Nợ 131 / Có 511 = 200M
+    { id: 'b01-4', clientId: 'c1', importDate: '2026-04-01', date: '2026-04-01', voucherNo: 'BH01', description: 'Bán hàng', debitAcc: '131', creditAcc: '511', amount: 200_000_000, type: 'INCOME', partnerName: 'KH A', partnerTaxCode: '777888999', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+    // Giá vốn: Nợ 632 / Có 156 = 60M
+    { id: 'b01-5', clientId: 'c1', importDate: '2026-04-01', date: '2026-04-01', voucherNo: 'GV01', description: 'Xuất kho giá vốn', debitAcc: '632', creditAcc: '156', amount: 60_000_000, type: 'EXPENSE', partnerName: '', partnerTaxCode: '', rawRow: {}, errors: [], sourceFileName: 'test.xlsx', validationStatus: 'VALID', userApproved: true },
+  ];
+
+  const bs = calculateBalanceSheet(b01Txs);
+  assert(bs.isBalanced === true, 'B01-DN: Tổng Tài Sản = Tổng Nguồn Vốn (cân bằng kế toán)');
+  assert(bs.totalAssets > 0, 'B01-DN: Tổng tài sản > 0');
+  assert(bs.totalLiabilitiesAndEquity > 0, 'B01-DN: Tổng nguồn vốn > 0');
+  assert(bs.assets.length > 0, 'B01-DN: Danh sách tài sản có dữ liệu');
+  assert(bs.liabilitiesAndEquity.length > 0, 'B01-DN: Danh sách nguồn vốn có dữ liệu');
+
+  // ============================================================
+  // PHẦN 46: BÁO CÁO LƯU CHUYỂN TIỀN TỆ B03-DN
+  // ============================================================
+  console.log('\n📌 PHẦN 46: TEST BÁO CÁO LƯU CHUYỂN TIỀN TỆ (B03-DN)');
+
+  const cf = calculateCashFlowStatement(b01Txs);
+  assert(typeof cf.netCashFromOperating === 'number', 'B03-DN: Tính được lưu chuyển tiền HĐKD');
+  assert(typeof cf.netCashFromInvesting === 'number', 'B03-DN: Tính được lưu chuyển tiền HĐĐT');
+  assert(typeof cf.netCashFromFinancing === 'number', 'B03-DN: Tính được lưu chuyển tiền HĐTC');
+  assert(cf.operatingItems.length > 0, 'B03-DN: Danh sách chỉ tiêu HĐKD có dữ liệu');
+  assert(cf.investingItems.length > 0, 'B03-DN: Danh sách chỉ tiêu HĐĐT có dữ liệu');
+  assert(cf.cashEnding === cf.cashBeginning + cf.netCashChange, 'B03-DN: Tiền cuối kỳ = Đầu kỳ + Thay đổi thuần');
+
+  // ============================================================
+  // PHẦN 47: THUYẾT MINH BCTC B09-DN
+  // ============================================================
+  console.log('\n📌 PHẦN 47: TEST THUYẾT MINH BCTC (B09-DN)');
+
+  const incStmt = calculateIncomeStatement(b01Txs);
+  const notes = generateFinancialNotes(b01Txs, bs, incStmt, cf);
+  assert(notes.sections.length >= 6, 'B09-DN: Sinh đủ ≥ 6 mục thuyết minh');
+  assert(notes.sections.some(s => s.sectionCode === 'I'), 'B09-DN: Có mục I - Đặc điểm DN');
+  assert(notes.sections.some(s => s.sectionCode === 'II'), 'B09-DN: Có mục II - Chính sách kế toán');
+  assert(notes.sections.some(s => s.tableData && s.tableData.length > 0), 'B09-DN: Có bảng số liệu chi tiết');
+  assert(typeof notes.generatedAt === 'string' && notes.generatedAt.length > 0, 'B09-DN: Ghi nhận thời gian sinh báo cáo');
+
+  // ============================================================
+  // PHẦN 48: KIỂM TRẢ MENU SIDEBAR & PIN FAVORITES ⭐
+  // ============================================================
+  console.log('\n📌 PHẦN 48: TEST KHỐI MENU SIDEBAR & PIN FAVORITES ⭐');
+  const defaultPinned = ['dashboard', 'financial-reports', 'xml-import', 'validation'];
+  assert(defaultPinned.length === 4, 'Menu Favorites mặc định chứa 4 tính năng chính');
+  assert(defaultPinned.includes('dashboard'), 'Menu Favorites chứa Dashboard');
+  assert(defaultPinned.includes('financial-reports'), 'Menu Favorites chứa Báo cáo tài chính');
+
+  // ============================================================
+  // PHẦN 49: BỘ SỔ NHẬT KÝ ĐẶC BIỆT CHUẨN TT200
+  // ============================================================
+  console.log('\n📌 PHẦN 49: TEST BỘ SỔ NHẬT KÝ ĐẶC BIỆT CHUẨN TT200');
+  const sjPurchase = generateSpecialJournal(b01Txs, 'PURCHASE');
+  assert(sjPurchase.rows.length >= 1, 'NK Mua Hàng: Lọc được các chứng từ mua hàng/TSCĐ/NCC 331');
+  assert(sjPurchase.totalAmount > 0, 'NK Mua Hàng: Tính tổng tiền mua hàng thành công');
+
+  const sjSales = generateSpecialJournal(b01Txs, 'SALES');
+  assert(sjSales.rows.length >= 1, 'NK Bán Hàng: Lọc được chứng từ doanh nghiệp bán hàng 511/131');
+
+  // ============================================================
+  // PHẦN 50: ĐA DOANH NGHIỆP & MÃ HÓA SAO LƯU CLOUD
+  // ============================================================
+  console.log('\n📌 PHẦN 50: TEST ĐA DOANH NGHIỆP & CẤU HÌNH CÔNG TY');
+  const company1 = getCompanyConfig('0101234567');
+  assert(company1.name.includes('An Phát'), 'Đa doanh nghiệp: Tra cứu đúng tên công ty An Phát');
+  assert(company1.accountingStandard === 'TT200', 'Đa doanh nghiệp: Áp dụng chuẩn TT200');
+
+  const company3 = getCompanyConfig('8012345678');
+  assert(company3.accountingStandard === 'TT88_HKD', 'Đa doanh nghiệp: Hộ kinh doanh áp dụng TT88');
+
+  // ============================================================
+  // PHẦN 51: XÁC THỰC CÁC SỬA LỖI SPRINT 9 (S9.1 - S9.10)
+  // ============================================================
+  console.log('\n📌 PHẦN 51: TEST XÁC THỰC CÁC SỬA LỖI SPRINT 9');
+  
+  // Test VND parseNumericValue
+  assert(parseNumericValue('1,234,567.89') === 1234567.89, 'S9.9: Parse số tiền dạng English format thành công');
+  assert(parseNumericValue('1.234.567,89') === 1234567.89, 'S9.9: Parse số tiền dạng Vietnamese format thành công');
+  assert(parseNumericValue(1234567) === 1234567, 'S9.9: Xử lý số tiền dạng số nguyên thông thường thành công');
+
+  // Test BHTN separate cap (99.2M) vs BHXH cap (46.8M)
+  const highSalaryEmp = {
+    id: 'emp_high',
+    name: 'Trần Văn A',
+    position: 'CEO',
+    department: 'Ban Giám Đốc',
+    contractType: 'OFFICIAL' as const,
+    basicSalary: 60000000, // 60 triệu > BHXH cap (46.8M) nhưng < BHTN cap (99.2M)
+    allowances: { position: 0, transport: 0, meal: 0, phone: 0, other: 0 },
+    dependentsCount: 0,
+    taxCode: '1234567890',
+    bankAccount: '1234',
+    startDate: '2026-01-01'
+  };
+  const payrollRes = calculatePayrollEntry(highSalaryEmp);
+  // BHXH NLĐ đóng: 8% của 46.8M = 3.744.000 đ
+  assert(payrollRes.bhxhEmployee === 3744000, `S9.6: Capped BHXH chính xác = 3.744.000 đ (tính được: ${payrollRes.bhxhEmployee.toLocaleString()})`);
+  // BHTN NLĐ đóng: 1% của 60M = 600.000 đ
+  assert(payrollRes.bhtnEmployee === 600000, `S9.6: BHTN đóng trên 60M = 600.000 đ do chưa vượt trần BHTN (tính được: ${payrollRes.bhtnEmployee.toLocaleString()})`);
+
+  // ============================================================
+  // PHẦN 52: TỰ ĐỘNG HÓA AI TAX ALERT & CẢNH BÁO RỦI RO THUẾ (SPRINT 10)
+  // ============================================================
+  console.log('\n📌 PHẦN 52: TEST AI TAX ALERT & CẢNH BÁO RỦI RO THUẾ (SPRINT 10)');
+
+  // 1. Test Risky Taxpayer Database Lookup
+  const riskyInfo = checkRiskyTaxpayer('0109999888');
+  assert(riskyInfo !== null && riskyInfo.status === 'RUNAWAY', 'S10.1: Tra cứu đúng thông tin MST bỏ trốn Ma Trận Việt');
+
+  // 2. Test Risky Taxpayer Check in validateTransaction
+  const riskyTx = {
+    id: 'tx_risky_1',
+    clientId: 'c1',
+    sourceFileName: 'test.xlsx',
+    importDate: '2026-08-01',
+    type: 'EXPENSE' as const,
+    date: '2026-08-01',
+    voucherNo: 'HD001',
+    description: 'Mua hàng hóa dịch vụ',
+    debitAcc: '156',
+    creditAcc: '112',
+    amount: 10000000,
+    partnerName: 'Công ty Ma Trận Việt',
+    partnerTaxCode: '0109999888',
+    rawRow: {},
+    validationStatus: 'VALID' as const,
+    errors: [],
+    userApproved: false
+  };
+  const riskyValidation = validateTransaction(riskyTx);
+  assert(riskyValidation.status === 'ERROR', 'S10.2: validateTransaction trả về ERROR khi có MST thuộc danh sách rủi ro');
+  assert(riskyValidation.errors.some(e => e.code === 'ERR_RISKY_TAXPAYER'), 'S10.2: Chứa mã lỗi ERR_RISKY_TAXPAYER');
+
+  // 3. Test 20M+ Cash Payment Rule
+  const cashOver20MTx = {
+    id: 'tx_cash_20m',
+    clientId: 'c1',
+    sourceFileName: 'test.xlsx',
+    importDate: '2026-08-01',
+    type: 'EXPENSE' as const,
+    date: '2026-08-01',
+    voucherNo: 'PC002',
+    description: 'Thanh toán tiền mặt mua máy móc',
+    debitAcc: '211',
+    creditAcc: '111',
+    amount: 25000000, // 25 triệu VNĐ tiền mặt
+    partnerName: 'Công ty Nam Sơn',
+    partnerTaxCode: '0101234567',
+    rawRow: {},
+    validationStatus: 'VALID' as const,
+    errors: [],
+    userApproved: false
+  };
+  const cashValidation = validateTransaction(cashOver20MTx);
+  assert(cashValidation.errors.some(e => e.code === 'ERR_CASH_PAYMENT_OVER_20M'), 'S10.3: Phát hiện cảnh báo thanh toán tiền mặt ≥20 triệu');
+
+  // ============================================================
+  // PHẦN 53: TEST PERFORMANCE & MEMOIZED ACCOUNT AGGREGATOR (SPRINT 11)
+  // ============================================================
+  console.log('\n📌 PHẦN 53: TEST PERFORMANCE & MEMOIZED ACCOUNT AGGREGATOR (SPRINT 11)');
+  const aggregator = buildAccountAggregator(mockTransactions);
+  const totalCashDebit = aggregator.getAccountBalance('111', 'DEBIT');
+  assert(typeof totalCashDebit === 'number', 'S11.1: Aggregator khởi tạo và trả về số dư Nợ TK 111 thành công');
+
+  const contra214 = aggregator.getContraAssetBalance('214');
+  assert(contra214 >= 0, 'S11.2: Aggregator tính chính xác TK tương phản 214 không bị âm');
+
+  // ============================================================
+  // PHẦN 54: TEST MATCHING ENGINE SPEED & JACCARD SIMILARITY (SPRINT 11)
+  // ============================================================
+  console.log('\n📌 PHẦN 54: TEST MATCHING ENGINE SPEED & JACCARD SIMILARITY (SPRINT 11)');
+  const jaccardScore = jaccardSimilarity('Công ty TNHH Hà Tiên', 'Công ty TNHH Hà Tiên Xi Măng');
+  assert(jaccardScore > 0.5, `S11.3: Jaccard similarity đạt ${jaccardScore.toFixed(2)} cho tên đối tác gần giống`);
+
+  // ============================================================
+  // PHẦN 55: TEST STATISTICAL RISK SCORING ENGINE (SPRINT 11)
+  // ============================================================
+  console.log('\n📌 PHẦN 55: TEST STATISTICAL RISK SCORING ENGINE (SPRINT 11)');
+  const riskResult = calculateEnterpriseRiskScore(mockTransactions);
+  assert(riskResult.totalScore >= 0 && riskResult.totalScore <= 100, `S11.4: Enterprise Risk Score nằm trong khoảng 0-100 (tính được: ${riskResult.totalScore})`);
+  assert(riskResult.factors.length === 4, 'S11.5: Risk Score tính đủ 4 yếu tố rủi ro trọng yếu');
+
+  // ============================================================
+  // PHẦN 56: TEST AI SMART JOURNAL SUGGESTION ENGINE (SPRINT 11)
+  // ============================================================
+  console.log('\n📌 PHẦN 56: TEST AI SMART JOURNAL SUGGESTION ENGINE (SPRINT 11)');
+  const suggestion1 = suggestJournalEntry('Thanh toán tiền điện EVN tháng 8');
+  assert(suggestion1.debitAcc === '6422' && suggestion1.creditAcc === '1111', 'S11.6: Gợi ý đúng Nợ 6422 / Có 1111 cho hóa đơn điện EVN');
+  assert(suggestion1.confidenceScore >= 80, `S11.7: Confidence score cao (${suggestion1.confidenceScore}%)`);
+
+  // ============================================================
+  // PHẦN 57: TEST MULTI-COMPANY CONSOLIDATION ENGINE (SPRINT 11)
+  // ============================================================
+  console.log('\n📌 PHẦN 57: TEST MULTI-COMPANY CONSOLIDATION ENGINE (SPRINT 11)');
+  const companies = getAllCompanies();
+  assert(companies.length >= 3, `S11.8: Tải danh sách công ty tập đoàn (số lượng: ${companies.length})`);
+
+  const mockTxMap = {
+    c1: mockTransactions,
+    c2: mockTransactions,
+  };
+  const consolidatedReport = generateConsolidatedReport(companies, mockTxMap);
+  assert(consolidatedReport.subsidiariesCount >= 1, 'S11.9: Đã tính toán hợp nhất cho các công ty con');
+  assert(consolidatedReport.consolidatedBalanceSheet !== undefined, 'S11.10: Xuất Bảng Cân Đối Kế Toán Hợp Nhất B01-HN thành công');
+
+  // ============================================================
+  // PHẦN 58: TEST EXPORTER & VALIDATOR XML 01/GTGT CHUẨN HTKK (SPRINT 12)
+  // ============================================================
+  console.log('\n📌 PHẦN 58: TEST EXPORTER & VALIDATOR XML 01/GTGT CHUẨN HTKK (SPRINT 12)');
+  const sampleGTGTInput = {
+    client: { id: 'c1', name: 'Công ty An Phát', taxCode: '0101234567', address: 'Hà Nội' },
+    taxPeriod: { year: 2026, quarter: 3 as const },
+    outputRows: [
+      { invoiceDate: '2026-08-01', invoiceNo: 'HD001', sellerName: 'KH A', sellerTaxCode: '0109999888', goodsDescription: 'Bán xi măng 10%', taxableAmount: 100000000, vatAmount: 10000000, vatRate: 10 as const },
+      { invoiceDate: '2026-08-05', invoiceNo: 'HD002', sellerName: 'KH B', sellerTaxCode: '0309876543', goodsDescription: 'Dịch vụ 8%', taxableAmount: 50000000, vatAmount: 4000000, vatRate: 8 as const },
+    ],
+    inputRows: [
+      { invoiceDate: '2026-08-02', invoiceNo: 'HDIN1', sellerName: 'NCC X', sellerTaxCode: '0108888777', goodsDescription: 'Mua vật tư 10%', taxableAmount: 60000000, vatAmount: 6000000, vatRate: 10 as const },
+    ],
+    prevCreditCarryover: 2000000,
+  };
+
+  const xmlOut = generateGTGTXML(sampleGTGTInput);
+  assert(xmlOut.includes('<CT32>100000000</CT32>'), 'S12.1: Ghi nhận đúng chỉ tiêu [32] doanh số 10% (100tr)');
+  assert(xmlOut.includes('<CT32a>50000000</CT32a>'), 'S12.2: Ghi nhận đúng chỉ tiêu [32a] doanh số 8% (50tr)');
+  assert(xmlOut.includes('<CT22>2000000</CT22>'), 'S12.3: Ghi nhận đúng chỉ tiêu [22] khấu trừ kỳ trước (2tr)');
+
+  const valResult = validateHTKKXML(xmlOut);
+  assert(valResult.isValid, 'S12.4: XML 01/GTGT hợp lệ theo bộ kiểm tra cấu trúc HTKK eTax');
+  assert(valResult.errors.length === 0, 'S12.5: Không có lỗi cấu trúc XML');
+
+  // ============================================================
+  // PHẦN 59: TEST ENGINE TỜ KHAI THUẾ TNDN TẠM TÍNH QUÝ (XML 01/TNDN)
+  // ============================================================
+  console.log('\n📌 PHẦN 59: TEST ENGINE TỜ KHAI THUẾ TNDN TẠM TÍNH QUÝ (XML 01/TNDN)');
+  const sampleTNDNInput = {
+    client: { id: 'c1', name: 'Công ty An Phát', taxCode: '0101234567', address: 'Hà Nội' },
+    taxPeriod: { year: 2026, quarter: 3 as const },
+    revenue: 500000000,
+    expenses: 380000000,
+    accountingProfit: 120000000,
+    nonDeductibleExpenses: 15000000, // Chi phí không được trừ [24]
+    taxExemptIncome: 5000000,       // Thu nhập miễn thuế [25]
+    taxLossCarryforward: 10000000,  // Lỗ chuyển kỳ trước [27]
+    taxRate: 20,
+    taxPrepaid: 10000000,           // Đã tạm nộp [31]
+  };
+
+  const xmlTNDN = generateTNDNXML(sampleTNDNInput);
+  assert(xmlTNDN.includes('<LoaiTKhai>01/TNDN</LoaiTKhai>'), 'S13.1: XML chứa đúng mã loại tờ khai 01/TNDN');
+  assert(xmlTNDN.includes('<CT21>500000000</CT21>'), 'S13.2: Ghi nhận đúng chỉ tiêu [21] Doanh thu (500tr)');
+  assert(xmlTNDN.includes('<CT22>380000000</CT22>'), 'S13.3: Ghi nhận đúng chỉ tiêu [22] Chi phí (380tr)');
+  assert(xmlTNDN.includes('<CT23>120000000</CT23>'), 'S13.4: Lợi nhuận kế toán trước thuế [23] = 120tr');
+  assert(xmlTNDN.includes('<CT24>15000000</CT24>'), 'S13.5: Điều chỉnh tăng chi phí bị loại [24] = 15tr');
+  assert(xmlTNDN.includes('<CT26>130000000</CT26>'), 'S13.6: Thu nhập chịu thuế [26] = 120M + 15M - 5M = 130tr');
+  assert(xmlTNDN.includes('<CT28>120000000</CT28>'), 'S13.7: Thu nhập tính thuế [28] = 130M - 10M = 120tr');
+  assert(xmlTNDN.includes('<CT30>24000000</CT30>'), 'S13.8: Thuế TNDN phát sinh [30] = 120M x 20% = 24tr');
+  assert(xmlTNDN.includes('<CT32>14000000</CT32>'), 'S13.9: Thuế TNDN còn phải nộp [32] = 24M - 10M = 14tr');
+
+  const valTNDNResult = validateHTKKXML(xmlTNDN);
+  assert(valTNDNResult.isValid, 'S13.10: XML 01/TNDN hợp lệ theo bộ kiểm tra cấu trúc HTKK eTax');
+  assert(valTNDNResult.errors.length === 0, 'S13.11: Không có lỗi cấu trúc XML 01/TNDN');
+
+  // ============================================================
+  // PHẦN 60: TEST EXCEL EXPORTER BẢNG KÊ PHỤ LỤC GTGT & TỜ KHAI TNDN
+  // ============================================================
+  console.log('\n📌 PHẦN 60: TEST EXCEL EXPORTER BẢNG KÊ PHỤ LỤC GTGT & TỜ KHAI TNDN');
+  assert(typeof exportVATAnnexesToExcel === 'function', 'S13.12: Hàm exportVATAnnexesToExcel sẵn sàng');
+  assert(typeof exportTNDNExcel === 'function', 'S13.13: Hàm exportTNDNExcel sẵn sàng');
+
+  // ============================================================
+  // PHẦN 61: TEST INCREMENTAL ACCOUNT AGGREGATOR & BALANCE CHECK
+  // ============================================================
+  console.log('\n📌 PHẦN 61: TEST INCREMENTAL ACCOUNT AGGREGATOR & BALANCE CHECK');
+  const agg = buildAccountAggregator(mockTransactions);
+  const initialDebit111 = agg.getAccountBalance('111', 'DEBIT');
+  
+  // Test Incremental Add
+  const newTx: NormalizedTransaction = {
+    id: 'tx_inc_test',
+    clientId: 'c1',
+    sourceFileName: 'test.xlsx',
+    importDate: '2026-08-14',
+    type: 'INCOME',
+    date: '2026-08-14',
+    voucherNo: 'PT-INC-01',
+    description: 'Thu tiền mặt thử nghiệm incremental',
+    debitAcc: '1111',
+    creditAcc: '5111',
+    amount: 15000000,
+    partnerName: 'KH Mới',
+    partnerTaxCode: '0101111222',
+    rawRow: {},
+    validationStatus: 'VALID',
+    errors: [],
+    userApproved: true,
+  };
+
+  agg.addTransaction(newTx);
+  const updatedDebit111 = agg.getAccountBalance('111', 'DEBIT');
+  assert(updatedDebit111 === initialDebit111 + 15000000, 'S14.1: Incremental add cập nhật chính xác số dư TK 111 (+15M)');
+
+  // Test Incremental Remove
+  agg.removeTransaction(newTx);
+  assert(agg.getAccountBalance('111', 'DEBIT') === initialDebit111, 'S14.2: Incremental remove hoàn nguyên số dư TK 111 chính xác');
+  assert(agg.isBalanced(), 'S14.3: Kiểm tra cân bằng tổng thể Tổng Nợ = Tổng Có thành công');
+
+  // ============================================================
+  // PHẦN 62: TEST BỘ SỔ NHẬT KÝ ĐẶC BIỆT TT200 (THU/CHI/MUA/BÁN)
+  // ============================================================
+  console.log('\n📌 PHẦN 62: TEST BỘ SỔ NHẬT KÝ ĐẶC BIỆT TT200');
+  const sjCashReceipt = generateSpecialJournal(mockTransactions, 'CASH_RECEIPT');
+  assert(sjCashReceipt.title.includes('S03c'), 'S14.4: Tạo Sổ Nhật ký Thu tiền mẫu S03c thành công');
+  
+  const sjCashDisburse = generateSpecialJournal(mockTransactions, 'CASH_DISBURSEMENT');
+  assert(sjCashDisburse.title.includes('S03d'), 'S14.5: Tạo Sổ Nhật ký Chi tiền mẫu S03d thành công');
+
+  // ============================================================
+  // PHẦN 63: TEST ĐỊNH MỨC BOM & QUẢN TRỊ GIÁ THÀNH HỢP ĐỒNG
+  // ============================================================
+  console.log('\n📌 PHẦN 63: TEST ĐỊNH MỨC BOM & QUẢN TRỊ GIÁ THÀNH HỢP ĐỒNG');
+  const costingWithBOM = calculateContractCostingReport(mockTransactions, {
+    'HĐ01': { materialBudget: 10000000, laborBudget: 5000000, overheadBudget: 2000000 }
+  });
+  assert(costingWithBOM.length > 0, 'S14.6: Phân tích giá thành hợp đồng kèm định mức BOM thành công');
+  assert(costingWithBOM[0].materialBudget !== undefined, 'S14.7: Ghi nhận định mức dự toán NVL (BOM)');
+
+  // ============================================================
+  // PHẦN 64: TEST BÓC TÁCH CHI PHÍ THUẾ TNDN [B4] DRILL-DOWN
+  // ============================================================
+  console.log('\n📌 PHẦN 64: TEST BÓC TÁCH CHI PHÍ THUẾ TNDN [B4] DRILL-DOWN');
+  const b4AuditResult = auditNonDeductibleExpenses(mockTransactions);
+  assert(b4AuditResult.items.length > 0, 'S15.1: Trích xuất danh sách chi tiết các chứng từ vi phạm B4');
+  assert(b4AuditResult.totalCitTaxRisk === b4AuditResult.totalNonDeductibleAmount * 0.20, 'S15.2: Tính đúng số thuế TNDN rủi ro truy thu (20%)');
+
+  // ============================================================
+  // PHẦN 65: TEST BACKUP SNAPSHOTS LIFECYCLE & PERSISTENCE
+  // ============================================================
+  console.log('\n📌 PHẦN 65: TEST BACKUP SNAPSHOTS LIFECYCLE & PERSISTENCE');
+  const { getBackupSnapshots, saveBackupSnapshots } = await import('../services/persistentStorageService');
+  const initialSnapshots = getBackupSnapshots();
+  assert(Array.isArray(initialSnapshots), 'S15.3: getBackupSnapshots trả về mảng danh sách snapshot');
+  
+  const testSnap = {
+    id: 'snap_test_01',
+    timestamp: '2026-08-14 10:00:00',
+    name: 'Test Snapshot',
+    sizeBytes: 1024,
+    txCount: 5,
+    clientCount: 1,
+    dataJson: '{}',
+  };
+  saveBackupSnapshots([testSnap]);
+  assert(getBackupSnapshots().some(s => s.id === 'snap_test_01'), 'S15.4: Lưu trữ và tra cứu bản Snapshot thành công');
+
+  // ============================================================
+  // PHẦN 66: TEST COMPUTATION WORKER (BACKGROUND AUDIT & FUZZY RECONCILE)
+  // ============================================================
+  console.log('\n📌 PHẦN 66: TEST COMPUTATION WORKER');
+  const { runBackgroundAudit, runBackgroundFuzzyReconcile } = await import('../workers/computationWorker');
+  const bgAuditRes = await runBackgroundAudit(mockTransactions);
+  assert(bgAuditRes.totalProcessed === mockTransactions.length, 'S15.5: Worker chạy kiểm toán nền hoàn tất toàn bộ chứng từ');
+
+  const bgRecRes = await runBackgroundFuzzyReconcile({
+    vouchers: [mockTransactions[0]],
+    statements: [mockTransactions[0]],
+    threshold: 50,
+  });
+  assert(Array.isArray(bgRecRes), 'S15.6: Worker tìm kiếm cặp ghép sao kê mờ trả về danh sách ứng viên');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

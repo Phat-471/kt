@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Client } from '../../types/accounting';
 import { Building2, Plus, Edit2, Trash2, CheckCircle2, User, Phone, MapPin, Calendar, FileText } from 'lucide-react';
 
@@ -205,10 +206,10 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
       </div>
 
       {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-4 my-auto max-h-[92vh] flex flex-col animate-scale-up">
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
               {editingClient ? 'Chỉnh Sửa Thông Tin Khách Hàng' : 'Thêm Khách Hàng / Job Mới'}
             </h3>
 
@@ -269,7 +270,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                    placeholder="Nguyễn Văn A"
+                    placeholder="Tên kế toán trưởng..."
                   />
                 </div>
                 <div>
@@ -279,11 +280,11 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                    placeholder="0987..."
+                    placeholder="09xx..."
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Niên độ kế toán</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Niên độ</label>
                   <input
                     type="number"
                     required
@@ -322,7 +323,8 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

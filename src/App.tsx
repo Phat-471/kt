@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, seedInitialDataIfNeeded, exportFullDatabaseJSON, logAuditEvent } from './services/storage';
 import { Client, MappingTemplate, NormalizedTransaction, ReconciliationPair } from './types/accounting';
 import { useShortcuts } from './hooks/useShortcuts';
+import { Building2 } from 'lucide-react';
 
 // Layout Components
 import { Sidebar, TabType } from './components/layout/Sidebar';
@@ -31,6 +32,7 @@ import { FinancialStatementsView } from './components/reports/FinancialStatement
 import { ShortcutModal } from './components/common/ShortcutModal';
 import { AISuggestionModal } from './components/common/AISuggestionModal';
 import { DigitalSigningModal } from './components/common/DigitalSigningModal';
+import { AboutModal } from './components/common/AboutModal';
 import { MiniFloatingToolbar } from './components/common/MiniFloatingToolbar';
 import { CorrectionLedgerView } from './components/audit/CorrectionLedgerView';
 import { AccountingLedgerView } from './components/reports/AccountingLedgerView';
@@ -50,6 +52,7 @@ export default function App() {
   const [isShortcutOpen, setIsShortcutOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isDigitalSignModalOpen, setIsDigitalSignModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
   const [currentIndustry, setCurrentIndustry] = useState<IndustryPresetType>('COMMERCE');
   const [isHeaderHidden, setIsHeaderHidden] = useState<boolean>(() => {
@@ -322,6 +325,7 @@ export default function App() {
             onOpenShortcuts={() => setIsShortcutOpen(true)}
             onOpenAIModal={() => setIsAIModalOpen(true)}
             onOpenDigitalSignModal={() => setIsDigitalSignModalOpen(true)}
+            onOpenAbout={() => setIsAboutModalOpen(true)}
             onToggleHideHeader={() => {
               setIsHeaderHidden(true);
               localStorage.setItem('accodesk_hide_header', 'true');
@@ -407,8 +411,24 @@ export default function App() {
                   clientTaxCode={activeClient.taxCode}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-[60vh] text-slate-500">
-                  <p>Vui lòng chọn hoặc tạo Khách hàng/Job trước khi đọc Hóa Đơn.</p>
+                <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+                  <div className="w-16 h-16 rounded-3xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 flex items-center justify-center shadow-lg border border-brand-200 dark:border-brand-800">
+                    <Building2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-200">
+                      Chưa Chọn Doanh Nghiệp / Job Kế Toán
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
+                      Vui lòng chọn khách hàng trên thanh công cụ hoặc bấm nút dưới đây để tạo hồ sơ doanh nghiệp mới.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('clients')}
+                    className="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-brand-500/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+                  >
+                    + Tạo Khách Hàng / Job Kế Toán Ngay
+                  </button>
                 </div>
               )}
             </div>
@@ -523,6 +543,11 @@ export default function App() {
       <DigitalSigningModal
         isOpen={isDigitalSignModalOpen}
         onClose={() => setIsDigitalSignModalOpen(false)}
+      />
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+        totalTxCount={transactions.length}
       />
     </div>
   );
