@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Client, MappingTemplate, NormalizedTransaction, ReconciliationPair, AuditLogItem } from '../types/accounting';
+import { Client, MappingTemplate, NormalizedTransaction, ReconciliationPair, AuditLogItem, PrepaidExpense } from '../types/accounting';
 
 export class AccountingDatabase extends Dexie {
   clients!: Table<Client, string>;
@@ -7,15 +7,17 @@ export class AccountingDatabase extends Dexie {
   transactions!: Table<NormalizedTransaction, string>;
   reconciliations!: Table<ReconciliationPair, string>;
   auditLogs!: Table<AuditLogItem, string>;
+  prepaidExpenses!: Table<PrepaidExpense, string>;
 
   constructor() {
     super('AccoDeskDB');
-    this.version(2).stores({
+    this.version(3).stores({
       clients: 'id, code, taxCode, financialYear',
       mappingTemplates: 'id, clientId, name',
       transactions: 'id, clientId, type, date, voucherNo, validationStatus, userApproved, reconciledStatus, sourceFileName',
       reconciliations: 'id, clientId, voucherId, statementId, status',
       auditLogs: 'id, clientId, timestamp, action',
+      prepaidExpenses: 'id, clientId, code, category, startDate, expenseAccount',
     });
   }
 }

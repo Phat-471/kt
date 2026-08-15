@@ -53,6 +53,7 @@ export type TabType =
   | 'accounting-ledger'
   | 'payroll'
   | 'fixed-assets'
+  | 'prepaid-expenses'
   | 'etax'
   | 'trial-balance-pivot'
   | 'help';
@@ -126,6 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'tax-reports': { id: 'tax-reports', label: 'Báo Cáo Thuế & Kho', icon: Calculator },
     'etax': { id: 'etax', label: 'Khai Thuế eTax (GTGT/TNDN/TNCN)', icon: FileSpreadsheet },
     'fixed-assets': { id: 'fixed-assets', label: 'Tài Sản Cố Định & Khấu Hao', icon: Building2 },
+    'prepaid-expenses': { id: 'prepaid-expenses', label: 'Phân Bổ Chi Phí Trả Trước (242)', icon: Calculator },
     'payroll': { id: 'payroll', label: 'Bảng Lương & BHXH', icon: Users },
     'contract-costing': { id: 'contract-costing', label: 'Giá Thành Hợp Đồng & Hoàn Thuế', icon: Briefcase },
     'accounting-ledger': { id: 'accounting-ledger', label: 'Sổ Kế Toán TT200 (Nhật Ký & Sổ Cái)', icon: BookMarked },
@@ -187,8 +189,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'step4_specialized',
       title: '💼 4. NGHIỆP VỤ & KHÓA SỔ',
       items: [
-        allMenuItemsMap['payroll'],
+        allMenuItemsMap['prepaid-expenses'],
         allMenuItemsMap['fixed-assets'],
+        allMenuItemsMap['payroll'],
         allMenuItemsMap['contract-costing'],
         allMenuItemsMap['month-end-closing'],
       ],

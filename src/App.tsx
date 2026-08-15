@@ -36,6 +36,7 @@ import { CorrectionLedgerView } from './components/audit/CorrectionLedgerView';
 import { AccountingLedgerView } from './components/reports/AccountingLedgerView';
 import { PayrollView } from './components/payroll/PayrollView';
 import { FixedAssetView } from './components/assets/FixedAssetView';
+import { PrepaidExpenseView } from './components/prepaid/PrepaidExpenseView';
 import { ETaxView } from './components/tax/ETaxView';
 import { TrialBalancePivotView } from './components/reports/TrialBalancePivotView';
 import { UserRole } from './services/rolePermissionService';
@@ -122,6 +123,11 @@ export default function App() {
 
   const reconciliations = useLiveQuery(
     () => (activeClientId ? db.reconciliations.where('clientId').equals(activeClientId).toArray() : []),
+    [activeClientId]
+  ) || [];
+
+  const prepaidExpenses = useLiveQuery(
+    () => (activeClientId ? db.prepaidExpenses.where('clientId').equals(activeClientId).toArray() : []),
     [activeClientId]
   ) || [];
 
@@ -507,6 +513,14 @@ export default function App() {
 
           {activeTab === 'fixed-assets' && (
             <FixedAssetView activeClient={activeClient} />
+          )}
+
+          {activeTab === 'prepaid-expenses' && (
+            <PrepaidExpenseView
+              activeClient={activeClient}
+              transactions={transactions}
+              prepaidExpenses={prepaidExpenses}
+            />
           )}
 
           {activeTab === 'etax' && (

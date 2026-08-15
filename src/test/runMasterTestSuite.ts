@@ -48,6 +48,12 @@ import { generateGTGTXML, generatePITXML, generateTNDNXML, validateHTKKXML } fro
 import { exportVATAnnexesToExcel, exportTNDNExcel } from '../services/excelService';
 import { calculateTrialBalance } from '../services/trialBalancePivotEngine';
 import { buildAccountAggregator, AccountAggregator } from '../services/accountAggregator';
+import { 
+  calculateMonthlyAllocation, 
+  calculatePrepaidAllocationSchedule, 
+  calculatePrepaidSummary, 
+  generatePrepaidAllocationTransaction 
+} from '../services/prepaidExpenseService';
 import { calculateEnterpriseRiskScore } from '../services/riskScoreEngine';
 import { suggestJournalEntry } from '../services/journalSuggestService';
 import { getAllCompanies, saveCompanyConfig } from '../services/multiCompanyService';
@@ -979,6 +985,43 @@ async function runAllTests() {
     threshold: 50,
   });
   assert(Array.isArray(bgRecRes), 'S15.6: Worker tìm kiếm cặp ghép sao kê mờ trả về danh sách ứng viên');
+
+  // ============================================================
+  // PHẦN 67: TEST PHÂN BỔ CHI PHÍ TRẢ TRƯỚC (TK 242) CHUẨN TT200
+  // ============================================================
+  console.log('\n📌 PHẦN 67: TEST PHÂN BỔ CHI PHÍ TRẢ TRƯỚC (TK 242) CHUẨN TT200');
+  const mockPrepaidItem = {
+    id: 'test_prepaid_01',
+    clientId: 'client-1',
+    code: 'CCDC-001',
+    name: 'Máy tính bàn Dell Vostro Kế Toán',
+    category: 'CCDC' as const,
+    originalAmount: 24000000,
+    startDate: '2026-01-01',
+    allocationMonths: 24,
+    expenseAccount: '6422',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  const monthlyPB = calculateMonthlyAllocation(mockPrepaidItem.originalAmount, mockPrepaidItem.allocationMonths);
+  assert(monthlyPB === 1000000, 'S16.1: Tính đúng mức phân bổ bình quân mỗi tháng (24M / 24 tháng = 1,000,000 đ)');
+
+  const schedules2026 = calculatePrepaidAllocationSchedule(mockPrepaidItem, 2026);
+  assert(schedules2026.length === 12, 'S16.2: Sinh đủ lịch trình 12 tháng cho niên độ 2026');
+  assert(schedules2026[0].amount === 1000000, 'S16.3: Phân bổ tháng 1 năm 2026 là 1,000,000 đ');
+  assert(schedules2026[11].accumulatedAmount === 12000000, 'S16.4: Lũy kế phân bổ hết năm 2026 là 12,000,000 đ (12 tháng)');
+  assert(schedules2026[11].remainingAmount === 12000000, 'S16.5: Giá trị còn lại cuối năm 2026 là 12,000,000 đ');
+
+  const summaryPB = calculatePrepaidSummary([mockPrepaidItem], 2026, 6);
+  assert(summaryPB.totalOriginal === 24000000, 'S16.6: Tổng nguyên giá CCDC phản ánh chính xác 24,000,000 đ');
+  assert(summaryPB.currentMonthAllocation === 1000000, 'S16.7: Mức trích phân bổ tháng 6 là 1,000,000 đ');
+
+  const autoTx = generatePrepaidAllocationTransaction(mockPrepaidItem, 3, 2026, 'client-1');
+  assert(autoTx.debitAcc === '6422', 'S16.8: Bút toán sinh tự động ghi Nợ TK 6422');
+  assert(autoTx.creditAcc === '242', 'S16.9: Bút toán sinh tự động ghi Có TK 242');
+  assert(autoTx.amount === 1000000, 'S16.10: Số tiền bút toán khớp chính xác 1,000,000 đ');
+  assert(autoTx.date === '2026-03-31', 'S16.11: Ngày chứng từ hạch toán là ngày cuối cùng của tháng (2026-03-31)');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

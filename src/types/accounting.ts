@@ -128,3 +128,33 @@ export interface AdvancedFilterParams {
   maxAmount: string;
   status: string;
 }
+
+export interface PrepaidExpense {
+  id: string;
+  clientId: string;
+  code: string;
+  name: string;
+  category: 'CCDC' | 'RENT' | 'SOFTWARE' | 'REPAIR' | 'INSURANCE' | 'OTHER';
+  originalAmount: number;
+  startDate: string;
+  allocationMonths: number;
+  expenseAccount: string;
+  allocatedAmount?: number;
+  remainingAmount?: number;
+  monthlyAmount?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrepaidAllocationSchedule {
+  month: number;
+  year: number;
+  periodKey: string;
+  amount: number;
+  accumulatedAmount: number;
+  remainingAmount: number;
+  isAllocated: boolean;
+  transactionId?: string;
+}
+
