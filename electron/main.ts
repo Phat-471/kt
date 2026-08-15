@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-process.env.APP_ROOT = path.join(__dirname, '..');
+const appRootDir = process.env.APP_ROOT || path.join(__dirname, '..');
+process.env.APP_ROOT = appRootDir;
 
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron');
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist');
+export const MAIN_DIST = path.join(appRootDir, 'dist-electron');
+export const RENDERER_DIST = path.join(appRootDir, 'dist');
 
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST;
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(appRootDir, 'public') : RENDERER_DIST;
 
 let win: BrowserWindow | null;
 
@@ -20,7 +21,7 @@ function createWindow() {
     ? path.join(__dirname, 'preload.mjs')
     : path.join(__dirname, 'preload.js');
 
-  const iconPath = path.join(process.env.APP_ROOT, 'public', 'favicon.svg');
+  const iconPath = path.join(appRootDir, 'public', 'favicon.svg');
 
   win = new BrowserWindow({
     title: 'Kế Toán PRO — Phần Mềm Kế Toán Doanh Nghiệp',
