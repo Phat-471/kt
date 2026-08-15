@@ -128,12 +128,22 @@ export default function App() {
   ) || [];
 
   const prepaidExpenses = useLiveQuery(
-    () => (activeClientId ? db.prepaidExpenses.where('clientId').equals(activeClientId).toArray() : []),
+    () => {
+      if (!activeClientId) return db.prepaidExpenses.toArray();
+      return db.prepaidExpenses
+        .filter(p => !p.clientId || p.clientId === activeClientId || p.clientId === 'default-client')
+        .toArray();
+    },
     [activeClientId]
   ) || [];
 
   const unionTransactions = useLiveQuery(
-    () => (activeClientId ? db.unionTransactions.where('clientId').equals(activeClientId).toArray() : []),
+    () => {
+      if (!activeClientId) return db.unionTransactions.toArray();
+      return db.unionTransactions
+        .filter(t => !t.clientId || t.clientId === activeClientId || t.clientId === 'default-client')
+        .toArray();
+    },
     [activeClientId]
   ) || [];
 

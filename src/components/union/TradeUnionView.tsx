@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Client, TradeUnionTransaction, TradeUnionCategory, TradeUnionVoucherType } from '../../types/accounting';
 import { db, logAuditEvent } from '../../services/storage';
 import { 
@@ -59,6 +60,25 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [voucherFilter, setVoucherFilter] = useState<'ALL' | 'RECEIPT' | 'PAYMENT'>('ALL');
 
+  // Truy vấn trực tiếp từ Dexie để bảo đảm dữ liệu luôn cập nhật tức thì (Reactive Realtime)
+  const liveDbTransactions = useLiveQuery(
+    () => {
+      if (activeClient?.id) {
+        return db.unionTransactions
+          .filter(t => !t.clientId || t.clientId === activeClient.id || t.clientId === 'default-client')
+          .toArray();
+      }
+      return db.unionTransactions.toArray();
+    },
+    [activeClient?.id]
+  ) || [];
+
+  // Kết hợp transactions từ props và trực tiếp từ DB
+  const allTransactions = useMemo(() => {
+    if (unionTransactions && unionTransactions.length > 0) return unionTransactions;
+    return liveDbTransactions;
+  }, [unionTransactions, liveDbTransactions]);
+
   // Checkbox chọn hàng loạt
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -98,7 +118,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
 
   // Lọc danh sách giao dịch
   const filteredTransactions = useMemo(() => {
-    return unionTransactions.filter(tx => {
+    return allTransactions.filter(tx => {
       if (voucherFilter === 'RECEIPT' && tx.voucherType !== 'UNION_RECEIPT') return false;
       if (voucherFilter === 'PAYMENT' && tx.voucherType !== 'UNION_PAYMENT') return false;
       if (!searchTerm) return true;
@@ -110,12 +130,12 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
         getTradeUnionCategoryLabel(tx.category).toLowerCase().includes(term)
       );
     });
-  }, [unionTransactions, searchTerm, voucherFilter]);
+  }, [allTransactions, searchTerm, voucherFilter]);
 
   // Thống kê tổng hợp
   const summary = useMemo(() => {
-    return calculateTradeUnionSummary(unionTransactions);
-  }, [unionTransactions]);
+    return calculateTradeUnionSummary(allTransactions);
+  }, [allTransactions]);
 
   // Tính toán KPCĐ dự toán
   const budgetCalc = useMemo(() => {
@@ -142,7 +162,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
     setEditingItem(null);
     setModalType(type);
     const prefix = type === 'UNION_RECEIPT' ? 'PT-CĐ' : 'PC-CĐ';
-    const nextNum = unionTransactions.filter(t => t.voucherType === type).length + 1;
+    const nextNum = allTransactions.filter(t => t.voucherType === type).length + 1;
     
     setFormData({
       voucherType: type,
@@ -323,15 +343,15 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
   };
 
   const handleExportExcel = () => {
-    if (unionTransactions.length === 0) {
+    if (allTransactions.length === 0) {
       setNotification({ message: 'Không có dữ liệu để xuất báo cáo Excel!', type: 'ERROR' });
       return;
     }
-    exportUnionFinancialReportToExcel(unionTransactions, activeClient, selectedYear);
+    exportUnionFinancialReportToExcel(allTransactions, activeClient, selectedYear);
   };
 
   const tabs: TabItem<'JOURNAL' | 'BUDGET_ESTIMATE' | 'REPORT_B07'>[] = [
-    { id: 'JOURNAL', label: 'Sổ Quỹ Thu - Chi Công Đoàn', icon: Wallet, count: unionTransactions.length },
+    { id: 'JOURNAL', label: 'Sổ Quỹ Thu - Chi Công Đoàn', icon: Wallet, count: allTransactions.length },
     { id: 'BUDGET_ESTIMATE', label: 'Dự Toán KPCĐ (2%) & Đoàn Phí (1%)', icon: Calculator },
     { id: 'REPORT_B07', label: 'Quyết Toán Tài Chính CĐ (Mẫu B07-CĐ)', icon: FileSpreadsheet },
   ];
@@ -451,7 +471,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
                   onClick={() => setVoucherFilter('ALL')}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${voucherFilter === 'ALL' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
                 >
-                  Tất cả ({unionTransactions.length})
+                  Tất cả ({allTransactions.length})
                 </button>
                 <button
                   onClick={() => setVoucherFilter('RECEIPT')}
