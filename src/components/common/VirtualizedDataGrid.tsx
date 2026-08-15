@@ -1,7 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import * as ReactWindow from 'react-window';
-
-const List = (ReactWindow as any).FixedSizeList || (ReactWindow as any).default?.FixedSizeList || ReactWindow;
+import React, { useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 export interface ColumnDef<T> {
   header: string | React.ReactNode;
@@ -27,80 +25,89 @@ export function VirtualizedDataGrid<T>({
   emptyText = 'Không có dữ liệu hiển thị',
   keyExtractor,
 }: VirtualizedDataGridProps<T>) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [gridHeight, setGridHeight] = useState(height);
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.height > 0) {
-          setGridHeight(entry.contentRect.height - 40); // trừ chiều cao header 40px
-        }
-      }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  if (items.length === 0) {
-    return (
-      <div className="p-8 text-center text-slate-400 text-xs font-medium border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/30">
-        {emptyText}
-      </div>
-    );
-  }
-
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const item = items[index];
-    const isEven = index % 2 === 0;
-
-    return (
-      <div
-        style={style}
-        className={`flex items-center border-b border-slate-100 dark:border-slate-800/60 px-3 text-xs transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 ${
-          isEven ? 'bg-white dark:bg-slate-900/60' : 'bg-slate-50/60 dark:bg-slate-900/20'
-        }`}
-      >
-        {columns.map((col, colIdx) => (
-          <div
-            key={colIdx}
-            className={`truncate px-2 ${col.className || 'flex-1'}`}
-            style={typeof col.width === 'number' ? { width: col.width, flexShrink: 0 } : undefined}
-          >
-            {col.render(item, index)}
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 10,
+  });
 
   return (
-    <div ref={containerRef} className="w-full h-full border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm flex flex-col">
-      {/* Table Header */}
-      <div className="flex items-center bg-slate-100 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 px-3 py-2 text-[11px] font-bold text-slate-600 dark:text-slate-300 select-none shrink-0">
-        {columns.map((col, colIdx) => (
+    <div className="w-full flex flex-col border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+      <div className="flex bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 select-none z-10 shrink-0">
+        {columns.map((col, idx) => (
           <div
-            key={colIdx}
-            className={`truncate px-2 uppercase tracking-wider ${col.className || 'flex-1'}`}
-            style={typeof col.width === 'number' ? { width: col.width, flexShrink: 0 } : undefined}
+            key={idx}
+            className={`truncate px-2 ${col.className || ''}`}
+            style={{
+              flex: typeof col.width === 'number' ? `0 0 ${col.width}px` : (col.width || 1),
+              maxWidth: typeof col.width === 'number' ? `${col.width}px` : undefined,
+            }}
           >
             {col.header}
           </div>
         ))}
       </div>
 
-      {/* Virtualized Rows List */}
-      <div className="flex-1 w-full">
-        <List
-          height={Math.max(200, gridHeight)}
-          itemCount={items.length}
-          itemSize={rowHeight}
-          width="100%"
+      {items.length === 0 ? (
+        <div
+          className="flex items-center justify-center text-xs text-slate-400 dark:text-slate-500 py-12"
+          style={{ height }}
         >
-          {Row}
-        </List>
-      </div>
+          {emptyText}
+        </div>
+      ) : (
+        <div
+          ref={parentRef}
+          className="overflow-auto scrollbar-thin"
+          style={{ height }}
+        >
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const item = items[virtualRow.index];
+              const isEven = virtualRow.index % 2 === 0;
+
+              return (
+                <div
+                  key={keyExtractor(item, virtualRow.index)}
+                  className={`flex items-center px-4 border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-xs text-slate-700 dark:text-slate-300 ${
+                    isEven ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/40 dark:bg-slate-950/30'
+                  }`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {columns.map((col, colIdx) => (
+                    <div
+                      key={colIdx}
+                      className={`truncate px-2 ${col.className || ''}`}
+                      style={{
+                        flex: typeof col.width === 'number' ? `0 0 ${col.width}px` : (col.width || 1),
+                        maxWidth: typeof col.width === 'number' ? `${col.width}px` : undefined,
+                      }}
+                    >
+                      {col.render(item, virtualRow.index)}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

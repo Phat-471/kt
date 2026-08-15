@@ -25,7 +25,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>(getBackupSnapshots());
 
-  // Export Backup File
   const handleExportBackup = async () => {
     let jsonStr = await exportFullDatabaseJSON();
 
@@ -55,7 +54,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
       }
     }
 
-    // Web Fallback Download
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -65,7 +63,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
     URL.revokeObjectURL(url);
   };
 
-  // Handle Restore File Select
   const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -78,7 +75,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
     reader.onload = async (evt) => {
       let content = evt.target?.result as string;
       if (content) {
-        // Kiểm tra xem có phải nội dung đã mã hóa hay JSON thông thường
         if (!content.trim().startsWith('{')) {
           const pwd = prompt('Tệp sao lưu này đã được mã hóa AES-256. Vui lòng nhập mật khẩu giải mã:');
           if (!pwd) return;
@@ -102,7 +98,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
           <DatabaseBackup className="w-6 h-6 text-brand-600 dark:text-brand-400" />
@@ -113,9 +108,7 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
         </p>
       </div>
 
-      {/* Grid 2 Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Export Backup Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -162,7 +155,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
           </button>
         </div>
 
-        {/* Safe Storage Drive D:\ Configuration Card */}
         <div className="bg-slate-900 text-white border border-indigo-500/30 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-lg col-span-1 md:col-span-2">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -214,7 +206,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
           </div>
         </div>
 
-        {/* Restore Backup Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between shadow-sm">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
@@ -236,7 +227,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
         </div>
       </div>
 
-      {/* Restore Status Alert */}
       {restoreStatus && (
         <div className="p-4 rounded-xl bg-brand-50 text-brand-900 border border-brand-200 dark:bg-slate-950 dark:border-brand-500/40 text-xs font-bold dark:text-brand-300 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -244,7 +234,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
         </div>
       )}
 
-      {/* Snapshot History Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -307,7 +296,6 @@ export const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ onRefreshD
         )}
       </div>
 
-      {/* Danger Zone: Reset All Data */}
       <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h4 className="text-xs font-extrabold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">

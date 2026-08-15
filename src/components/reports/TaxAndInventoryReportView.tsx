@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Client, NormalizedTransaction } from '../../types/accounting';
 import { exportTransactionsToExcel } from '../../services/excelService';
-import { AlertOctagon, Calculator, PackageCheck, Scale, Download, ShieldAlert, CheckCircle2, ArrowUpRight, ArrowDownRight, FileText, Search } from 'lucide-react';
+import { AlertOctagon, Calculator, PackageCheck, Scale, Download, ShieldAlert, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { PageHeader, SubTabNav, StatCard, SearchBar, TabItem } from '../common';
+import { formatNumber } from '../../utils/formatters';
 
 interface TaxAndInventoryReportViewProps {
   activeClient: Client | null;
@@ -15,7 +17,6 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
   const [activeSubTab, setActiveSubTab] = useState<'HIGH_EXPENSES' | 'TAX_REPORT' | 'INVENTORY' | 'CASHFLOW'>('HIGH_EXPENSES');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. Filter Khoản Chi >= 5.000.000 VNĐ Không có Hóa Đơn
   const highExpensesNoInvoice = transactions.filter(t => {
     if (t.type !== 'EXPENSE' || t.amount < 5000000) return false;
     const hasVoucherNo = t.voucherNo && t.voucherNo.trim().length > 0 && !t.voucherNo.toLowerCase().includes('trống');
@@ -25,18 +26,16 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
 
   const totalHighExpenseAmount = highExpensesNoInvoice.reduce((sum, t) => sum + t.amount, 0);
 
-  // 2. Calculations for VAT Tax Report (01/GTGT)
   const incomeTxs = transactions.filter(t => t.type === 'INCOME');
   const expenseTxs = transactions.filter(t => t.type === 'EXPENSE');
 
   const vatIncomeTotal = incomeTxs.reduce((sum, t) => sum + t.amount, 0);
-  const vatIncomeTaxEst = Math.round(vatIncomeTotal * 0.1); // Ước tính 10%
+  const vatIncomeTaxEst = Math.round(vatIncomeTotal * 0.1);
   const vatExpenseTotal = expenseTxs.reduce((sum, t) => sum + t.amount, 0);
   const vatExpenseTaxEst = Math.round(vatExpenseTotal * 0.1);
 
   const netVatPayable = Math.max(0, vatIncomeTaxEst - vatExpenseTaxEst);
 
-  // 3. Inventory Data Aggregation (From transactions description or rawRow)
   const inventoryItems = transactions.reduce((acc, t) => {
     const itemName = t.description || 'Hàng hóa / Vật tư chung';
     if (!acc[itemName]) {
@@ -53,7 +52,6 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
 
   const inventoryList = Object.values(inventoryItems);
 
-  // Filter list by search term
   const filteredHighExpenses = highExpensesNoInvoice.filter(t => 
     !searchTerm || 
     t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -61,65 +59,48 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
     t.amount.toString().includes(searchTerm)
   );
 
+  const tabs: TabItem<'HIGH_EXPENSES' | 'TAX_REPORT' | 'INVENTORY' | 'CASHFLOW'>[] = [
+    {
+      id: 'HIGH_EXPENSES',
+      label: 'Chi ≥ 5Tr Thiếu HĐ',
+      icon: ShieldAlert,
+      count: highExpensesNoInvoice.length,
+      badgeColor: highExpensesNoInvoice.length > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : undefined,
+    },
+    {
+      id: 'TAX_REPORT',
+      label: 'Tờ Khai Thuế 01/GTGT',
+      icon: Calculator,
+    },
+    {
+      id: 'INVENTORY',
+      label: 'Cân Đối Kho Hàng',
+      icon: PackageCheck,
+    },
+    {
+      id: 'CASHFLOW',
+      label: 'Cân Đối Thu Chi Quỹ/NH',
+      icon: Scale,
+    },
+  ];
+
   return (
     <div className="p-4 space-y-4">
-      {/* Compact Top Banner Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-rose-950 to-brand-950 text-white px-4 py-3 rounded-2xl border border-rose-500/20 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xs shrink-0">
-            <AlertOctagon className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-extrabold tracking-tight">Kiểm Soát Thu Chi & Báo Cáo Thuế GTGT / Kho Hàng</h2>
-            <p className="text-[11px] text-slate-300">Kiểm soát chi ≥ 5tr thiếu hóa đơn (rủi ro loại thuế TNDN), Tờ khai 01/GTGT, Nhập-Xuất-Tồn Kho</p>
-          </div>
-        </div>
+      <PageHeader
+        variant="gradient"
+        icon={AlertOctagon}
+        title="Kiểm Soát Thu Chi & Báo Cáo Thuế GTGT / Kho Hàng"
+        subtitle={`Kiểm soát chi ≥ 5tr thiếu hóa đơn (rủi ro loại thuế TNDN), Tờ khai 01/GTGT, Nhập-Xuất-Tồn Kho${activeClient ? ` — ${activeClient.name}` : ''}`}
+      />
 
-        {/* Sub Tabs */}
-        <div className="flex items-center bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shrink-0 text-xs font-bold flex-wrap">
-          <button
-            onClick={() => setActiveSubTab('HIGH_EXPENSES')}
-            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'HIGH_EXPENSES' ? 'bg-rose-600 text-white shadow' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Chi ≥ 5Tr Thiếu HĐ ({highExpensesNoInvoice.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('TAX_REPORT')}
-            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'TAX_REPORT' ? 'bg-brand-600 text-white shadow' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <Calculator className="w-3.5 h-3.5" />
-            <span>Tờ Khai Thuế 01/GTGT</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('INVENTORY')}
-            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'INVENTORY' ? 'bg-emerald-600 text-white shadow' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <PackageCheck className="w-3.5 h-3.5" />
-            <span>Cân Đối Kho Hàng</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('CASHFLOW')}
-            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'CASHFLOW' ? 'bg-indigo-600 text-white shadow' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <Scale className="w-3.5 h-3.5" />
-            <span>Cân Đối Thu Chi Quỹ/NH</span>
-          </button>
-        </div>
-      </div>
+      <SubTabNav
+        tabs={tabs}
+        activeTab={activeSubTab}
+        onChange={setActiveSubTab}
+      />
 
-      {/* SUB TAB 1: HIGH EXPENSE NO INVOICE CONTROL */}
       {activeSubTab === 'HIGH_EXPENSES' && (
         <div className="space-y-5">
-          {/* Risk Alert Card */}
           <div className="bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-200 dark:border-rose-500/40 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-600/30">
@@ -133,7 +114,7 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                   Theo Luật Thuế TNDN, các khoản chi trên 5 triệu đồng (hoặc 20tr thanh toán chuyển khoản) nếu thiếu Hóa đơn GTGT hoặc chứng từ hợp pháp sẽ <strong className="underline">BỊ LOẠI KHỎI CHI PHÍ HỢP LÝ</strong> khi quyết toán thuế.
                 </p>
                 <div className="text-xs font-extrabold text-rose-900 dark:text-rose-100 mt-2">
-                  Rủi ro tổng số tiền chi phí có thể bị cơ quan thuế truy thu: <span className="text-base font-black text-rose-700 dark:text-rose-300">{totalHighExpenseAmount.toLocaleString('vi-VN')} VNĐ</span>
+                  Rủi ro tổng số tiền chi phí có thể bị cơ quan thuế truy thu: <span className="text-base font-black text-rose-700 dark:text-rose-300">{formatNumber(totalHighExpenseAmount)} VNĐ</span>
                 </div>
               </div>
             </div>
@@ -147,7 +128,6 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
             </button>
           </div>
 
-          {/* Table Grid */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -155,16 +135,12 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                 <span>Danh Sách Chi Tiết Khoản Chi ≥ 5 Triệu Cần Bổ Sung Hóa Đơn</span>
               </h3>
 
-              <div className="relative w-72">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Lọc từ khóa, tên đối tác..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium outline-none"
-                />
-              </div>
+              <SearchBar
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Lọc từ khóa, tên đối tác..."
+                className="w-72"
+              />
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[420px]">
@@ -187,7 +163,7 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                       <td className="p-3 font-mono text-brand-700 dark:text-brand-300 font-bold">{t.voucherNo || 'Trống'}</td>
                       <td className="p-3 max-w-xs font-medium">{t.description}</td>
                       <td className="p-3 font-mono text-amber-700 dark:text-amber-300 font-bold">{t.debitAcc} / {t.creditAcc}</td>
-                      <td className="p-3 text-right font-extrabold tabular-num text-rose-600 dark:text-rose-400">{t.amount.toLocaleString('vi-VN')} đ</td>
+                      <td className="p-3 text-right font-extrabold tabular-num text-rose-600 dark:text-rose-400">{formatNumber(t.amount)} đ</td>
                       <td className="p-3">{t.partnerName || 'Chưa ghi tên đối tác'}</td>
                       <td className="p-3 text-center">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-500/40 animate-pulse">
@@ -210,7 +186,6 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
         </div>
       )}
 
-      {/* SUB TAB 2: VAT TAX REPORT 01/GTGT */}
       {activeSubTab === 'TAX_REPORT' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex items-center justify-between">
@@ -230,28 +205,30 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">TỔNG DOANH THU BÁN RA [26-32]</span>
-              <div className="text-lg font-extrabold text-emerald-600">{vatIncomeTotal.toLocaleString('vi-VN')} đ</div>
-              <span className="text-[10px] text-slate-400">Thuế GTGT bán ra ước tính: {vatIncomeTaxEst.toLocaleString('vi-VN')} đ</span>
-            </div>
+            <StatCard
+              label="TỔNG DOANH THU BÁN RA [26-32]"
+              value={`${formatNumber(vatIncomeTotal)} đ`}
+              subtext={`Thuế GTGT bán ra: ${formatNumber(vatIncomeTaxEst)} đ`}
+              variant="emerald"
+            />
 
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">TỔNG CHI PHÍ MUA VÀO [23-25]</span>
-              <div className="text-lg font-extrabold text-rose-600">{vatExpenseTotal.toLocaleString('vi-VN')} đ</div>
-              <span className="text-[10px] text-slate-400">Thuế GTGT mua vào khấu trừ: {vatExpenseTaxEst.toLocaleString('vi-VN')} đ</span>
-            </div>
+            <StatCard
+              label="TỔNG CHI PHÍ MUA VÀO [23-25]"
+              value={`${formatNumber(vatExpenseTotal)} đ`}
+              subtext={`Thuế GTGT mua vào: ${formatNumber(vatExpenseTaxEst)} đ`}
+              variant="rose"
+            />
 
-            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-500/30 space-y-1">
-              <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300">THUẾ GTGT PHẢI NỘP TRONG KỲ [40]</span>
-              <div className="text-xl font-black text-brand-700 dark:text-brand-300">{netVatPayable.toLocaleString('vi-VN')} đ</div>
-              <span className="text-[10px] text-brand-600/80">Ước tính theo phát sinh sổ sách</span>
-            </div>
+            <StatCard
+              label="THUẾ GTGT PHẢI NỘP TRONG KỲ [40]"
+              value={`${formatNumber(netVatPayable)} đ`}
+              subtext="Ước tính theo phát sinh sổ sách"
+              variant="blue"
+            />
           </div>
         </div>
       )}
 
-      {/* SUB TAB 3: INVENTORY BALANCE */}
       {activeSubTab === 'INVENTORY' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
           <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -277,7 +254,7 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                     <td className="p-3 font-bold text-slate-900 dark:text-slate-200">{item.name}</td>
                     <td className="p-3 text-center font-bold text-emerald-600">{item.importedQty}</td>
                     <td className="p-3 text-center font-bold text-rose-600">{item.exportedQty}</td>
-                    <td className="p-3 text-right font-bold tabular-num text-slate-900 dark:text-slate-100">{item.totalAmount.toLocaleString('vi-VN')} đ</td>
+                    <td className="p-3 text-right font-bold tabular-num text-slate-900 dark:text-slate-100">{formatNumber(item.totalAmount)} đ</td>
                   </tr>
                 ))}
               </tbody>
@@ -286,7 +263,6 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
         </div>
       )}
 
-      {/* SUB TAB 4: CASHFLOW BALANCE */}
       {activeSubTab === 'CASHFLOW' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
           <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -300,7 +276,7 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                 <span>TỔNG PHÁT SINH THU (NỢ 111 / NỢ 112)</span>
                 <ArrowUpRight className="w-5 h-5 text-emerald-600" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">{vatIncomeTotal.toLocaleString('vi-VN')} VNĐ</div>
+              <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">{formatNumber(vatIncomeTotal)} VNĐ</div>
               <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">Tổng các khoản thu tiền mặt và tiền gửi ngân hàng trong niên độ</p>
             </div>
 
@@ -309,7 +285,7 @@ export const TaxAndInventoryReportView: React.FC<TaxAndInventoryReportViewProps>
                 <span>TỔNG PHÁT SINH CHI (CÓ 111 / CÓ 112)</span>
                 <ArrowDownRight className="w-5 h-5 text-rose-600" />
               </div>
-              <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-400">{vatExpenseTotal.toLocaleString('vi-VN')} VNĐ</div>
+              <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-400">{formatNumber(vatExpenseTotal)} VNĐ</div>
               <p className="text-xs text-rose-800/80 dark:text-rose-300/80">Tổng các khoản chi tiền mặt và rút tiền gửi ngân hàng trong niên độ</p>
             </div>
           </div>

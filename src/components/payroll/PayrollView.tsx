@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Employee, PayrollEntry,
+  Employee,
   getAllEmployees, saveEmployee, deleteEmployee,
   calculatePayrollSummary,
 } from '../../services/payrollService';
 import { Client } from '../../types/accounting';
+import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { PageHeader, SubTabNav, StatCard } from '../common';
 import {
   Users, Plus, Trash2, ChevronDown, ChevronUp,
   Calculator, Download, BookOpen, CircleDollarSign,
-  Briefcase, AlertTriangle, CheckCircle2, Edit3, X, Save
+  AlertTriangle, Edit3, X, Save
 } from 'lucide-react';
 
 interface PayrollViewProps {
@@ -78,110 +80,115 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
 
   const handleExportCSV = () => {
     if (!summary) return;
-    const rows = [
-      ['STT', 'Họ Tên', 'Phòng Ban', 'Chức Vụ', 'Gross (đ)', 'BH NLĐ (đ)', 'BH NSDLĐ (đ)', 'TNCN (đ)', 'Lương Net (đ)', 'Chi phí DN (đ)'],
-      ...summary.entries.map((e, i) => [
-        i + 1, e.employeeName, e.department, e.position,
-        e.grossSalary, e.totalInsuranceEmployee, e.totalInsuranceEmployer,
-        e.pitAmount, e.netSalary, e.totalEmployerCost,
-      ]),
-      [],
-      ['', 'TỔNG CỘNG', '', '', summary.totalGross, summary.totalInsuranceEmployee, summary.totalInsuranceEmployer, summary.totalPIT, summary.totalNetSalary, summary.totalEmployerCost],
+    const headers = [
+      'STT', 'Họ tên', 'Chức vụ', 'Bộ phận', 'Loại HĐ',
+      'Lương cơ bản', 'Phụ cấp', 'Gross', 'BHXH (8%)', 'BHYT (1.5%)', 'BHTN (1%)',
+      'Tổng BH NLĐ', 'Giảm trừ BT', 'Giảm trừ PT', 'TN tính thuế', 'Thuế TNCN',
+      'Lương NET', 'BH NSDLĐ (21.5%)', 'Tổng CP DN'
     ];
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const rows = summary.entries.map((e, i) => {
+      const emp = employees.find(item => item.id === e.employeeId);
+      const contractType = emp ? (emp.contractType === 'OFFICIAL' ? 'Chính thức' : emp.contractType === 'PROBATION' ? 'Thử việc' : 'Bán thời gian') : 'Chính thức';
+      return [
+        i + 1, e.employeeName, e.position, e.department, contractType,
+        e.basicSalary, e.totalAllowances, e.grossSalary,
+        e.bhxhEmployee, e.bhytEmployee, e.bhtnEmployee, e.totalInsuranceEmployee,
+        e.personalDeduction, e.dependentDeduction, e.assessableIncome, e.pitAmount,
+        e.netSalary, e.totalInsuranceEmployer, e.totalEmployerCost,
+      ];
+    });
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `BangLuong_${period.replace('/', '-')}.csv`;
+    a.download = `Bang_Luong_${period.replace('/', '_')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const fmt = (n: number) => n.toLocaleString('vi-VN');
+  const tabs = [
+    { id: 'BANGLUONG' as const, label: 'Bảng Lương', icon: CircleDollarSign },
+    { id: 'NHANVIEN' as const, label: 'Danh Sách NV', icon: Users, count: employees.length },
+    { id: 'BUTOAN' as const, label: 'Bút Toán Lương', icon: BookOpen },
+  ];
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-violet-900 via-purple-900 to-violet-900 text-white px-5 py-4 rounded-2xl border border-violet-500/20 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-violet-200" />
-            </div>
-            <div>
-              <h2 className="text-sm font-extrabold text-white">Bảng Lương & BHXH/BHYT/BHTN</h2>
-              <p className="text-[11px] text-violet-300 mt-0.5">
-                Mức BH 2026: NLĐ 10.5% | NSDLĐ 21.5% | TNCN 7 bậc lũy tiến
-                {activeClient ? ` — ${activeClient.name}` : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div>
-              <label className="text-[10px] text-violet-300 block mb-1">Kỳ lương</label>
+      <PageHeader
+        icon={Calculator}
+        title="Tính Lương, Bảo Hiểm & Thuế TNCN"
+        subtitle={`Theo luật 2026 (BHXH 10.5%/21.5%, biểu thuế lũy tiến từng phần, giảm trừ bản thân 11M/tháng)${activeClient ? ` — ${activeClient.name}` : ''}`}
+        variant="gradient"
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/20">
+              <span className="text-[10px] text-blue-200">Kỳ:</span>
               <input
-                type="text" value={period} onChange={e => setPeriod(e.target.value)}
+                type="text"
+                value={period}
+                onChange={e => setPeriod(e.target.value)}
                 placeholder="MM/YYYY"
-                className="w-24 px-2 py-1.5 bg-white/10 border border-white/20 rounded-lg text-xs text-white placeholder-violet-300 focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="w-20 px-1 py-0.5 bg-transparent text-xs text-white placeholder-blue-300 focus:outline-none font-mono font-bold"
               />
             </div>
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white text-violet-800 rounded-xl text-xs font-bold hover:bg-violet-50 transition-all active:scale-95 mt-4"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white text-blue-900 rounded-xl text-xs font-bold hover:bg-blue-50 transition-all active:scale-95 cursor-pointer shadow-sm"
             >
               <Download className="w-3.5 h-3.5" /> Xuất CSV
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: 'Nhân viên', value: summary.entries.length.toString(), unit: 'người', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Tổng Gross', value: fmt(summary.totalGross), unit: 'đ', color: 'text-slate-900 dark:text-slate-100', bg: 'bg-slate-50 dark:bg-slate-800' },
-            { label: 'BH NLĐ (10.5%)', value: fmt(summary.totalInsuranceEmployee), unit: 'đ', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-            { label: 'BH NSDLĐ (21.5%)', value: fmt(summary.totalInsuranceEmployer), unit: 'đ', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10' },
-            { label: 'Thuế TNCN', value: fmt(summary.totalPIT), unit: 'đ', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' },
-            { label: 'Lương Net', value: fmt(summary.totalNetSalary), unit: 'đ', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-          ].map(c => (
-            <div key={c.label} className={`${c.bg} rounded-xl p-3 border border-slate-200 dark:border-slate-700`}>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{c.label}</p>
-              <p className={`text-sm font-extrabold tabular-num leading-tight ${c.color}`}>{c.value}</p>
-              <p className="text-[10px] text-slate-400">{c.unit}</p>
-            </div>
-          ))}
+          <StatCard
+            label="Nhân viên"
+            value={`${summary.entries.length} người`}
+            variant="purple"
+            compact
+          />
+          <StatCard
+            label="Tổng Gross"
+            value={`${formatCurrency(summary.totalGross)} đ`}
+            variant="slate"
+            compact
+          />
+          <StatCard
+            label="BH NLĐ (10.5%)"
+            value={`${formatCurrency(summary.totalInsuranceEmployee)} đ`}
+            variant="amber"
+            compact
+          />
+          <StatCard
+            label="BH NSDLĐ (21.5%)"
+            value={`${formatCurrency(summary.totalInsuranceEmployer)} đ`}
+            variant="cyan"
+            compact
+          />
+          <StatCard
+            label="Thuế TNCN"
+            value={`${formatCurrency(summary.totalPIT)} đ`}
+            variant="rose"
+            compact
+          />
+          <StatCard
+            label="Lương Net"
+            value={`${formatCurrency(summary.totalNetSalary)} đ`}
+            variant="emerald"
+            compact
+          />
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
-        {[
-          { key: 'BANGLUONG', label: 'Bảng Lương', icon: CircleDollarSign },
-          { key: 'NHANVIEN', label: 'Danh Sách NV', icon: Users },
-          { key: 'BUTOAN', label: 'Bút Toán Lương', icon: BookOpen },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === tab.key
-                ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-400 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <tab.icon className="w-3.5 h-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SubTabNav
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={(t) => setActiveTab(t)}
+      />
 
-      {/* ===== TAB: BẢNG LƯƠNG ===== */}
       {activeTab === 'BANGLUONG' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -221,19 +228,18 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 text-[10px] font-bold border border-violet-200 dark:border-violet-500/20">{entry.department}</span>
                       </td>
-                      <td className="p-3 text-right tabular-num font-semibold">{fmt(entry.grossSalary)}</td>
-                      <td className="p-3 text-right tabular-num text-amber-700 dark:text-amber-400">{fmt(entry.totalInsuranceEmployee)}</td>
-                      <td className="p-3 text-right tabular-num text-orange-700 dark:text-orange-400">{fmt(entry.totalInsuranceEmployer)}</td>
-                      <td className="p-3 text-right tabular-num text-rose-700 dark:text-rose-400">{fmt(entry.pitAmount)}</td>
-                      <td className="p-3 text-right tabular-num font-extrabold text-emerald-700 dark:text-emerald-400">{fmt(entry.netSalary)}</td>
-                      <td className="p-3 text-right tabular-num text-orange-600 dark:text-orange-400">{fmt(entry.totalEmployerCost)}</td>
+                      <td className="p-3 text-right tabular-num font-semibold">{formatNumber(entry.grossSalary)}</td>
+                      <td className="p-3 text-right tabular-num text-amber-700 dark:text-amber-400">{formatNumber(entry.totalInsuranceEmployee)}</td>
+                      <td className="p-3 text-right tabular-num text-orange-700 dark:text-orange-400">{formatNumber(entry.totalInsuranceEmployer)}</td>
+                      <td className="p-3 text-right tabular-num text-rose-700 dark:text-rose-400">{formatNumber(entry.pitAmount)}</td>
+                      <td className="p-3 text-right tabular-num font-extrabold text-emerald-700 dark:text-emerald-400">{formatNumber(entry.netSalary)}</td>
+                      <td className="p-3 text-right tabular-num text-orange-600 dark:text-orange-400">{formatNumber(entry.totalEmployerCost)}</td>
                       <td className="p-3">
                         {expandedEntryId === entry.employeeId
                           ? <ChevronUp className="w-4 h-4 text-slate-400" />
                           : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </td>
                     </tr>
-                    {/* Chi tiết mở rộng */}
                     {expandedEntryId === entry.employeeId && (
                       <tr>
                         <td colSpan={10} className="p-0">
@@ -241,30 +247,30 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                               <div className="space-y-1">
                                 <p className="font-bold text-violet-700 dark:text-violet-400 text-[10px] uppercase">Thu Nhập</p>
-                                <p>Lương cơ bản: <strong>{fmt(entry.basicSalary)}</strong></p>
-                                <p>Phụ cấp: <strong>{fmt(entry.totalAllowances)}</strong></p>
-                                <p className="font-bold text-slate-900 dark:text-slate-100">= Gross: {fmt(entry.grossSalary)}</p>
+                                <p>Lương cơ bản: <strong>{formatNumber(entry.basicSalary)}</strong></p>
+                                <p>Phụ cấp: <strong>{formatNumber(entry.totalAllowances)}</strong></p>
+                                <p className="font-bold text-slate-900 dark:text-slate-100">= Gross: {formatNumber(entry.grossSalary)}</p>
                               </div>
                               <div className="space-y-1">
                                 <p className="font-bold text-amber-700 dark:text-amber-400 text-[10px] uppercase">BH Phần NLĐ</p>
-                                <p>BHXH 8%: <strong>{fmt(entry.bhxhEmployee)}</strong></p>
-                                <p>BHYT 1.5%: <strong>{fmt(entry.bhytEmployee)}</strong></p>
-                                <p>BHTN 1%: <strong>{fmt(entry.bhtnEmployee)}</strong></p>
-                                <p className="font-bold text-amber-700 dark:text-amber-400">= {fmt(entry.totalInsuranceEmployee)}</p>
+                                <p>BHXH 8%: <strong>{formatNumber(entry.bhxhEmployee)}</strong></p>
+                                <p>BHYT 1.5%: <strong>{formatNumber(entry.bhytEmployee)}</strong></p>
+                                <p>BHTN 1%: <strong>{formatNumber(entry.bhtnEmployee)}</strong></p>
+                                <p className="font-bold text-amber-700 dark:text-amber-400">= {formatNumber(entry.totalInsuranceEmployee)}</p>
                               </div>
                               <div className="space-y-1">
                                 <p className="font-bold text-rose-700 dark:text-rose-400 text-[10px] uppercase">Thuế TNCN</p>
-                                <p>Giảm trừ BT: <strong>{fmt(entry.personalDeduction)}</strong></p>
-                                <p>Giảm trừ PT: <strong>{fmt(entry.dependentDeduction)}</strong></p>
-                                <p>TN tính thuế: <strong>{fmt(entry.assessableIncome)}</strong></p>
-                                <p className="font-bold text-rose-700 dark:text-rose-400">TNCN: {fmt(entry.pitAmount)}</p>
+                                <p>Giảm trừ BT: <strong>{formatNumber(entry.personalDeduction)}</strong></p>
+                                <p>Giảm trừ PT: <strong>{formatNumber(entry.dependentDeduction)}</strong></p>
+                                <p>TN tính thuế: <strong>{formatNumber(entry.assessableIncome)}</strong></p>
+                                <p className="font-bold text-rose-700 dark:text-rose-400">TNCN: {formatNumber(entry.pitAmount)}</p>
                               </div>
                               <div className="space-y-1">
                                 <p className="font-bold text-orange-700 dark:text-orange-400 text-[10px] uppercase">BH Phần NSDLĐ</p>
-                                <p>BHXH 17.5%: <strong>{fmt(entry.bhxhEmployer)}</strong></p>
-                                <p>BHYT 3%: <strong>{fmt(entry.bhytEmployer)}</strong></p>
-                                <p>BHTN 1%: <strong>{fmt(entry.bhtnEmployer)}</strong></p>
-                                <p className="font-bold text-orange-700 dark:text-orange-400">= {fmt(entry.totalInsuranceEmployer)}</p>
+                                <p>BHXH 17.5%: <strong>{formatNumber(entry.bhxhEmployer)}</strong></p>
+                                <p>BHYT 3%: <strong>{formatNumber(entry.bhytEmployer)}</strong></p>
+                                <p>BHTN 1%: <strong>{formatNumber(entry.bhtnEmployer)}</strong></p>
+                                <p className="font-bold text-orange-700 dark:text-orange-400">= {formatNumber(entry.totalInsuranceEmployer)}</p>
                               </div>
                             </div>
                           </div>
@@ -273,16 +279,15 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
                     )}
                   </React.Fragment>
                 ))}
-                {/* Dòng tổng */}
                 {summary && (
                   <tr className="bg-slate-100 dark:bg-slate-800 font-extrabold border-t-2 border-slate-300 dark:border-slate-600">
                     <td colSpan={3} className="p-3 text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">CỘNG</td>
-                    <td className="p-3 text-right tabular-num text-slate-900 dark:text-slate-100">{fmt(summary.totalGross)}</td>
-                    <td className="p-3 text-right tabular-num text-amber-700 dark:text-amber-400">{fmt(summary.totalInsuranceEmployee)}</td>
-                    <td className="p-3 text-right tabular-num text-orange-700 dark:text-orange-400">{fmt(summary.totalInsuranceEmployer)}</td>
-                    <td className="p-3 text-right tabular-num text-rose-700 dark:text-rose-400">{fmt(summary.totalPIT)}</td>
-                    <td className="p-3 text-right tabular-num text-emerald-700 dark:text-emerald-400">{fmt(summary.totalNetSalary)}</td>
-                    <td className="p-3 text-right tabular-num text-orange-600 dark:text-orange-400">{fmt(summary.totalEmployerCost)}</td>
+                    <td className="p-3 text-right tabular-num text-slate-900 dark:text-slate-100">{formatNumber(summary.totalGross)}</td>
+                    <td className="p-3 text-right tabular-num text-amber-700 dark:text-amber-400">{formatNumber(summary.totalInsuranceEmployee)}</td>
+                    <td className="p-3 text-right tabular-num text-orange-700 dark:text-orange-400">{formatNumber(summary.totalInsuranceEmployer)}</td>
+                    <td className="p-3 text-right tabular-num text-rose-700 dark:text-rose-400">{formatNumber(summary.totalPIT)}</td>
+                    <td className="p-3 text-right tabular-num text-emerald-700 dark:text-emerald-400">{formatNumber(summary.totalNetSalary)}</td>
+                    <td className="p-3 text-right tabular-num text-orange-600 dark:text-orange-400">{formatNumber(summary.totalEmployerCost)}</td>
                     <td />
                   </tr>
                 )}
@@ -298,20 +303,18 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
         </div>
       )}
 
-      {/* ===== TAB: DANH SÁCH NHÂN VIÊN ===== */}
       {activeTab === 'NHANVIEN' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{employees.length} nhân viên trong danh sách lương</p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Thêm Nhân Viên
             </button>
           </div>
 
-          {/* Form thêm mới */}
           {showAddForm && (
             <EmployeeForm
               emp={newEmp as Employee}
@@ -323,7 +326,6 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
             />
           )}
 
-          {/* Danh sách */}
           <div className="space-y-2">
             {employees.map(emp => (
               <div key={emp.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
@@ -351,17 +353,17 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
                     <div className="flex items-center gap-4 shrink-0 text-xs">
                       <div className="text-right hidden sm:block">
                         <p className="text-slate-500">Lương cơ bản</p>
-                        <p className="font-bold text-slate-900 dark:text-slate-100">{fmt(emp.basicSalary)} đ</p>
+                        <p className="font-bold text-slate-900 dark:text-slate-100">{formatNumber(emp.basicSalary)} đ</p>
                       </div>
                       <div className="text-right hidden sm:block">
                         <p className="text-slate-500">Người PT</p>
                         <p className="font-bold text-slate-900 dark:text-slate-100">{emp.dependentsCount}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setEditingEmp(emp)} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors">
+                        <button onClick={() => setEditingEmp(emp)} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors cursor-pointer">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDeleteEmp(emp.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                        <button onClick={() => handleDeleteEmp(emp.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -374,7 +376,6 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
         </div>
       )}
 
-      {/* ===== TAB: BÚT TOÁN LƯƠNG ===== */}
       {activeTab === 'BUTOAN' && (
         <div className="space-y-3">
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-500/20 rounded-xl text-xs text-blue-800 dark:text-blue-300">
@@ -403,7 +404,7 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
                         <td className="px-4 py-2 font-mono font-bold text-amber-700 dark:text-amber-400">{ae.debitAcc}</td>
                         <td className="px-4 py-2 font-mono font-bold text-indigo-700 dark:text-indigo-400">{ae.creditAcc}</td>
                         <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{ae.description}</td>
-                        <td className="px-4 py-2 text-right tabular-num font-semibold text-slate-900 dark:text-slate-100">{fmt(ae.amount)}</td>
+                        <td className="px-4 py-2 text-right tabular-num font-semibold text-slate-900 dark:text-slate-100">{formatNumber(ae.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -421,7 +422,6 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
         </div>
       )}
 
-      {/* Lưu ý pháp lý */}
       <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
@@ -432,9 +432,6 @@ export const PayrollView: React.FC<PayrollViewProps> = ({ activeClient }) => {
   );
 };
 
-// ============================================================
-// Employee Form Component (inline)
-// ============================================================
 const EmployeeForm: React.FC<{
   emp: Employee;
   onChange: (field: keyof Employee, val: any) => void;
@@ -443,8 +440,6 @@ const EmployeeForm: React.FC<{
   onCancel: () => void;
   isNew?: boolean;
 }> = ({ emp, onChange, onChangeAllowance, onSave, onCancel, isNew }) => {
-  const fmt = (n: number) => n.toLocaleString('vi-VN');
-
   return (
     <div className="bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-500/20 rounded-xl p-4 space-y-3">
       <p className="text-xs font-extrabold text-violet-800 dark:text-violet-300">{isNew ? '➕ Thêm Nhân Viên Mới' : '✏️ Cập Nhật Thông Tin'}</p>
@@ -500,7 +495,6 @@ const EmployeeForm: React.FC<{
         </div>
       </div>
 
-      {/* Phụ cấp */}
       <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-1">Phụ Cấp Hàng Tháng</p>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
@@ -521,11 +515,11 @@ const EmployeeForm: React.FC<{
 
       <div className="flex items-center gap-2 pt-1">
         <button onClick={onSave}
-          className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95">
+          className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer">
           <Save className="w-3.5 h-3.5" /> {isNew ? 'Thêm Nhân Viên' : 'Lưu Thay Đổi'}
         </button>
         <button onClick={onCancel}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer">
           <X className="w-3.5 h-3.5" /> Hủy
         </button>
       </div>

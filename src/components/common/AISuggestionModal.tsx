@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { NormalizedTransaction } from '../../types/accounting';
 import { suggestAccountsByAI, AIAccountSuggestion } from '../../services/aiAccountSuggestionService';
 import { auditCrossLogicConsistency, CrossLogicAuditSummary } from '../../services/crossLogicAuditService';
-import { Sparkles, CheckCircle2, AlertTriangle, ShieldAlert, X, ArrowRight, Zap, RefreshCw } from 'lucide-react';
+import { Sparkles, CheckCircle2, ShieldAlert, Zap } from 'lucide-react';
+import { BaseModal, SubTabNav, TabItem } from './index';
 
 interface AISuggestionModalProps {
   isOpen: boolean;
@@ -17,69 +18,43 @@ export const AISuggestionModal: React.FC<AISuggestionModalProps> = ({
   transactions,
   onApplyAISuggestion,
 }) => {
-  if (!isOpen) return null;
-
   const [activeSubTab, setActiveSubTab] = useState<'SUGGEST' | 'CROSS_LOGIC'>('SUGGEST');
   const auditSummary: CrossLogicAuditSummary = auditCrossLogicConsistency(transactions);
 
+  const tabs: TabItem<'SUGGEST' | 'CROSS_LOGIC'>[] = [
+    {
+      id: 'SUGGEST',
+      label: 'AI Gợi Ý Định Khoản',
+      icon: Sparkles,
+      count: transactions.length,
+    },
+    {
+      id: 'CROSS_LOGIC',
+      label: 'Cảnh Báo Lệch Logic Chéo',
+      icon: ShieldAlert,
+      count: auditSummary.totalIssuesCount,
+      badgeColor: auditSummary.totalIssuesCount > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : undefined,
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 select-none">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-              <Sparkles className="w-4 h-4 text-indigo-300" />
-            </div>
-            <div>
-              <h3 className="text-sm font-extrabold flex items-center gap-2">
-                <span>Trợ Lý AI Gợi Ý Định Khoản & Kiểm Trợ Logic Chéo</span>
-                <span className="text-[10px] bg-indigo-600 px-2 py-0.5 rounded-full text-white font-bold">
-                  AI PRO
-                </span>
-              </h3>
-              <p className="text-[11px] text-slate-400">Tự động gợi ý cặp TK Nợ/Có chuẩn Thông tư 200 & phát hiện 5 xung đột chéo</p>
-            </div>
-          </div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Trợ Lý AI Gợi Ý Định Khoản & Kiểm Tra Logic Chéo"
+      subtitle="Tự động gợi ý cặp TK Nợ/Có chuẩn Thông tư 200 & phát hiện xung đột chéo giữa các phân hệ"
+      icon={Sparkles}
+      maxWidth="4xl"
+    >
+      <div className="space-y-4">
+        <SubTabNav
+          tabs={tabs}
+          activeTab={activeSubTab}
+          onChange={setActiveSubTab}
+        />
 
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="px-5 py-2 bg-slate-100 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 select-none">
-          <button
-            onClick={() => setActiveSubTab('SUGGEST')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'SUGGEST'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Gợi Ý Định Khoản ({transactions.length} dòng)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('CROSS_LOGIC')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'CROSS_LOGIC'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Cảnh Báo Lệch Logic Chéo ({auditSummary.totalIssuesCount} phát hiện)</span>
-          </button>
-        </div>
-
-        {/* Tab 1: AI Account Suggestion */}
         {activeSubTab === 'SUGGEST' && (
-          <div className="p-4 overflow-y-auto flex-1 space-y-3">
+          <div className="space-y-3">
             <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 p-3 rounded-xl text-xs text-indigo-900 dark:text-indigo-300 font-medium flex items-center gap-2">
               <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>Trợ lý AI phân tích ngôn ngữ tự nhiên (NLP) trên Diễn Giải chứng từ để đề xuất Cặp Tài Khoản Nợ/Có có Điểm Tin Cậy cao nhất.</span>
@@ -126,9 +101,8 @@ export const AISuggestionModal: React.FC<AISuggestionModalProps> = ({
           </div>
         )}
 
-        {/* Tab 2: Cross Logic Audit */}
         {activeSubTab === 'CROSS_LOGIC' && (
-          <div className="p-4 overflow-y-auto flex-1 space-y-3">
+          <div className="space-y-3">
             {auditSummary.issues.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
@@ -181,6 +155,6 @@ export const AISuggestionModal: React.FC<AISuggestionModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </BaseModal>
   );
 };

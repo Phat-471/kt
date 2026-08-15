@@ -20,8 +20,11 @@ function createWindow() {
     ? path.join(__dirname, 'preload.mjs')
     : path.join(__dirname, 'preload.js');
 
+  const iconPath = path.join(process.env.APP_ROOT, 'public', 'favicon.svg');
+
   win = new BrowserWindow({
-    title: 'AccoDesk - Trợ Lý Kế Toán Desktop',
+    title: 'Kế Toán PRO — Phần Mềm Kế Toán Doanh Nghiệp',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     width: 1360,
     height: 860,
     minWidth: 1024,

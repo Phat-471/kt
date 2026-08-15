@@ -1,20 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { NormalizedTransaction } from '../../types/accounting';
 import { Client } from '../../types/accounting';
-import { BookOpen, Printer, Filter, ChevronDown, FileText, Search, FileDown } from 'lucide-react';
+import { BookOpen, Printer, Filter, ChevronDown, Search, FileDown } from 'lucide-react';
 import {
   exportNhatKyChungPDF,
   exportSoCaiPDF,
   exportSoChiTietPDF,
 } from '../../services/ledgerPdfExporter';
 import { VirtualTable } from '../common/VirtualTable';
+import { PageHeader, SearchBar } from '../common';
+import { generateSpecialJournal, SpecialJournalType } from '../../services/specialJournalsService';
 
 interface AccountingLedgerViewProps {
   transactions: NormalizedTransaction[];
   activeClient: Client | null;
 }
-
-import { generateSpecialJournal, SpecialJournalType } from '../../services/specialJournalsService';
 
 type LedgerType = 'NHAT_KY_CHUNG' | 'SO_CAI' | 'SO_CHI_TIET' | 'NK_MUA_HANG' | 'NK_BAN_HANG' | 'NK_THU_TIEN' | 'NK_CHI_TIEN';
 
@@ -28,7 +28,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
   const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Lọc dữ liệu
   const filtered = useMemo(() => {
     return transactions.filter(t => {
       const matchDate = (!dateFrom || t.date >= dateFrom) && (!dateTo || t.date <= dateTo);
@@ -40,10 +39,8 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
     }).sort((a, b) => a.date.localeCompare(b.date));
   }, [transactions, dateFrom, dateTo, accountFilter, searchTerm]);
 
-  // Nhật ký chung: tất cả bút toán theo ngày
   const generalJournalRows = useMemo(() => filtered, [filtered]);
 
-  // Sổ cái: nhóm theo tài khoản, tính số dư lũy kế
   const soCaiData = useMemo(() => {
     const accounts = new Set<string>();
     filtered.forEach(t => {
@@ -60,7 +57,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
     }).filter(g => !accountFilter || g.acc.startsWith(accountFilter));
   }, [filtered, accountFilter]);
 
-  // Sổ chi tiết: chỉ 1 tài khoản, tính số dư dòng
   const soChiTietRows = useMemo(() => {
     if (!accountFilter) return [];
     let runningBalance = 0;
@@ -104,7 +100,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
     { key: 'NK_CHI_TIEN', label: 'NK Chi Tiền', desc: 'Sổ nhật ký chi tiền quỹ/NH (S04d)' },
   ];
 
-  // Dữ liệu Sổ Nhật Ký Đặc Biệt
   const specialJournalSummary = useMemo(() => {
     let sjType: SpecialJournalType = 'PURCHASE';
     if (ledgerType === 'NK_MUA_HANG') sjType = 'PURCHASE';
@@ -125,40 +120,31 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-900 text-white px-5 py-4 rounded-2xl border border-emerald-500/20 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-emerald-200" />
-            </div>
-            <div>
-              <h2 className="text-sm font-extrabold text-white">Sổ Kế Toán Chuẩn Thông Tư 200</h2>
-              <p className="text-[11px] text-emerald-300 mt-0.5">
-                {activeClient ? `Công ty: ${activeClient.name} — MST: ${activeClient.taxCode}` : 'Chưa chọn doanh nghiệp'}
-              </p>
-            </div>
-          </div>
+      <PageHeader
+        variant="gradient"
+        icon={BookOpen}
+        title="Sổ Kế Toán Chuẩn Thông Tư 200"
+        subtitle={activeClient ? `Công ty: ${activeClient.name} — MST: ${activeClient.taxCode}` : 'Chưa chọn doanh nghiệp'}
+        actions={
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
             >
               <FileDown className="w-4 h-4" />
               Xuất PDF
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all active:scale-95 cursor-pointer shadow-sm"
             >
               <Printer className="w-4 h-4" />
               In Sổ
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Ledger Type Tabs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {ledgerTabs.map(tab => (
           <button
@@ -179,19 +165,14 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
         ))}
       </div>
 
-      {/* Filters Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Tìm số CT / nội dung..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none focus:outline-none text-xs w-36 text-slate-900 dark:text-slate-100"
-            />
-          </div>
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Tìm số CT / nội dung..."
+            className="w-56"
+          />
 
           <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
@@ -227,7 +208,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
         </div>
       </div>
 
-      {/* === NHẬT KÝ CHUNG === */}
       {ledgerType === 'NHAT_KY_CHUNG' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 print:text-center">
@@ -268,7 +248,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
         </div>
       )}
 
-      {/* === SỔ CÁI === */}
       {ledgerType === 'SO_CAI' && (
         <div className="space-y-4">
           {soCaiData.length === 0 ? (
@@ -333,7 +312,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
         </div>
       )}
 
-      {/* === SỔ CHI TIẾT === */}
       {ledgerType === 'SO_CHI_TIET' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center justify-between">
@@ -402,7 +380,6 @@ export const AccountingLedgerView: React.FC<AccountingLedgerViewProps> = ({
         </div>
       )}
 
-      {/* === SỔ NHẬT KÝ ĐẶC BIỆT (MUA HÀNG / BÁN HÀNG / THU TIỀN / CHI TIỀN) === */}
       {['NK_MUA_HANG', 'NK_BAN_HANG', 'NK_THU_TIEN', 'NK_CHI_TIEN'].includes(ledgerType) && specialJournalSummary && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm space-y-3">
           <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

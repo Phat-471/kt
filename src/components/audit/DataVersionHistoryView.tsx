@@ -11,13 +11,9 @@ import { detectDataAnomalies, DataAnomalyIssue } from '../../services/aiAnomalyD
 import {
   History,
   GitBranch,
-  ShieldAlert,
-  RotateCcw,
   Plus,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
-  FileSpreadsheet,
   Clock,
   Sparkles,
   Zap,
@@ -57,7 +53,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
     const targetTx = transactions.find(t => t.id === anomaly.transactionId);
     if (!targetTx) return;
 
-    // Sinh chứng từ điều chỉnh ghi đỏ số dư sai
     const result = createAdjustmentEntry(targetTx, targetTx.amount / 10, undefined, 'RED_NEGATIVE_REVERSAL');
     const updated = [...transactions, result.adjustedTransaction];
 
@@ -69,7 +64,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
 
   return (
     <div className="p-4 space-y-4 animate-fade-in">
-      {/* Header Banner */}
       <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0">
@@ -88,7 +82,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
           </div>
         </div>
 
-        {/* Tab Controls */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('ANOMALIES')}
@@ -116,7 +109,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
         </div>
       </div>
 
-      {/* Tab 1: AI Anomaly Detector */}
       {activeTab === 'ANOMALIES' && (
         <div className="space-y-3">
           <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/30 p-3.5 rounded-2xl flex items-center justify-between gap-3">
@@ -171,10 +163,8 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: Snapshot Versions */}
       {activeTab === 'VERSIONS' && (
         <div className="space-y-3">
-          {/* Create Snapshot Controls */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-2 flex-1">
               <Clock className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -196,7 +186,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
             </button>
           </div>
 
-          {/* List of Saved Snapshots */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
             {snapshots.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs">
@@ -231,7 +220,6 @@ export const DataVersionHistoryView: React.FC<DataVersionHistoryViewProps> = ({
             )}
           </div>
 
-          {/* Diff Comparison Output View */}
           {selectedSnapshot && (
             <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl space-y-2">
               <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">

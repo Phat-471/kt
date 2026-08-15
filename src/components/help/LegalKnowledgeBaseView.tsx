@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LEGAL_DOCUMENTS, TAX_DEADLINES, ACCOUNT_GUIDES, LegalDocument, AccountGuide } from '../../services/legalDatabase';
-import { Scale, Search, Clock, BookOpen, AlertCircle, FileText, ChevronRight, CheckCircle2, Bookmark, ExternalLink } from 'lucide-react';
+import { Scale, Search, Clock, BookOpen, FileText, ChevronRight, CheckCircle2, Bookmark } from 'lucide-react';
 
 export const LegalKnowledgeBaseView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'DOCUMENTS' | 'ACCOUNTS' | 'DEADLINES'>('DOCUMENTS');
@@ -9,7 +9,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(LEGAL_DOCUMENTS[0]);
   const [selectedAccount, setSelectedAccount] = useState<AccountGuide | null>(ACCOUNT_GUIDES[0]);
 
-  // Filter documents
   const filteredDocs = LEGAL_DOCUMENTS.filter(doc => {
     const matchCat = selectedCategory === 'ALL' || doc.category === selectedCategory;
     const matchSearch = !searchTerm || (
@@ -21,7 +20,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
     return matchCat && matchSearch;
   });
 
-  // Filter accounts
   const filteredAccounts = ACCOUNT_GUIDES.filter(acc => {
     return !searchTerm || (
       acc.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -31,7 +29,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
     );
   });
 
-  // Calculate days remaining for deadline
   const getDaysRemaining = (deadlineStr: string) => {
     const deadlineDate = new Date(deadlineStr).getTime();
     const today = new Date().getTime();
@@ -42,7 +39,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4">
-      {/* Compact Top Banner Header */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-brand-950 text-white px-4 py-3 rounded-2xl border border-indigo-500/20 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
@@ -54,7 +50,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Tabs */}
         <div className="flex items-center bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shrink-0 relative z-10 text-xs font-bold">
           <button
             onClick={() => setActiveTab('DOCUMENTS')}
@@ -86,7 +81,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
         </div>
       </div>
 
-      {/* Global Search Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -144,10 +138,8 @@ export const LegalKnowledgeBaseView: React.FC = () => {
         )}
       </div>
 
-      {/* TAB 1: LEGAL DOCUMENTS */}
       {activeTab === 'DOCUMENTS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Doc List Left */}
           <div className="space-y-3">
             {filteredDocs.map((doc) => {
               const isSelected = selectedDoc?.id === doc.id;
@@ -180,7 +172,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
             })}
           </div>
 
-          {/* Doc Detail Right */}
           {selectedDoc && (
             <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-sm">
               <div className="border-b border-slate-200 dark:border-slate-800 pb-4 space-y-2">
@@ -193,7 +184,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
                 <p className="text-xs text-slate-500">Hiệu lực áp dụng: <strong className="text-slate-700 dark:text-slate-300">{selectedDoc.effectiveDate}</strong></p>
               </div>
 
-              {/* Key Points */}
               <div className="space-y-3 bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                   <Bookmark className="w-4 h-4 text-brand-600 dark:text-brand-400" />
@@ -209,7 +199,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
                 </ul>
               </div>
 
-              {/* Full Summary */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200">Tóm Tắt Chi Tiết Nội Dung</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
@@ -221,10 +210,8 @@ export const LegalKnowledgeBaseView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: ACCOUNTS GUIDE */}
       {activeTab === 'ACCOUNTS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Account List */}
           <div className="space-y-3">
             {filteredAccounts.map((acc) => {
               const isSelected = selectedAccount?.code === acc.code;
@@ -253,7 +240,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
             })}
           </div>
 
-          {/* Account Detail Right */}
           {selectedAccount && (
             <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-sm">
               <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -266,7 +252,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Debit & Credit Rules */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-500/30 space-y-1">
                   <span className="font-bold text-amber-800 dark:text-amber-300 uppercase">BÊN NỢ (DEBIT)</span>
@@ -278,7 +263,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Common Pairs */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200">Các Bút Toán Hạch Toán Đối Ứng Phổ Biến</h4>
                 <div className="space-y-2">
@@ -295,7 +279,6 @@ export const LegalKnowledgeBaseView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: TAX DEADLINES & COUNTDOWN */}
       {activeTab === 'DEADLINES' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {TAX_DEADLINES.map((dl) => {

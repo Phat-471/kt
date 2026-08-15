@@ -12,7 +12,7 @@ if (!fs.existsSync(XML_DIR)) {
   fs.mkdirSync(XML_DIR, { recursive: true });
 }
 
-console.log('🚀 Bắt đầu tạo bộ dữ liệu mẫu kiểm thử toàn diện cho AccoDesk Ultra Pro...');
+console.log('🚀 Bắt đầu tạo bộ dữ liệu mẫu kiểm thử toàn diện cho Phần mềm Kế Toán...');
 
 // =========================================================================
 // 1. FILE EXCEL SỔ NHẬT KÝ CHUNG (Để test Import Excel, Sổ sách, BCTC, Thuế)
@@ -500,7 +500,7 @@ console.log(`✅ [5/5] Đã tạo tệp sao lưu chuẩn: ${backupPath}`);
 // =========================================================================
 // 6. HƯỚNG DẪN KIỂM THỬ TỪNG TÍNH NĂNG (README)
 // =========================================================================
-const readmeContent = `# BỘ DỮ LIỆU MẪU KIỂM THỬ TOÀN DIỆN ACCODESK ULTRA PRO
+const readmeContent = `# BỘ DỮ LIỆU MẪU KIỂM THỬ TOÀN DIỆN Phần mềm Kế Toán
 
 Thư mục này chứa đầy đủ các file dữ liệu chuẩn để kiểm thử 100% tính năng của hệ thống.
 

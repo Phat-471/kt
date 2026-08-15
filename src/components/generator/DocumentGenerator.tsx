@@ -17,7 +17,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
   const [voucherType, setVoucherType] = useState<'PHIEU_THU' | 'PHIEU_CHI' | 'DE_NGHI_THANH_TOAN' | 'DOI_CHIEU_CONG_NO'>('PHIEU_THU');
   const [selectedTxId, setSelectedTxId] = useState<string>('');
 
-  // Form states
   const [voucherNo, setVoucherNo] = useState('PT-2026-001');
   const [dateStr, setDateStr] = useState('Ngày 10 tháng 08 năm 2026');
   const [personName, setPersonName] = useState('Nguyễn Văn An');
@@ -30,7 +29,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
   const [attachedDocs, setAttachedDocs] = useState('01');
   const [isDraftSaved, setIsDraftSaved] = useState(false);
 
-  // Load draft from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
@@ -52,7 +50,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
     }
   }, []);
 
-  // Save draft whenever inputs change
   useEffect(() => {
     try {
       const draft = {
@@ -90,7 +87,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
     setSelectedTxId('');
   };
 
-  // Auto populate from selected transaction
   useEffect(() => {
     if (selectedTxId) {
       const tx = transactions.find(t => t.id === selectedTxId);
@@ -108,7 +104,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
     }
   }, [selectedTxId, transactions]);
 
-  // Update words on amount change
   useEffect(() => {
     setAmountInWords(numberToVietnameseWords(amount));
   }, [amount]);
@@ -133,7 +128,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
 
   const handlePrint = () => {
     const htmlContent = generateVoucherHTML(templateData);
-    // Dùng Blob với encoding UTF-8 tường minh để tránh lỗi vỡ tiếng Việt khi in
     const blob = new Blob(['\uFEFF' + htmlContent], { type: 'text/html;charset=utf-8' });
     const blobUrl = URL.createObjectURL(blob);
     const printWindow = window.open(blobUrl, '_blank');
@@ -141,7 +135,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
       printWindow.addEventListener('load', () => {
         setTimeout(() => {
           printWindow.print();
-          // Giải phóng bộ nhớ sau khi in xong
           URL.revokeObjectURL(blobUrl);
         }, 300);
       });
@@ -150,7 +143,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
 
   return (
     <div className="p-6 space-y-6">
-      {/* Title */}
       <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
@@ -188,7 +180,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Inputs Left */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 text-xs shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
             <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm">Thích Ứng Thông Tin Chứng Từ</h3>
@@ -197,7 +188,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
             </span>
           </div>
 
-          {/* Quick Transaction Picker */}
           <div>
             <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Nạp dữ liệu từ dòng giao dịch đã có:</label>
             <select
@@ -326,7 +316,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
           </div>
         </div>
 
-        {/* Paper Document Preview Right */}
         <div className="lg:col-span-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-400 flex items-center gap-2">
@@ -336,7 +325,6 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
             <span className="text-[11px] text-slate-500">Khổ giấy A5/A4 Ngang - Chuẩn BTC</span>
           </div>
 
-          {/* Paper View Container */}
           <div className="bg-white text-slate-900 rounded-xl p-8 shadow-xl font-serif text-sm leading-relaxed overflow-y-auto max-h-[600px] border border-slate-200 select-text">
             <div className="flex justify-between items-start mb-4 text-xs border-b border-slate-200 pb-3">
               <div>

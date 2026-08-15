@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { NormalizedTransaction, Client } from '../../types/accounting';
 import { calculateTrialBalance, TrialBalanceReport } from '../../services/trialBalancePivotEngine';
-import { Scale, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
+import { Scale, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { PageHeader, SearchBar } from '../common';
 
 interface TrialBalancePivotViewProps {
   transactions: NormalizedTransaction[];
@@ -32,45 +33,31 @@ export const TrialBalancePivotView: React.FC<TrialBalancePivotViewProps> = ({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-900 text-white px-5 py-4 rounded-2xl border border-emerald-500/20 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <Scale className="w-5 h-5 text-emerald-200" />
+      <PageHeader
+        variant="gradient"
+        icon={Scale}
+        title="Bảng Cân Đối Phát Sinh Tài Khoản (Pivot TT200)"
+        subtitle={`Tự động tổng hợp số dư đầu kỳ, phát sinh Nợ/Có và dư cuối kỳ tài khoản cấp 1 - cấp 2${activeClient ? ` — ${activeClient.name}` : ''}`}
+        actions={
+          report.isBalanced ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-xl text-xs font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> CÂN BẰNG NỢ / CÓ
             </div>
-            <div>
-              <h2 className="text-sm font-extrabold text-white">Bảng Cân Đối Phát Sinh Tài Khoản (Pivot TT200)</h2>
-              <p className="text-[11px] text-emerald-300 mt-0.5">
-                Tự động tổng hợp số dư đầu kỳ, phát sinh Nợ/Có và dư cuối kỳ tài khoản cấp 1 - cấp 2
-                {activeClient ? ` — ${activeClient.name}` : ''}
-              </p>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 border border-rose-400/30 text-rose-200 rounded-xl text-xs font-bold">
+              <AlertTriangle className="w-4 h-4 text-rose-400" /> LỖI CHÊNH LỆCH
             </div>
-          </div>
+          )
+        }
+      />
 
-          <div className="flex items-center gap-2">
-            {report.isBalanced ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-xl text-xs font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> CÂN BẰNG NỢ / CÓ
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 border border-rose-400/30 text-rose-200 rounded-xl text-xs font-bold">
-                <AlertTriangle className="w-4 h-4 text-rose-400" /> LỖI CHÊNH LỆCH
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="text"
-            placeholder="Tìm mã TK hoặc tên TK..."
+          <SearchBar
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-52"
+            onChange={setSearchTerm}
+            placeholder="Tìm mã TK hoặc tên TK..."
+            className="w-56"
           />
           <div className="flex items-center gap-1 text-slate-500">
             <span>Từ:</span>
@@ -95,7 +82,6 @@ export const TrialBalancePivotView: React.FC<TrialBalancePivotViewProps> = ({
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300 min-w-[900px] border-collapse">

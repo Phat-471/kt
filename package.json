@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.accodesk.app",
-    "productName": "AccoDesk Ultra Pro",
+    "productName": "Phần mềm Kế Toán",
     "directories": {
       "output": "release"
     },
@@ -27,7 +27,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AccoDesk Ultra Pro",
+      "shortcutName": "Phần mềm Kế Toán",
       "installerHeaderIcon": "public/icon.ico"
     },
     "files": [

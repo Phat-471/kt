@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Star
 } from 'lucide-react';
+import { AppLogo } from '../common';
 
 export type TabType = 
   | 'dashboard'
@@ -86,7 +87,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
   
-  // Danh sách items được ghim yêu thích (Favorites)
   const [favorites, setFavorites] = useState<TabType[]>(() => {
     try {
       const saved = localStorage.getItem('accodesk_pinned_menu');
@@ -96,15 +96,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   });
 
-  // Trạng thái thu gọn/mở rộng từng nhóm
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     favorites: true,
-    overview: true,
-    data_entry: true,
-    accounting: true,
-    ledger: true,
-    control: true,
-    system: false,
+    step1_input: true,
+    step2_process: true,
+    step3_ledger: true,
+    step4_specialized: true,
+    step5_reports: true,
+    step6_system: false,
   });
 
   const toggleFavorite = (e: React.MouseEvent, id: TabType) => {
@@ -158,69 +157,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const menuGroups: MenuGroup[] = [
     {
-      id: 'overview',
-      title: '📊 1. TỔNG QUAN & PHÂN TÍCH',
+      id: 'step1_input',
+      title: '📥 1. KHỞI TẠO & NHẬP LIỆU',
       items: [
-        allMenuItemsMap['dashboard'],
-        allMenuItemsMap['executive-analytics'],
-        allMenuItemsMap['financial-reports'],
-        allMenuItemsMap['trial-balance-pivot'],
-      ],
-    },
-    {
-      id: 'data_entry',
-      title: '📥 2. NHẬP LIỆU & THU THẬP',
-      items: [
-        allMenuItemsMap['xml-import'],
+        allMenuItemsMap['clients'],
         allMenuItemsMap['import'],
+        allMenuItemsMap['xml-import'],
       ],
     },
     {
-      id: 'accounting',
-      title: '💼 3. PHÂN HỆ NGHIỆP VỤ',
-      items: [
-        allMenuItemsMap['master-accounting'],
-        allMenuItemsMap['tax-reports'],
-        allMenuItemsMap['etax'],
-        allMenuItemsMap['fixed-assets'],
-        allMenuItemsMap['payroll'],
-        allMenuItemsMap['contract-costing'],
-      ],
-    },
-    {
-      id: 'ledger',
-      title: '📜 4. SỔ SÁCH & BÁO CÁO',
-      items: [
-        allMenuItemsMap['accounting-ledger'],
-        allMenuItemsMap['reports'],
-      ],
-    },
-    {
-      id: 'control',
-      title: '🛡️ 5. KIỂM SOÁT & KHÓA SỔ',
+      id: 'step2_process',
+      title: '⚡ 2. XỬ LÝ & KIỂM LỖI',
       items: [
         allMenuItemsMap['validation'],
         allMenuItemsMap['reconciliation'],
-        allMenuItemsMap['correction-ledger'],
-        allMenuItemsMap['month-end-closing'],
-        allMenuItemsMap['data-version-history'],
+        allMenuItemsMap['generator'],
       ],
     },
     {
-      id: 'system',
-      title: '⚙️ 6. HỆ THỐNG & QUẢN TRỊ',
+      id: 'step3_ledger',
+      title: '📜 3. SỔ SÁCH & PHÁT SINH',
       items: [
-        allMenuItemsMap['clients'],
-        allMenuItemsMap['generator'],
+        allMenuItemsMap['accounting-ledger'],
+        allMenuItemsMap['trial-balance-pivot'],
+        allMenuItemsMap['master-accounting'],
+      ],
+    },
+    {
+      id: 'step4_specialized',
+      title: '💼 4. NGHIỆP VỤ & KHÓA SỔ',
+      items: [
+        allMenuItemsMap['payroll'],
+        allMenuItemsMap['fixed-assets'],
+        allMenuItemsMap['contract-costing'],
+        allMenuItemsMap['month-end-closing'],
+      ],
+    },
+    {
+      id: 'step5_reports',
+      title: '📊 5. THUẾ & BÁO CÁO',
+      items: [
+        allMenuItemsMap['financial-reports'],
+        allMenuItemsMap['etax'],
+        allMenuItemsMap['tax-reports'],
+        allMenuItemsMap['reports'],
+        allMenuItemsMap['executive-analytics'],
+        allMenuItemsMap['dashboard'],
+      ],
+    },
+    {
+      id: 'step6_system',
+      title: '⚙️ 6. TIỆN ÍCH & HỆ THỐNG',
+      items: [
+        allMenuItemsMap['correction-ledger'],
+        allMenuItemsMap['data-version-history'],
         allMenuItemsMap['legal-search'],
+        allMenuItemsMap['help'],
         allMenuItemsMap['audit'],
         allMenuItemsMap['backup'],
-        allMenuItemsMap['help'],
       ],
     },
   ];
 
-  // Tự động mở rộng nhóm chứa tab active khi activeTab thay đổi
   useEffect(() => {
     for (const group of menuGroups) {
       if (group.items.some(item => item.id === activeTab)) {
@@ -252,22 +250,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen justify-between select-none relative z-20 transition-all duration-300 ease-in-out flex-shrink-0`}>
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Brand App Header */}
-        <div className={`p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} shrink-0`}>
-          <div className={`flex items-center gap-3 ${isCollapsed ? 'hidden' : 'flex'}`}>
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/40 relative overflow-hidden group">
-              <BookOpenCheck className="w-5 h-5 text-amber-300 relative z-10 transition-transform duration-300 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <h1 className="font-black text-sm tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                  Kế Toán <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">PRO</span>
-                </h1>
-              </div>
-              <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 tracking-wide uppercase mt-1">Hệ Thống Quản Trị Offline</p>
-            </div>
-          </div>
+        <div className={`p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'} shrink-0`}>
+          <AppLogo 
+            size={36} 
+            showText={!isCollapsed} 
+            subtitle="Hệ Thống Quản Trị Offline" 
+          />
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
@@ -277,7 +265,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Quick Menu Search Bar */}
         {!isCollapsed && (
           <div className="px-3 pt-3 pb-1 shrink-0">
             <div className="relative">
@@ -287,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 value={menuSearchTerm}
                 onChange={(e) => setMenuSearchTerm(e.target.value)}
                 placeholder="Tìm nhanh tính năng (Lương, XML, BCTC...)"
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-[11px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/50 outline-none transition-shadow"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/50 outline-none transition-shadow"
               />
               {menuSearchTerm && (
                 <button
@@ -301,9 +288,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Categorized Navigation Menu */}
         <nav className="p-2.5 space-y-3 flex-1 overflow-y-auto custom-scrollbar scrollbar-thin">
-          {/* FAVORITES / PINNED SECTION */}
           {favoriteItems.length > 0 && (
             <div className="space-y-1 bg-amber-500/5 dark:bg-amber-500/10 p-2 rounded-2xl border border-amber-500/20">
               {!isCollapsed && (
@@ -326,7 +311,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {favoriteItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeTab === item.id;
-                    const isPinned = favorites.includes(item.id);
                     return (
                       <button
                         key={`fav-${item.id}`}
@@ -371,13 +355,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* REGULAR GROUPS */}
           {filteredGroups.map((group) => {
             const isExpanded = isSearching || expandedGroups[group.id];
 
             return (
               <div key={group.id} className="space-y-1">
-                {/* Category Header */}
                 {!isCollapsed && (
                   <button
                     onClick={() => !isSearching && toggleGroup(group.id)}
@@ -390,7 +372,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 )}
 
-                {/* Group Menu Items */}
                 {(isCollapsed || isExpanded) && (
                   <div className="space-y-0.5">
                     {group.items.map((item) => {
@@ -452,7 +433,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
 
-          {/* No search results fallback */}
           {filteredGroups.length === 0 && favoriteItems.length === 0 && (
             <div className="p-4 text-center text-xs text-slate-400 space-y-1">
               <p>Không tìm thấy tính năng "{menuSearchTerm}"</p>
@@ -467,7 +447,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Principle Disclaimer Box */}
       {!isCollapsed && (
         <div className="p-3 m-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[11px] space-y-1.5 shadow-sm shrink-0">
           <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-300">

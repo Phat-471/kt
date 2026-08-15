@@ -4,17 +4,13 @@ import { calculateContractCostingReport, ContractCostingItem } from '../../servi
 import { auditVatRefundEligibility, VatRefundAuditResult } from '../../services/vatRefundAuditService';
 import {
   Briefcase,
-  Layers,
-  TrendingUp,
   AlertTriangle,
   CheckCircle2,
   ShieldCheck,
-  DollarSign,
   FileSpreadsheet,
-  PieChart,
-  HardDriveUpload,
-  Zap,
 } from 'lucide-react';
+import { PageHeader, SubTabNav, StatCard, TabItem } from '../common';
+import { formatNumber } from '../../utils/formatters';
 
 interface ContractCostingViewProps {
   transactions: NormalizedTransaction[];
@@ -29,109 +25,91 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
   const contracts: ContractCostingItem[] = calculateContractCostingReport(transactions);
   const vatAudit: VatRefundAuditResult = auditVatRefundEligibility(transactions);
 
+  const tabs: TabItem<'CONTRACTS' | 'VAT_REFUND'>[] = [
+    {
+      id: 'CONTRACTS',
+      label: 'Giá Thành Hợp Đồng',
+      icon: Briefcase,
+      count: contracts.length,
+    },
+    {
+      id: 'VAT_REFUND',
+      label: 'Hồ Sơ Hoàn Thuế GTGT',
+      icon: ShieldCheck,
+    },
+  ];
+
+  const totalContractValue = contracts.reduce((sum, c) => sum + c.contractValue, 0);
+  const totalCostValue = contracts.reduce((sum, c) => sum + c.totalCost, 0);
+  const totalGrossProfit = contracts.reduce((sum, c) => sum + c.grossProfit, 0);
+
   return (
     <div className="p-4 space-y-4 animate-fade-in">
-      {/* Top Banner Header */}
-      <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-sm shrink-0">
-            <Briefcase className="w-5 h-5 text-purple-400" />
+      <PageHeader
+        variant="gradient"
+        icon={Briefcase}
+        title="Quản Trị Chi Phí Giá Thành Hợp Đồng & Kiểm Tra Hoàn Thuế GTGT"
+        badgeText="PRO COSTING"
+        subtitle={`${activeClient ? activeClient.name : 'Doanh Nghiệp Kế Toán Pro'} | Theo dõi chi phí 1541-1543 & Hồ sơ hoàn thuế GTGT`}
+        actions={
+          <div className="flex items-center gap-2">
+            {activeTab === 'CONTRACTS' && (
+              <button
+                onClick={() => {
+                  import('xlsx').then(XLSX => {
+                    const data = contracts.map(c => ({
+                      'Mã Hợp Đồng': c.contractCode,
+                      'Tên Hợp Đồng / Công Trình': c.contractName,
+                      'Đối Tác': c.partnerName,
+                      'Giá Trị HĐ (Doanh Thu)': c.contractValue,
+                      'NVL Trực Tiếp (1541)': c.materialCost1541,
+                      'Nhân Công (1542)': c.laborCost1542,
+                      'Máy Thi Công & SXC (1543)': c.overheadCost1543,
+                      'Tổng Giá Thành (154)': c.totalCost,
+                      'Lợi Nhuận Gộp': c.grossProfit,
+                      'Tỷ Suất LN (%)': c.profitMarginPercent,
+                      'Cảnh Báo Vượt Ngân Sách': c.isOverBudget ? 'CÓ' : 'KHÔNG',
+                    }));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Gia_Thanh_HD');
+                    XLSX.writeFile(wb, `BaoCao_GiaThanh_${activeClient?.taxCode || 'Costing'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+                  });
+                }}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Xuất Excel Giá Thành</span>
+              </button>
+            )}
           </div>
-          <div>
-            <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-2">
-              <span>Quản Trị Chi Phí Giá Thành Hợp Đồng & Kiểm Tra Hoàn Thuế GTGT</span>
-              <span className="text-[10px] bg-purple-600 px-2 py-0.5 rounded-full text-white font-bold">
-                PRO COSTING
-              </span>
-            </h2>
-            <p className="text-[11px] text-slate-400">
-              {activeClient ? activeClient.name : 'Doanh Nghiệp Kế Toán Pro'} | Theo dõi chi phí 1541-1543 & Hồ sơ hoàn thuế GTGT
-            </p>
-          </div>
-        </div>
+        }
+      />
 
-        {/* Tab Control Buttons */}
-        <div className="flex items-center gap-2">
-          {activeTab === 'CONTRACTS' && (
-            <button
-              onClick={() => {
-                import('xlsx').then(XLSX => {
-                  const data = contracts.map(c => ({
-                    'Mã Hợp Đồng': c.contractCode,
-                    'Tên Hợp Đồng / Công Trình': c.contractName,
-                    'Đối Tác': c.partnerName,
-                    'Giá Trị HĐ (Doanh Thu)': c.contractValue,
-                    'NVL Trực Tiếp (1541)': c.materialCost1541,
-                    'Nhân Công (1542)': c.laborCost1542,
-                    'Máy Thi Công & SXC (1543)': c.overheadCost1543,
-                    'Tổng Giá Thành (154)': c.totalCost,
-                    'Lợi Nhuận Gộp': c.grossProfit,
-                    'Tỷ Suất LN (%)': c.profitMarginPercent,
-                    'Cảnh Báo Vượt Ngân Sách': c.isOverBudget ? 'CÓ' : 'KHÔNG',
-                  }));
-                  const ws = XLSX.utils.json_to_sheet(data);
-                  const wb = XLSX.utils.book_new();
-                  XLSX.utils.book_append_sheet(wb, ws, 'Gia_Thanh_HD');
-                  XLSX.writeFile(wb, `BaoCao_GiaThanh_${activeClient?.taxCode || 'Costing'}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-                });
-              }}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Xuất Excel Giá Thành</span>
-            </button>
-          )}
+      <SubTabNav
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
-          <button
-            onClick={() => setActiveTab('CONTRACTS')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'CONTRACTS'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <Briefcase className="w-3.5 h-3.5" />
-            <span>Giá Thành Hợp Đồng ({contracts.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('VAT_REFUND')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'VAT_REFUND'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Hồ Sơ Hoàn Thuế GTGT</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Tab 1: Contract Costing List */}
       {activeTab === 'CONTRACTS' && (
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm">
-              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tổng Giá Trị Hợp Đồng</div>
-              <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">
-                {contracts.reduce((sum, c) => sum + c.contractValue, 0).toLocaleString()} VNĐ
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm">
-              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tổng Giá Thành Đã Tập Hợp (154)</div>
-              <div className="text-base font-extrabold text-purple-600 dark:text-purple-400 mt-0.5 tabular-nums">
-                {contracts.reduce((sum, c) => sum + c.totalCost, 0).toLocaleString()} VNĐ
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm">
-              <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tổng Lợi Nhuận Gộp Hợp Đồng</div>
-              <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
-                {contracts.reduce((sum, c) => sum + c.grossProfit, 0).toLocaleString()} VNĐ
-              </div>
-            </div>
+            <StatCard
+              label="TỔNG GIÁ TRỊ HỢP ĐỒNG"
+              value={`${formatNumber(totalContractValue)} đ`}
+              variant="purple"
+            />
+            <StatCard
+              label="TỔNG GIÁ THÀNH ĐÃ TẬP HỢP (154)"
+              value={`${formatNumber(totalCostValue)} đ`}
+              variant="purple"
+            />
+            <StatCard
+              label="TỔNG LỢI NHUẬN GỘP HỢP ĐỒNG"
+              value={`${formatNumber(totalGrossProfit)} đ`}
+              variant="emerald"
+            />
           </div>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -168,7 +146,6 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Detailed 1541 / 1542 / 1543 Cost Allocation Pills */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                     <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg text-[11px]">
                       <span className="text-slate-500">NVL Trực Tiếp (1541):</span>
@@ -197,10 +174,8 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: VAT Refund Audit */}
       {activeTab === 'VAT_REFUND' && (
         <div className="space-y-3">
-          {/* VAT Audit Status Header Box */}
           <div className={`p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 ${
             vatAudit.isEligibleForRefund
               ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-500/30'
@@ -230,7 +205,6 @@ export const ContractCostingView: React.FC<ContractCostingViewProps> = ({
             </div>
           </div>
 
-          {/* 6 VAT Refund Rules Table */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
             {vatAudit.rules.map((rule) => (
               <div key={rule.id} className="p-3.5 space-y-1">

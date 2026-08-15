@@ -16,9 +16,6 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
   reconciliations,
   searchTerm = '',
 }) => {
-  
-  // Calculate summary stats
-  // Filter based on search term
   const filterTransaction = (t: NormalizedTransaction) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -40,14 +37,6 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
     return false;
   });
 
-  const getMatchedTxs = () => {
-    return filteredReconciliations.map(pair => {
-      const v = transactions.find(t => t.id === pair.voucherId);
-      const s = transactions.find(t => t.id === pair.statementId);
-      return { v, s };
-    });
-  };
-
   const totalTxs = transactions.length;
   const matchedTxs = filteredReconciliations.length;
   const errorTxs = transactions.filter(t => t.validationStatus === 'ERROR').length;
@@ -67,7 +56,6 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
@@ -99,25 +87,21 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="printable-summary">
-        {/* Card 1 */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">TỔNG SỐ CHỨNG TỪ</div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">{totalTxs}</div>
         </div>
         
-        {/* Card 2 */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">ĐÃ KHỚP ĐỐI CHIẾU</div>
           <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">{matchedTxs}</div>
         </div>
 
-        {/* Card 3 */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-1">CHỨNG TỪ BỊ LỖI</div>
           <div className="text-2xl font-extrabold text-rose-700 dark:text-rose-300">{errorTxs}</div>
         </div>
 
-        {/* Card 4 */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-bold text-brand-600 dark:text-brand-400 mb-1">TỔNG SỐ CẶP ĐÃ GHÉP</div>
           <div className="text-2xl font-extrabold text-brand-700 dark:text-brand-300">{reconciliations.length}</div>
@@ -125,7 +109,6 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Financial Summary */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
             Tổng Quan Tài Chính
@@ -146,7 +129,6 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Client Info */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <h3 className="font-bold text-slate-900 dark:text-slate-200 text-sm border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
             Thông Tin Khách Hàng / Đơn Vị
@@ -178,13 +160,11 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
         </div>
       </div>
       
-      {/* Basic instructions */}
       <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-200 dark:border-amber-500/20">
         <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed font-medium">
           <strong>Lưu ý in ấn:</strong> Khi nhấn "In Báo Cáo", trình duyệt sẽ mở hộp thoại in. Bạn có thể chọn máy in thực tế hoặc chọn "Save as PDF" để xuất ra file PDF. Vui lòng bật "Background graphics" (In hình nền) để giữ màu sắc của báo cáo.
         </p>
       </div>
-
     </div>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Client } from '../../types/accounting';
-import { Building2, X, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Building2, Plus, Sparkles } from 'lucide-react';
 import { db, logAuditEvent } from '../../services/storage';
+import { BaseModal } from '../common';
 
 interface QuickCreateClientModalProps {
   isOpen: boolean;
@@ -21,8 +21,6 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
   const [accountingStandard, setAccountingStandard] = useState<'TT200' | 'TT133' | 'TT88_HKD'>('TT200');
   const [financialYear, setFinancialYear] = useState<number>(2026);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleQuickCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +57,6 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
     }
   };
 
-  // Mẫu nhanh (Quick Presets)
   const applyPreset = (presetName: string, presetMST: string, presetStandard: 'TT200' | 'TT133' | 'TT88_HKD') => {
     setName(presetName);
     setTaxCode(presetMST);
@@ -67,35 +64,17 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
     setAddress('Hà Nội, Việt Nam');
   };
 
-  const modalContent = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up my-auto max-h-[92vh] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-brand-600 to-indigo-600 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-                <span>Tạo Mới Khách Hàng / Job Kế Toán</span>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">1-CLICK</span>
-              </h3>
-              <p className="text-[11px] text-brand-100 mt-0.5">
-                Khởi tạo hồ sơ công ty để nạp chứng từ và báo cáo tài chính
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Presets Bar */}
-        <div className="px-6 pt-4 pb-2 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 overflow-x-auto text-[11px]">
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Tạo Mới Khách Hàng / Job Kế Toán"
+      subtitle="Khởi tạo hồ sơ công ty để nạp chứng từ và báo cáo tài chính"
+      icon={Building2}
+      maxWidth="lg"
+    >
+      <div className="space-y-4">
+        <div className="p-3 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center gap-2 overflow-x-auto text-[11px]">
           <span className="text-slate-400 font-bold flex items-center gap-1 shrink-0">
             <Sparkles className="w-3 h-3 text-amber-500" /> Mẫu nhanh:
           </span>
@@ -115,8 +94,7 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleQuickCreate} className="p-6 space-y-4">
+        <form onSubmit={handleQuickCreate} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Tên Doanh Nghiệp / Đơn Vị <span className="text-rose-500">*</span>
@@ -189,7 +167,6 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
             </div>
           </div>
 
-          {/* Footer Buttons */}
           <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
@@ -209,8 +186,6 @@ export const QuickCreateClientModal: React.FC<QuickCreateClientModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </BaseModal>
   );
-
-  return createPortal(modalContent, document.body);
 };

@@ -56,7 +56,7 @@ import { jaccardSimilarity } from '../services/matchingEngine';
 import { NormalizedTransaction } from '../types/accounting';
 
 console.log('====================================================');
-console.log('🧪 BẮT ĐẦU CHẠY MASTER TEST SUITE - ACCODESK ULTRA PRO');
+console.log('🧪 BẮT ĐẦU CHẠY MASTER TEST SUITE - Phần mềm Kế Toán');
 console.log('====================================================\n');
 
 let passCount = 0;
@@ -684,7 +684,7 @@ async function runAllTests() {
   // PHẦN 51: XÁC THỰC CÁC SỬA LỖI SPRINT 9 (S9.1 - S9.10)
   // ============================================================
   console.log('\n📌 PHẦN 51: TEST XÁC THỰC CÁC SỬA LỖI SPRINT 9');
-  
+
   // Test VND parseNumericValue
   assert(parseNumericValue('1,234,567.89') === 1234567.89, 'S9.9: Parse số tiền dạng English format thành công');
   assert(parseNumericValue('1.234.567,89') === 1234567.89, 'S9.9: Parse số tiền dạng Vietnamese format thành công');
@@ -886,7 +886,7 @@ async function runAllTests() {
   console.log('\n📌 PHẦN 61: TEST INCREMENTAL ACCOUNT AGGREGATOR & BALANCE CHECK');
   const agg = buildAccountAggregator(mockTransactions);
   const initialDebit111 = agg.getAccountBalance('111', 'DEBIT');
-  
+
   // Test Incremental Add
   const newTx: NormalizedTransaction = {
     id: 'tx_inc_test',
@@ -923,7 +923,7 @@ async function runAllTests() {
   console.log('\n📌 PHẦN 62: TEST BỘ SỔ NHẬT KÝ ĐẶC BIỆT TT200');
   const sjCashReceipt = generateSpecialJournal(mockTransactions, 'CASH_RECEIPT');
   assert(sjCashReceipt.title.includes('S03c'), 'S14.4: Tạo Sổ Nhật ký Thu tiền mẫu S03c thành công');
-  
+
   const sjCashDisburse = generateSpecialJournal(mockTransactions, 'CASH_DISBURSEMENT');
   assert(sjCashDisburse.title.includes('S03d'), 'S14.5: Tạo Sổ Nhật ký Chi tiền mẫu S03d thành công');
 
@@ -952,7 +952,7 @@ async function runAllTests() {
   const { getBackupSnapshots, saveBackupSnapshots } = await import('../services/persistentStorageService');
   const initialSnapshots = getBackupSnapshots();
   assert(Array.isArray(initialSnapshots), 'S15.3: getBackupSnapshots trả về mảng danh sách snapshot');
-  
+
   const testSnap = {
     id: 'snap_test_01',
     timestamp: '2026-08-14 10:00:00',

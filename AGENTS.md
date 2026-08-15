@@ -1,4 +1,4 @@
-# AGENTS.md — Quy Tắc Dự Án Kế Toán AccoDesk Ultra Pro
+# AGENTS.md — Quy Tắc Dự Án Kế Toán Phần mềm Kế Toán
 
 ## ⚠️ QUY TẮC TỐI CAO: KHÔNG TỰ ĐOÁN & KHÔNG LÀM QUA LOA
 

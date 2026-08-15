@@ -9,11 +9,7 @@ import {
   XCircle,
   FileText,
   Eye,
-  ShieldCheck,
   CalendarCheck,
-  Sparkles,
-  ArrowRight,
-  HardDriveUpload,
 } from 'lucide-react';
 import { TabType } from '../layout/Sidebar';
 
@@ -30,7 +26,6 @@ export const MonthEndClosingView: React.FC<MonthEndClosingViewProps> = ({
   reconciliations = [],
   activeClient = null,
   onNavigateTab,
-  onQuickBackup,
 }) => {
   const [isLocked, setIsLocked] = useState(false);
   const auditResult = runAudit(transactions, reconciliations);
@@ -71,7 +66,6 @@ export const MonthEndClosingView: React.FC<MonthEndClosingViewProps> = ({
 
   return (
     <div className="p-4 space-y-4 animate-fade-in">
-      {/* Top Banner Header */}
       <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
@@ -88,7 +82,6 @@ export const MonthEndClosingView: React.FC<MonthEndClosingViewProps> = ({
           </div>
         </div>
 
-        {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => exportMonthEndClosingPDF(activeClient, auditResult)}
@@ -115,7 +108,6 @@ export const MonthEndClosingView: React.FC<MonthEndClosingViewProps> = ({
         </div>
       </div>
 
-      {/* Audit KPI Overview Status Box */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className={`p-3.5 rounded-2xl border shadow-sm flex items-center gap-3 ${
           auditResult.isReadyToClose
@@ -163,7 +155,6 @@ export const MonthEndClosingView: React.FC<MonthEndClosingViewProps> = ({
         </div>
       </div>
 
-      {/* 10 Checklist Rules Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
         <div className="px-4 py-3 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center select-none">
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">

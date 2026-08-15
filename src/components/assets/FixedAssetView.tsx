@@ -7,9 +7,11 @@ import {
   getAllFixedAssets, saveFixedAsset, deleteFixedAsset,
 } from '../../services/fixedAssetService';
 import { Client } from '../../types/accounting';
+import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { PageHeader, SubTabNav, StatCard } from '../common';
 import {
-  Building2, Plus, Trash2, Edit3, X, Save, ChevronDown, ChevronUp,
-  AlertTriangle, TrendingDown, BarChart3, Calendar, CircleDollarSign
+  Building2, Plus, Trash2, Edit3, X, Save,
+  AlertTriangle, TrendingDown, BarChart3
 } from 'lucide-react';
 
 interface FixedAssetViewProps {
@@ -49,13 +51,9 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
   const refresh = () => setAssets(getAllFixedAssets());
   useEffect(() => { refresh(); }, []);
 
-  const fmt = (n: number) => n.toLocaleString('vi-VN');
-
-  // Bảng khấu hao tháng hiện tại
   const monthlyResult = useMemo(() =>
     getTotalMonthlyDepreciation(assets, viewMonth), [assets, viewMonth]);
 
-  // TSCĐ được chọn
   const selectedAsset = assets.find(a => a.id === selectedAssetId);
   const selectedSchedule = useMemo(() =>
     selectedAsset ? calculateDepreciationSchedule(selectedAsset) : null,
@@ -87,7 +85,6 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
   const totalOriginalCost = assets.reduce((s, a) => s + a.originalCost, 0);
   const activeAssets = assets.filter(a => a.status === 'ACTIVE');
 
-  // Helper: số tháng đã khấu hao
   const getDepreciatedMonths = (a: FixedAsset) => {
     const use = new Date(a.useDate);
     const now2 = new Date();
@@ -99,71 +96,62 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
 
   const getProgressPct = (a: FixedAsset) => Math.min(100, Math.round((getDepreciatedMonths(a) / a.usefulLifeMonths) * 100));
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  const tabs = [
+    { id: 'DANH_SACH' as const, label: 'Danh Sách TSCĐ', icon: Building2, count: assets.length },
+    { id: 'BANG_KH' as const, label: 'Bảng Khấu Hao Tháng', icon: TrendingDown },
+    { id: 'CHI_TIET' as const, label: 'Chi Tiết KH', icon: BarChart3 },
+  ];
+
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-orange-900 via-amber-900 to-orange-900 text-white px-5 py-4 rounded-2xl border border-orange-500/20 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-amber-200" />
-            </div>
-            <div>
-              <h2 className="text-sm font-extrabold text-white">Tài Sản Cố Định & Khấu Hao</h2>
-              <p className="text-[11px] text-amber-300 mt-0.5">
-                Phương pháp đường thẳng — TT45/2013 & TT200/2014
-                {activeClient ? ` — ${activeClient.name}` : ''}
-              </p>
-            </div>
-          </div>
+      <PageHeader
+        icon={Building2}
+        title="Tài Sản Cố Định & Khấu Hao"
+        subtitle={`Phương pháp đường thẳng — TT45/2013 & TT200/2014${activeClient ? ` — ${activeClient.name}` : ''}`}
+        variant="gradient"
+        actions={
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white text-amber-800 rounded-xl text-xs font-bold hover:bg-amber-50 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-blue-950 rounded-xl text-xs font-bold hover:bg-blue-50 transition-all active:scale-95 cursor-pointer shadow-sm"
           >
             <Plus className="w-4 h-4" /> Thêm TSCĐ
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Tổng TSCĐ', value: assets.length.toString(), unit: 'tài sản', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-          { label: 'Đang sử dụng', value: activeAssets.length.toString(), unit: 'tài sản', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-          { label: 'Tổng nguyên giá', value: fmt(totalOriginalCost), unit: 'đ', color: 'text-slate-900 dark:text-slate-100', bg: 'bg-slate-50 dark:bg-slate-800' },
-          { label: `KH tháng ${viewMonth.slice(5)}/${viewMonth.slice(0, 4)}`, value: fmt(monthlyResult.total), unit: 'đ', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' },
-        ].map(c => (
-          <div key={c.label} className={`${c.bg} rounded-xl p-3 border border-slate-200 dark:border-slate-700`}>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{c.label}</p>
-            <p className={`text-sm font-extrabold tabular-num leading-tight ${c.color}`}>{c.value}</p>
-            <p className="text-[10px] text-slate-400">{c.unit}</p>
-          </div>
-        ))}
+        <StatCard
+          label="Tổng TSCĐ"
+          value={`${assets.length} tài sản`}
+          variant="amber"
+          compact
+        />
+        <StatCard
+          label="Đang sử dụng"
+          value={`${activeAssets.length} tài sản`}
+          variant="emerald"
+          compact
+        />
+        <StatCard
+          label="Tổng nguyên giá"
+          value={`${formatCurrency(totalOriginalCost)} đ`}
+          variant="slate"
+          compact
+        />
+        <StatCard
+          label={`KH tháng ${viewMonth.slice(5)}/${viewMonth.slice(0, 4)}`}
+          value={`${formatCurrency(monthlyResult.total)} đ`}
+          variant="rose"
+          compact
+        />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
-        {[
-          { key: 'DANH_SACH', label: 'Danh Sách TSCĐ', icon: Building2 },
-          { key: 'BANG_KH', label: 'Bảng Khấu Hao Tháng', icon: TrendingDown },
-          { key: 'CHI_TIET', label: 'Chi Tiết KH', icon: BarChart3 },
-        ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === tab.key
-                ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <tab.icon className="w-3.5 h-3.5" /> {tab.label}
-          </button>
-        ))}
-      </div>
+      <SubTabNav
+        tabs={tabs}
+        activeTab={activeTab}
+        onChange={(t) => setActiveTab(t)}
+      />
 
-      {/* ===== TAB: DANH SÁCH ===== */}
       {activeTab === 'DANH_SACH' && (
         <div className="space-y-3">
           {showAddForm && (
@@ -189,7 +177,7 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
             const sch = calculateDepreciationSchedule(asset);
 
             return (
-              <div key={asset.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+              <div key={asset.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                 {isEditing ? (
                   <div className="p-4">
                     <AssetForm
@@ -216,11 +204,11 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-xs">
                           <div>
                             <p className="text-slate-400 text-[10px]">Nguyên giá</p>
-                            <p className="font-bold text-slate-900 dark:text-slate-100">{fmt(asset.originalCost)} đ</p>
+                            <p className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(asset.originalCost)} đ</p>
                           </div>
                           <div>
                             <p className="text-slate-400 text-[10px]">KH/tháng</p>
-                            <p className="font-bold text-rose-700 dark:text-rose-400">{fmt(sch.monthlyAmount)} đ</p>
+                            <p className="font-bold text-rose-700 dark:text-rose-400">{formatCurrency(sch.monthlyAmount)} đ</p>
                           </div>
                           <div>
                             <p className="text-slate-400 text-[10px]">Tỷ lệ KH/năm</p>
@@ -231,11 +219,10 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                             <p className="font-bold text-slate-900 dark:text-slate-100">{sch.completionDate}</p>
                           </div>
                         </div>
-                        {/* Progress bar */}
                         <div className="mt-3">
                           <div className="flex justify-between text-[10px] text-slate-400 mb-1">
                             <span>Đã khấu hao {pct}% ({getDepreciatedMonths(asset)}/{asset.usefulLifeMonths} tháng)</span>
-                            <span>Còn lại: {fmt(asset.originalCost - sch.schedule.slice(0, getDepreciatedMonths(asset)).reduce((s, r) => s + r.monthlyAmount, 0))} đ</span>
+                            <span>Còn lại: {formatCurrency(asset.originalCost - sch.schedule.slice(0, getDepreciatedMonths(asset)).reduce((s, r) => s + r.monthlyAmount, 0))} đ</span>
                           </div>
                           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div
@@ -248,15 +235,15 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => { setSelectedAssetId(asset.id); setActiveTab('CHI_TIET'); }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors cursor-pointer"
                           title="Xem lịch KH"
                         >
                           <BarChart3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setEditingAsset(asset)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                        <button onClick={() => setEditingAsset(asset)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(asset.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                        <button onClick={() => handleDelete(asset.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -269,17 +256,16 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
         </div>
       )}
 
-      {/* ===== TAB: BẢNG KHẤU HAO THÁNG ===== */}
       {activeTab === 'BANG_KH' && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Tháng:</label>
             <input type="month" value={viewMonth} onChange={e => setViewMonth(e.target.value)}
               className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400" />
-            <span className="text-xs text-slate-500">Tổng KH tháng này: <strong className="text-rose-700 dark:text-rose-400">{fmt(monthlyResult.total)} đ</strong></span>
+            <span className="text-xs text-slate-500">Tổng KH tháng này: <strong className="text-rose-700 dark:text-rose-400">{formatCurrency(monthlyResult.total)} đ</strong></span>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">BẢNG PHÂN BỔ KHẤU HAO TSCĐ THÁNG {viewMonth}</p>
               <p className="text-[10px] text-slate-500">Hạch toán: Nợ TK Chi Phí / Có TK 214 (KHTSCĐ)</p>
@@ -308,7 +294,7 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                         </td>
                         <td className="px-4 py-2 text-center font-mono font-bold text-amber-700 dark:text-amber-400">{asset?.accountDebit}</td>
                         <td className="px-4 py-2 text-center font-mono font-bold text-indigo-700 dark:text-indigo-400">{asset?.accountCredit}</td>
-                        <td className="px-4 py-2 text-right tabular-num font-bold text-rose-700 dark:text-rose-400">{fmt(e.amount)}</td>
+                        <td className="px-4 py-2 text-right tabular-num font-bold text-rose-700 dark:text-rose-400">{formatCurrency(e.amount)}</td>
                       </tr>
                     );
                   })}
@@ -322,7 +308,7 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                   {monthlyResult.entries.length > 0 && (
                     <tr className="bg-amber-50 dark:bg-amber-900/20 font-extrabold border-t-2 border-amber-200 dark:border-amber-500/30">
                       <td colSpan={5} className="px-4 py-3 text-xs uppercase text-amber-800 dark:text-amber-300">CỘNG KHẤU HAO THÁNG</td>
-                      <td className="px-4 py-3 text-right tabular-num text-rose-700 dark:text-rose-400">{fmt(monthlyResult.total)}</td>
+                      <td className="px-4 py-3 text-right tabular-num text-rose-700 dark:text-rose-400">{formatCurrency(monthlyResult.total)}</td>
                     </tr>
                   )}
                 </tbody>
@@ -330,13 +316,12 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
             </div>
           </div>
 
-          {/* Theo bộ phận */}
           {Object.keys(monthlyResult.byDepartment).length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {Object.entries(monthlyResult.byDepartment).map(([dept, amt]) => (
                 <div key={dept} className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3">
                   <p className="text-[10px] text-slate-500 font-bold uppercase">{dept}</p>
-                  <p className="text-sm font-extrabold text-amber-700 dark:text-amber-400 tabular-num">{fmt(amt)} đ</p>
+                  <p className="text-sm font-extrabold text-amber-700 dark:text-amber-400 tabular-num">{formatCurrency(amt)} đ</p>
                 </div>
               ))}
             </div>
@@ -344,7 +329,6 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
         </div>
       )}
 
-      {/* ===== TAB: CHI TIẾT KH ===== */}
       {activeTab === 'CHI_TIET' && (
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
@@ -359,20 +343,33 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
           {selectedSchedule && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: 'Nguyên giá', value: fmt(selectedSchedule.asset.originalCost) + ' đ', color: 'text-slate-900 dark:text-slate-100' },
-                  { label: 'KH/tháng', value: fmt(selectedSchedule.monthlyAmount) + ' đ', color: 'text-rose-700 dark:text-rose-400' },
-                  { label: 'Tỷ lệ KH/năm', value: selectedSchedule.depreciationRate + '%', color: 'text-amber-700 dark:text-amber-400' },
-                  { label: 'Thời gian KH', value: `${selectedSchedule.asset.usefulLifeMonths} tháng`, color: 'text-slate-700 dark:text-slate-300' },
-                ].map(c => (
-                  <div key={c.label} className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">{c.label}</p>
-                    <p className={`text-sm font-extrabold ${c.color}`}>{c.value}</p>
-                  </div>
-                ))}
+                <StatCard
+                  label="Nguyên giá"
+                  value={`${formatCurrency(selectedSchedule.asset.originalCost)} đ`}
+                  variant="slate"
+                  compact
+                />
+                <StatCard
+                  label="KH/tháng"
+                  value={`${formatCurrency(selectedSchedule.monthlyAmount)} đ`}
+                  variant="rose"
+                  compact
+                />
+                <StatCard
+                  label="Tỷ lệ KH/năm"
+                  value={`${selectedSchedule.depreciationRate}%`}
+                  variant="amber"
+                  compact
+                />
+                <StatCard
+                  label="Thời gian KH"
+                  value={`${selectedSchedule.asset.usefulLifeMonths} tháng`}
+                  variant="blue"
+                  compact
+                />
               </div>
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="px-5 py-3 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800">
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-300">BẢNG TÍNH KHẤU HAO: {selectedSchedule.asset.name}</p>
                 </div>
@@ -394,9 +391,9 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
                             {row.month}
                             {row.month === currentMonth && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400">(tháng này)</span>}
                           </td>
-                          <td className="px-4 py-1.5 text-right tabular-num text-rose-700 dark:text-rose-400">{fmt(row.monthlyAmount)}</td>
-                          <td className="px-4 py-1.5 text-right tabular-num text-amber-700 dark:text-amber-400">{fmt(row.accumulatedDepreciation)}</td>
-                          <td className="px-4 py-1.5 text-right tabular-num text-emerald-700 dark:text-emerald-400">{fmt(row.bookValue)}</td>
+                          <td className="px-4 py-1.5 text-right tabular-num text-rose-700 dark:text-rose-400">{formatCurrency(row.monthlyAmount)}</td>
+                          <td className="px-4 py-1.5 text-right tabular-num text-amber-700 dark:text-amber-400">{formatCurrency(row.accumulatedDepreciation)}</td>
+                          <td className="px-4 py-1.5 text-right tabular-num text-emerald-700 dark:text-emerald-400">{formatCurrency(row.bookValue)}</td>
                           <td className="px-4 py-1.5">
                             {row.isFullyDepreciated
                               ? <span className="text-[10px] text-slate-400">Hết KH</span>
@@ -421,7 +418,6 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
         </div>
       )}
 
-      {/* Lưu ý */}
       <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
@@ -432,9 +428,6 @@ export const FixedAssetView: React.FC<FixedAssetViewProps> = ({ activeClient }) 
   );
 };
 
-// ============================================================
-// Asset Form Component
-// ============================================================
 const AssetForm: React.FC<{
   asset: FixedAsset;
   onChange: (field: keyof FixedAsset, value: any) => void;
@@ -504,10 +497,10 @@ const AssetForm: React.FC<{
         </div>
       </div>
       <div className="flex gap-2 pt-1">
-        <button onClick={onSave} className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95">
+        <button onClick={onSave} className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer">
           <Save className="w-3.5 h-3.5" /> {isNew ? 'Thêm TSCĐ' : 'Lưu'}
         </button>
-        <button onClick={onCancel} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+        <button onClick={onCancel} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all cursor-pointer">
           <X className="w-3.5 h-3.5" /> Hủy
         </button>
       </div>

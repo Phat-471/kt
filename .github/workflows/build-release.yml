@@ -1,4 +1,4 @@
-name: AccoDesk Ultra Pro Build & Release
+name: Phần mềm Kế Toán Build & Release
 
 on:
   push:

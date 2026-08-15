@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NormalizedTransaction } from '../../types/accounting';
+import { NormalizedTransaction, Client } from '../../types/accounting';
 import {
   calculateInventoryCardReport,
   calculateCashAndBankLedger,
@@ -11,7 +11,6 @@ import {
 import { exportTransactionsToExcel } from '../../services/excelService';
 import { auditNonDeductibleExpenses } from '../../services/taxAuditService';
 import { exportMasterAccountingZipPackage } from '../../services/masterZipExporter';
-import { Client } from '../../types/accounting';
 import {
   Calculator,
   Package,
@@ -20,16 +19,9 @@ import {
   ShieldAlert,
   Download,
   Search,
-  CheckCircle2,
-  AlertTriangle,
-  FileSpreadsheet,
   Layers,
-  ArrowUpRight,
-  ArrowDownRight,
-  ChevronRight,
   Building2,
   Archive,
-  Sparkles,
 } from 'lucide-react';
 
 interface MasterAccountingHubProps {
@@ -43,14 +35,12 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
   const [selectedPartner, setSelectedPartner] = useState<PartnerDebtItem | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<InventoryCardItem | null>(null);
 
-  // Core calculations
   const taxSummary = calculateTaxRiskSummary(transactions);
   const citAudit = auditNonDeductibleExpenses(transactions);
   const inventoryList = calculateInventoryCardReport(transactions);
   const cashBankLedger = calculateCashAndBankLedger(transactions);
   const debtList = calculatePartnerDebtReport(transactions);
 
-  // Filters
   const filteredInventory = inventoryList.filter(i =>
     !searchTerm || i.itemName.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -61,7 +51,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
 
   return (
     <div className="p-4 space-y-4">
-      {/* Navigation Sub-Header Bar */}
       <div className="bg-gradient-to-r from-slate-900 via-brand-950 to-slate-900 text-white px-4 py-3 rounded-2xl border border-brand-500/20 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-xs shrink-0">
@@ -73,7 +62,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
           </div>
         </div>
 
-        {/* 1-Click Master Zip Export Button */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportMasterAccountingZipPackage(activeClient, transactions)}
@@ -84,7 +72,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
             <span>1-Click Xuất Bộ Hồ Sơ Zip 📦</span>
           </button>
 
-          {/* 4 Main Tabs */}
           <div className="flex items-center bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/10 shrink-0 text-xs font-bold gap-1 flex-wrap">
             <button
               onClick={() => setActiveTab('TAX')}
@@ -129,10 +116,8 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
         </div>
       </div>
 
-      {/* --- TAB 1: KẾ TOÁN THUẾ & RỦI RO --- */}
       {activeTab === 'TAX' && (
         <div className="space-y-4 animate-fade-in">
-          {/* Tax KPI Cards including Non-Deductible B4 Indicator */}
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
             <div className="bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 shadow-sm">
               <div className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">Chi Bị Loại Thuế TNDN [B4]</div>
@@ -179,7 +164,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
             </div>
           </div>
 
-          {/* Tax Risk Alert Detail Box */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
@@ -246,10 +230,8 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
         </div>
       )}
 
-      {/* --- TAB 2: KẾ TOÁN KHO & THẺ KHO --- */}
       {activeTab === 'INVENTORY' && (
         <div className="space-y-4 animate-fade-in">
-          {/* Top Control & Search */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -270,7 +252,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
             </button>
           </div>
 
-          {/* Inventory Table Grid */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Package className="w-4 h-4 text-amber-600" />
@@ -324,12 +305,9 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
         </div>
       )}
 
-      {/* --- TAB 3: THU CHI & DÒNG TIỀN --- */}
       {activeTab === 'CASHFLOW' && (
         <div className="space-y-4 animate-fade-in">
-          {/* Cash & Bank Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Cash TK 111 */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -356,7 +334,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
               </div>
             </div>
 
-            {/* Bank TK 112 */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -386,10 +363,8 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
         </div>
       )}
 
-      {/* --- TAB 4: QUẢN LÝ CÔNG NỢ 131/331 & AGING DEBT --- */}
       {activeTab === 'DEBT' && (
         <div className="space-y-4 animate-fade-in">
-          {/* Top Control & Search */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -410,7 +385,6 @@ export const MasterAccountingHub: React.FC<MasterAccountingHubProps> = ({ transa
             </button>
           </div>
 
-          {/* Debt Table Grid */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-600" />

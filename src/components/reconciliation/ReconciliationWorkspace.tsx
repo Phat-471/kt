@@ -30,7 +30,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
   const [voucherFilter, setVoucherFilter] = useState<'ALL' | 'UNMATCHED' | 'MATCHED'>('ALL');
   const [statementFilter, setStatementFilter] = useState<'ALL' | 'UNMATCHED' | 'MATCHED'>('ALL');
 
-  // Filter matched vs unmatched
   const matchedVoucherIds = new Set(reconciliations.map(r => r.voucherId));
   const matchedStatementIds = new Set(reconciliations.map(r => r.statementId));
 
@@ -203,7 +202,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
 
   return (
     <div className="p-6 space-y-6">
-      {/* Top Banner & Control Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-md">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
@@ -254,7 +252,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
         </div>
       </div>
 
-      {/* Suggested Matches Section */}
       {suggestions.length > 0 && (
         <div className="bg-slate-50 dark:bg-gradient-to-br dark:from-slate-900 dark:to-indigo-950/40 border border-brand-200 dark:border-indigo-500/30 rounded-2xl p-5 space-y-3 shadow-md">
           <div className="flex items-center justify-between">
@@ -272,7 +269,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
                 className="bg-white dark:bg-slate-950/90 border border-slate-200 dark:border-slate-700/80 hover:border-brand-500 rounded-xl p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs transition-all shadow-sm"
               >
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Voucher Left */}
                   <div className="p-2.5 bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-lg">
                     <div className="text-[10px] text-brand-700 dark:text-brand-400 font-bold uppercase">PHIẾU THU/CHI NỘI BỘ</div>
                     <div className="font-bold text-slate-900 dark:text-slate-200">{sugg.voucher.voucherNo} | {sugg.voucher.date}</div>
@@ -280,7 +276,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
                     <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate mt-0.5">{sugg.voucher.description}</div>
                   </div>
 
-                  {/* Statement Right */}
                   <div className="p-2.5 bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-lg">
                     <div className="text-[10px] text-indigo-700 dark:text-indigo-400 font-bold uppercase">SAO KÊ NGÂN HÀNG</div>
                     <div className="font-bold text-slate-900 dark:text-slate-200">{sugg.statement.voucherNo || 'Sao kê'} | {sugg.statement.date}</div>
@@ -289,7 +284,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
                   </div>
                 </div>
 
-                {/* Score & Confirm */}
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-center min-w-[130px]">
                     <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
@@ -311,9 +305,7 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
         </div>
       )}
 
-      {/* Dual Pane Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Pane: Vouchers */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 gap-2">
             <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -321,7 +313,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
               Sổ Thu/Chi Nội Bộ ({vouchers.length})
             </h3>
             
-            {/* Filter Pills */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-[11px] font-bold">
               <button
                 onClick={() => setVoucherFilter('ALL')}
@@ -404,7 +395,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
           </div>
         </div>
 
-        {/* Right Pane: Bank Statements */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 gap-2">
             <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -412,7 +402,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
               Dòng Sao Kê Ngân Hàng ({statements.length})
             </h3>
             
-            {/* Filter Pills */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-[11px] font-bold">
               <button
                 onClick={() => setStatementFilter('ALL')}
@@ -496,7 +485,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
         </div>
       </div>
 
-      {/* Manual Pairing Confirm Bar */}
       {selectedVoucherId && selectedStatementId && (
         <div className="bg-slate-900 dark:bg-slate-950 text-white border border-brand-500 rounded-2xl p-4 flex items-center justify-between shadow-xl">
           <div className="text-xs text-slate-200">
@@ -512,7 +500,6 @@ export const ReconciliationWorkspace: React.FC<ReconciliationWorkspaceProps> = (
         </div>
       )}
 
-      {/* Already Matched List */}
       {reconciliations.length > 0 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
           <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">

@@ -23,7 +23,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
   const [isProcessing, setIsProcessing] = useState(false);
   const [saveResult, setSaveResult] = useState<{ success: number, error: number, total: number } | null>(null);
 
-  // XML Web Worker Progress State for >1000 files
   const [progressState, setProgressState] = useState<{
     current: number;
     total: number;
@@ -53,7 +52,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
       return;
     }
 
-    // Nhóm file theo tên gốc (bỏ đuôi)
     const fileGroups: Record<string, { xml?: File, pdf?: File }> = {};
     for (const f of validFiles) {
       const name = f.name.toLowerCase();
@@ -65,7 +63,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
 
     setIsProcessing(true);
 
-    // Prepare data for worker
     const workerData = await Promise.all(
       Object.entries(fileGroups).map(async ([baseName, group]) => {
         let xmlText = null;
@@ -91,7 +88,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
       isPaused: false,
     });
 
-    // Load worker
     const InvoiceWorker = new Worker(new URL('../../workers/invoiceWorker.ts', import.meta.url), {
       type: 'module'
     });
@@ -110,7 +106,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
       } else if (e.data.type === 'DONE' || e.data.type === 'CANCELLED') {
         const results = e.data.results || [];
         
-        // Map results back to files
         const newInvoices: ParsedInvoice[] = results.map((res: any) => {
           const originalGroup = fileGroups[res.xmlName?.replace(/\.(xml|pdf)$/i, '') || res.pdfName?.replace(/\.(xml|pdf)$/i, '')];
           
@@ -197,7 +192,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
     try {
       await db.transactions.bulkAdd(validTransactions);
       
-      // Log audit
       if (db.auditLogs) {
         await db.auditLogs.add({
           id: crypto.randomUUID(),
@@ -214,7 +208,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
       const errorCount = parsedInvoices.length - successCount;
       setSaveResult({ success: successCount, error: errorCount, total: parsedInvoices.length });
       
-      // Auto hide after 5s
       setTimeout(() => setSaveResult(null), 5000);
       
       clearAll();
@@ -305,7 +298,6 @@ export function InvoiceXMLImporter({ clientId, clientTaxCode }: InvoiceXMLImport
                   <span>{Math.round((progressState.current / (progressState.total || 1)) * 100)}%</span>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                   <div
                     className="bg-brand-600 h-full transition-all duration-200"

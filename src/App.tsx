@@ -5,11 +5,9 @@ import { Client, MappingTemplate, NormalizedTransaction, ReconciliationPair } fr
 import { useShortcuts } from './hooks/useShortcuts';
 import { Building2 } from 'lucide-react';
 
-// Layout Components
 import { Sidebar, TabType } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 
-// View Modules
 import { DashboardView } from './components/dashboard/DashboardView';
 import { ClientManager } from './components/clients/ClientManager';
 import { ExcelImporter } from './components/import/ExcelImporter';
@@ -46,8 +44,13 @@ import { IndustryPresetType } from './services/industryPresetService';
 import { startAutoBackupScheduler, stopAutoBackupScheduler } from './services/autoBackupScheduler';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const saved = localStorage.getItem('accodesk_active_tab') as TabType;
+    return saved || 'dashboard';
+  });
+  const [activeClientId, setActiveClientId] = useState<string | null>(() => {
+    return localStorage.getItem('accodesk_active_client_id');
+  });
   const [globalSearchTerm, setGlobalSearchTerm] = useState<string>('');
   const [isShortcutOpen, setIsShortcutOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -60,13 +63,23 @@ export default function App() {
   });
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
 
-  // Kích hoạt Scheduler Tự động sao lưu dữ liệu an toàn chạy ngầm mỗi 15 phút
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('accodesk_active_tab', activeTab);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeClientId) {
+      localStorage.setItem('accodesk_active_client_id', activeClientId);
+    }
+  }, [activeClientId]);
+
   useEffect(() => {
     startAutoBackupScheduler();
     return () => stopAutoBackupScheduler();
   }, []);
 
-  // Phím tắt Ctrl+Shift+F để Ẩn/Hiện Header nhanh
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
@@ -82,26 +95,26 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Initialize DB Seed
   useEffect(() => {
     seedInitialDataIfNeeded();
   }, []);
 
-  // Live Reactive Queries
   const clients = useLiveQuery(() => db.clients.toArray()) || [];
   const mappingTemplates = useLiveQuery(() => db.mappingTemplates.toArray()) || [];
   const auditLogs = useLiveQuery(() => db.auditLogs.orderBy('timestamp').reverse().toArray()) || [];
 
-  // Set default active client when loaded
   useEffect(() => {
-    if (clients.length > 0 && !activeClientId) {
-      setActiveClientId(clients[0].id);
+    if (clients.length > 0) {
+      const savedClientId = localStorage.getItem('accodesk_active_client_id');
+      const foundSaved = savedClientId ? clients.find(c => c.id === savedClientId) : null;
+      if (!activeClientId) {
+        setActiveClientId(foundSaved ? foundSaved.id : clients[0].id);
+      }
     }
   }, [clients, activeClientId]);
 
   const activeClient = clients.find(c => c.id === activeClientId) || null;
 
-  // Filter data for active client
   const transactions = useLiveQuery(
     () => (activeClientId ? db.transactions.where('clientId').equals(activeClientId).toArray() : []),
     [activeClientId]
@@ -112,7 +125,6 @@ export default function App() {
     [activeClientId]
   ) || [];
 
-  // Handlers for Clients
   const handleAddClient = async (newClient: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     const created: Client = {
       ...newClient,
@@ -142,7 +154,6 @@ export default function App() {
     }
   };
 
-  // Handlers for Import
   const handleSaveTransactions = async (newTxs: NormalizedTransaction[]) => {
     await db.transactions.bulkAdd(newTxs);
     if (newTxs.length > 0) {
@@ -165,7 +176,6 @@ export default function App() {
     await logAuditEvent('IMPORT_EXCEL', 'Lưu mẫu Map cột', `Đã tạo mẫu ánh xạ cột mới '${created.name}'`);
   };
 
-  // Handlers for Validation Diagnostics
   const handleUpdateTransaction = async (updatedTx: NormalizedTransaction) => {
     await db.transactions.put(updatedTx);
     await logAuditEvent('EDIT_TX', 'Chỉnh sửa chứng từ', `Đã sửa chứng từ số '${updatedTx.voucherNo}' (Ngày ${updatedTx.date}, ${updatedTx.amount.toLocaleString('vi-VN')} đ)`, activeClientId || undefined);
@@ -184,7 +194,6 @@ export default function App() {
     await logAuditEvent('APPROVE_TX', 'Duyệt hàng loạt chứng từ', `Kế toán đã phê duyệt hàng loạt ${txIds.length} dòng chứng từ trên màn hình`, activeClientId || undefined);
   };
 
-  // Handlers for Reconciliation
   const handleConfirmMatch = async (voucherId: string, statementId: string, matchScore: number, reasons: string[]) => {
     if (!activeClientId) return;
 
@@ -201,7 +210,6 @@ export default function App() {
 
     await db.reconciliations.add(pair);
 
-    // Update transactions status
     const vTx = await db.transactions.get(voucherId);
     if (vTx) {
       vTx.reconciledId = statementId;
@@ -241,7 +249,6 @@ export default function App() {
     await logAuditEvent('UNMATCH_PAIR', 'Hủy khớp đối chiếu', `Đã hủy ghép cặp chứng từ số '${vTx?.voucherNo}'`, activeClientId || undefined);
   };
 
-  // Quick Backup Shortcut
   const handleQuickBackup = async () => {
     const jsonStr = await exportFullDatabaseJSON();
     const defaultName = `AccoDesk_Backup_${new Date().toISOString().slice(0, 10)}.accobak`;
@@ -257,7 +264,6 @@ export default function App() {
       }
     }
 
-    // Web Fallback Download
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -267,14 +273,12 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Categorized Txs for Reconciliation View
   const vouchers = transactions.filter(t => t.type === 'INCOME' || t.type === 'EXPENSE' || t.type === 'GENERAL');
   const statements = transactions.filter(t => t.type === 'BANK_STMT' || t.type === 'DEBT');
 
   const errorCount = transactions.filter(t => t.validationStatus === 'ERROR').length;
   const unreconciledCount = vouchers.filter(v => v.reconciledStatus !== 'MATCHED').length;
 
-  // Global Keyboard Shortcuts
   useShortcuts({
     'ctrl+1': () => setActiveTab('dashboard'),
     'ctrl+2': () => setActiveTab('clients'),
@@ -291,7 +295,6 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-200">
-      {/* Sidebar Navigation (Ẩn khi ở Zen Mode) */}
       {!isZenMode && (
         <Sidebar
           activeTab={activeTab}
@@ -301,7 +304,6 @@ export default function App() {
         />
       )}
 
-      {/* Mini Floating Toolbar (Hiển thị khi Header ẩn hoặc Zen Mode) */}
       {(isHeaderHidden || isZenMode) && (
         <MiniFloatingToolbar
           activeClient={activeClient}
@@ -314,7 +316,6 @@ export default function App() {
         />
       )}
 
-      {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {!isHeaderHidden && !isZenMode && (
           <Header 

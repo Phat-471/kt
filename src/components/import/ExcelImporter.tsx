@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Client, ColumnMapping, MappingTemplate, NormalizedTransaction, TransactionType } from '../../types/accounting';
 import { parseExcelFile, normalizeExcelRows, ExcelSheetParseResult } from '../../services/excelService';
-import { UploadCloud, FileSpreadsheet, Layers, ArrowRight, CheckCircle, Save, Table as TableIcon, Plus, AlertTriangle, Building2 } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Layers, ArrowRight, CheckCircle, Save, Table as TableIcon, Plus, Building2 } from 'lucide-react';
 import { QuickCreateClientModal } from '../clients/QuickCreateClientModal';
 
 interface ExcelImporterProps {
@@ -22,7 +22,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
   const [parseResult, setParseResult] = useState<ExcelSheetParseResult | null>(null);
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   
-  // Mapping options
   const [txType, setTxType] = useState<TransactionType>('GENERAL');
   const [mapping, setMapping] = useState<ColumnMapping>({
     dateCol: '',
@@ -43,7 +42,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     return !!localStorage.getItem('accodesk_excel_import_draft');
   });
 
-  // Tự động lưu bản nháp Import vào localStorage khi đổi state
   React.useEffect(() => {
     if (fileName && parseResult && parseResult.rawRows.length > 0) {
       const draftData = {
@@ -53,7 +51,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         step,
         selectedSheet: parseResult.selectedSheet,
         headers: parseResult.headers,
-        rawRows: parseResult.rawRows.slice(0, 500), // lưu tối đa 500 dòng mẫu
+        rawRows: parseResult.rawRows.slice(0, 500),
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem('accodesk_excel_import_draft', JSON.stringify(draftData));
@@ -61,7 +59,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     }
   }, [fileName, txType, mapping, step, parseResult]);
 
-  // Khôi phục bản nháp import dở dang
   const handleRestoreDraft = () => {
     const raw = localStorage.getItem('accodesk_excel_import_draft');
     if (!raw) return;
@@ -88,7 +85,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     setHasDraft(false);
   };
 
-  // Handle File Input
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,7 +107,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     reader.readAsArrayBuffer(file);
   };
 
-  // Auto detect columns by standard keywords
   const autoDetectMapping = (headers: string[]) => {
     const findCol = (keywords: string[]) => {
       return headers.find(h => keywords.some(k => h.toLowerCase().includes(k.toLowerCase()))) || '';
@@ -130,7 +125,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     });
   };
 
-  // Select Sheet
   const handleSheetChange = (sheetName: string) => {
     if (fileBuffer) {
       const result = parseExcelFile(fileBuffer, sheetName);
@@ -139,7 +133,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     }
   };
 
-  // Load Template
   const handleSelectTemplate = (templateId: string) => {
     const tmpl = mappingTemplates.find(t => t.id === templateId);
     if (tmpl) {
@@ -147,7 +140,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     }
   };
 
-  // Save Current Mapping as Template
   const handleSaveCurrentAsTemplate = () => {
     if (!templateName.trim()) {
       alert('Vui lòng nhập tên mẫu mapping!');
@@ -162,7 +154,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     alert('Đã lưu mẫu ánh xạ cột thành công!');
   };
 
-  // Generate Normalized Preview
   const handleGeneratePreview = () => {
     if (!activeClient) {
       setIsQuickCreateOpen(true);
@@ -182,7 +173,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
     setStep('PREVIEW');
   };
 
-  // Save to DB
   const handleConfirmImport = () => {
     if (previewNormalized.length === 0) return;
     onSaveTransactions(previewNormalized);
@@ -196,7 +186,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
 
   return (
     <div className="p-6 space-y-6">
-      {/* Step Stepper Header */}
       <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-3">
           <FileSpreadsheet className="w-6 h-6 text-brand-600 dark:text-brand-400" />
@@ -208,7 +197,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
           </div>
         </div>
 
-        {/* Steps */}
         <div className="flex items-center gap-2 text-xs">
           <span className={`px-3 py-1 rounded-lg font-bold ${step === 'UPLOAD' ? 'bg-brand-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
             1. Tải File
@@ -224,7 +212,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         </div>
       </div>
 
-      {/* Missing Active Client Warning Banner with 1-Click Create Button */}
       {!activeClient && (
         <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-fade-in">
           <div className="flex items-center gap-3">
@@ -251,7 +238,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         </div>
       )}
 
-      {/* STEP 1: UPLOAD FILE */}
       {step === 'UPLOAD' && (
         <div className="space-y-4">
           {hasDraft && (
@@ -301,10 +287,8 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         </div>
       )}
 
-      {/* STEP 2: MAP COLUMNS */}
       {step === 'MAP' && parseResult && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Mapping Controls Left */}
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
@@ -312,7 +296,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
                 <p className="text-xs text-slate-500 dark:text-slate-400">File: <strong className="text-brand-600 dark:text-brand-400 font-bold">{fileName}</strong> ({parseResult.rawRows.length} dòng)</p>
               </div>
 
-              {/* Sheet Selector */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Chọn Sheet:</span>
                 <select
@@ -327,7 +310,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
               </div>
             </div>
 
-            {/* Template Selector */}
             <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -343,7 +325,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
                 </select>
               </div>
 
-              {/* Transaction Type Select */}
               <div className="flex items-center gap-2">
                 <span className="text-slate-700 dark:text-slate-300 font-bold">Loại chứng từ:</span>
                 <select
@@ -360,7 +341,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
               </div>
             </div>
 
-            {/* Column Mapping Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Ngày chứng từ (*)</label>
@@ -459,7 +439,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
               </div>
             </div>
 
-            {/* Save Template Section */}
             <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
               <input
                 type="text"
@@ -478,7 +457,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
               </button>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setStep('UPLOAD')}
@@ -496,7 +474,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
             </div>
           </div>
 
-          {/* Excel Live Sample Table Right */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 flex flex-col justify-between shadow-sm">
             <div>
               <h4 className="font-bold text-xs text-slate-900 dark:text-slate-300 flex items-center gap-2">
@@ -528,7 +505,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         </div>
       )}
 
-      {/* STEP 3: PREVIEW & CONFIRM IMPORT */}
       {step === 'PREVIEW' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -555,7 +531,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
             </div>
           </div>
 
-          {/* Table Preview */}
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[450px]">
             <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
               <thead className="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
@@ -608,7 +583,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
         </div>
       )}
 
-      {/* Quick Create Client Modal */}
       <QuickCreateClientModal
         isOpen={isQuickCreateOpen}
         onClose={() => setIsQuickCreateOpen(false)}

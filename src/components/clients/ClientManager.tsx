@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Client } from '../../types/accounting';
-import { Building2, Plus, Edit2, Trash2, CheckCircle2, User, Phone, MapPin, Calendar, FileText } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, CheckCircle2, User, MapPin, Calendar, FileText } from 'lucide-react';
+import { PageHeader, BaseModal } from '../common';
 
 interface ClientManagerProps {
   clients: Client[];
@@ -23,7 +23,6 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
 
-  // Form states
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [taxCode, setTaxCode] = useState('');
@@ -93,27 +92,21 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
 
   return (
     <div className="p-6 space-y-6">
-      {/* Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-sm">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-brand-600 dark:text-brand-400" />
-            <span>Quản Lý Danh Sách Khách Hàng / Job Kế Toán</span>
-          </h2>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            Quản lý tập trung các công ty dịch vụ kế toán. Dữ liệu chứng từ, sao kê và đối chiếu được lưu độc lập theo từng khách hàng.
-          </p>
-        </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-brand-500/20 transition-all active:scale-95 shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm Khách Hàng Mới</span>
-        </button>
-      </div>
+      <PageHeader
+        icon={Building2}
+        title="Quản Lý Danh Sách Khách Hàng / Job Kế Toán"
+        subtitle="Quản lý tập trung các công ty dịch vụ kế toán. Dữ liệu chứng từ, sao kê và đối chiếu được lưu độc lập theo từng khách hàng."
+        actions={
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-brand-500/20 transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm Khách Hàng Mới</span>
+          </button>
+        }
+      />
 
-      {/* Grid of Client Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {clients.map((c) => {
           const isSelected = activeClient?.id === c.id;
@@ -166,7 +159,6 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
                 </div>
               </div>
 
-              {/* Card Footer Actions */}
               <div className="flex items-center justify-between gap-2 pt-2">
                 <button
                   onClick={() => onSelectClient(c)}
@@ -205,127 +197,123 @@ export const ClientManager: React.FC<ClientManagerProps> = ({
         })}
       </div>
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-4 my-auto max-h-[92vh] flex flex-col animate-scale-up">
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
-              {editingClient ? 'Chỉnh Sửa Thông Tin Khách Hàng' : 'Thêm Khách Hàng / Job Mới'}
-            </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Mã quản lý</label>
-                  <input
-                    type="text"
-                    required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
-                    placeholder="VD: CTY-001"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Mã Số Thuế (MST)</label>
-                  <input
-                    type="text"
-                    required
-                    value={taxCode}
-                    onChange={(e) => setTaxCode(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
-                    placeholder="VD: 0101234567"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Tên Doanh Nghiệp / Khách Hàng</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
-                  placeholder="Công ty TNHH..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Địa chỉ trụ sở</label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                  placeholder="Địa chỉ công ty..."
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Người liên hệ</label>
-                  <input
-                    type="text"
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                    placeholder="Tên kế toán trưởng..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Số điện thoại</label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                    placeholder="09xx..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Niên độ</label>
-                  <input
-                    type="number"
-                    required
-                    value={financialYear}
-                    onChange={(e) => setFinancialYear(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Ghi chú công việc</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
-                  placeholder="Ghi chú về gói dịch vụ, hạn nộp báo cáo..."
-                ></textarea>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-xl font-bold cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold shadow-lg shadow-brand-500/20 cursor-pointer"
-                >
-                  Lưu Thông Tin
-                </button>
-              </div>
-            </form>
+      <BaseModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingClient ? 'Chỉnh Sửa Thông Tin Khách Hàng' : 'Thêm Khách Hàng / Job Mới'}
+        icon={Building2}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Mã quản lý</label>
+              <input
+                type="text"
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
+                placeholder="VD: CTY-001"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Mã Số Thuế (MST)</label>
+              <input
+                type="text"
+                required
+                value={taxCode}
+                onChange={(e) => setTaxCode(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
+                placeholder="VD: 0101234567"
+              />
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
+
+          <div>
+            <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Tên Doanh Nghiệp / Khách Hàng</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
+              placeholder="Công ty TNHH..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Địa chỉ trụ sở</label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
+              placeholder="Địa chỉ công ty..."
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Người liên hệ</label>
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
+                placeholder="Tên kế toán trưởng..."
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Số điện thoại</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
+                placeholder="09xx..."
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Niên độ</label>
+              <input
+                type="number"
+                required
+                value={financialYear}
+                onChange={(e) => setFinancialYear(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 dark:text-slate-400 font-bold mb-1">Ghi chú công việc</label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium"
+              placeholder="Ghi chú về gói dịch vụ, hạn nộp báo cáo..."
+            ></textarea>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-xl font-bold cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold shadow-lg shadow-brand-500/20 cursor-pointer"
+            >
+              Lưu Thông Tin
+            </button>
+          </div>
+        </form>
+      </BaseModal>
     </div>
   );
 };

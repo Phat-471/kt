@@ -1,6 +1,6 @@
-# ROADMAP DỰ ÁN - AccoDesk Ultra Pro
+# ROADMAP DỰ ÁN - Phần mềm Kế Toán
 
-*AccoDesk Ultra Pro - Trợ Lý Kế Toán Desktop Offline, tập trung vào bảo mật, hiệu năng và giao diện hiện đại.*
+*Phần mềm Kế Toán - Trợ Lý Kế Toán Desktop Offline, tập trung vào bảo mật, hiệu năng và giao diện hiện đại.*
 
 ## Giai đoạn 1: Nền Tảng (Đã hoàn thành)
 - [x] Thiết lập kiến trúc Electron + React + Vite + Dexie.js
@@ -36,7 +36,7 @@
 - [x] Bảng Cân Đối Kế Toán (Mẫu B01-DN) — Tự động cân bằng Tổng TS = Tổng NV
 - [x] Báo Cáo Lưu Chuyển Tiền Tệ (Mẫu B03-DN) — Phương pháp Gián tiếp (HĐKD/HĐĐT/HĐTC)
 - [x] Thuyết Minh Báo Cáo Tài Chính (Mẫu B09-DN) — 6 mục tự động sinh
-- [x] Đóng gói NSIS Installer Windows (`AccoDesk Ultra Pro Setup 1.0.0.exe` 94.3 MB)
+- [x] Đóng gói NSIS Installer Windows (`Phần mềm Kế Toán Setup 1.0.0.exe` 94.3 MB)
 - [x] Auto-Updater (`electron-updater`) & CI/CD GitHub Actions Workflow
 - [x] Nâng cấp Giao diện Menu Sidebar: Gom 4 Master Hubs & Ghim Yêu Thích Pin ⭐ nút bấm lớn dễ chọn
 

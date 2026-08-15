@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+
+    <!-- Outer Glow & Shield Gradient -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <!-- Surface Facets Gradient -->
+    <linearGradient id="facetGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#047857" stop-opacity="0.15" />
+    </linearGradient>
+
+    <linearGradient id="facetGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#065f46" stop-opacity="0.2" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Base Rounded Container -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  <rect width="504" height="504" x="4" y="4" rx="124" stroke="url(#emeraldGrad)" stroke-width="4" stroke-opacity="0.3" fill="none" />
+
+  <!-- Outer Isometric Cube Frame -->
+  <!-- Top Face -->
+  <polygon points="256,90 380,160 256,230 132,160" fill="url(#facetGrad2)" stroke="url(#emeraldGrad)" stroke-width="6" stroke-linejoin="round" />
+  
+  <!-- Left Face -->
+  <polygon points="132,160 256,230 256,380 132,310" fill="url(#facetGrad1)" stroke="url(#tealGrad)" stroke-width="6" stroke-linejoin="round" />
+
+  <!-- Right Face -->
+  <polygon points="380,160 256,230 256,380 380,310" fill="url(#facetGrad2)" stroke="url(#emeraldGrad)" stroke-width="6" stroke-linejoin="round" />
+
+  <!-- Central Shield Layer -->
+  <path d="M256,150 L340,195 C340,285 256,350 256,350 C256,350 172,285 172,195 Z" 
+        fill="#064e3b" 
+        fill-opacity="0.85" 
+        stroke="url(#emeraldGrad)" 
+        stroke-width="8" 
+        stroke-linejoin="round" 
+        filter="url(#glow)" />
+
+  <!-- Inner Shield Highlight -->
+  <path d="M256,170 L320,205 C320,275 256,325 256,325 C256,325 192,275 192,205 Z" 
+        fill="url(#facetGrad1)" 
+        stroke="url(#tealGrad)" 
+        stroke-width="3" 
+        stroke-opacity="0.6" />
+
+  <!-- Dynamic Financial Growth Trend Arrow (Golden) -->
+  <polyline points="200,280 230,250 255,270 295,215" 
+            fill="none" 
+            stroke="url(#goldGrad)" 
+            stroke-width="12" 
+            stroke-linecap="round" 
+            stroke-linejoin="round" />
+
+  <!-- Arrow Head -->
+  <polygon points="290,200 315,210 305,235" 
+           fill="url(#goldGrad)" />
+
+  <!-- Data Indicator Nodes -->
+  <circle cx="200" cy="280" r="7" fill="#fde047" stroke="#b45309" stroke-width="2" />
+  <circle cx="230" cy="250" r="7" fill="#fde047" stroke="#b45309" stroke-width="2" />
+  <circle cx="255" cy="270" r="7" fill="#fde047" stroke="#b45309" stroke-width="2" />
+
+  <!-- Core Diamond Crystal Center Accent -->
+  <polygon points="256,120 270,135 256,150 242,135" fill="url(#goldGrad)" />
+</svg>

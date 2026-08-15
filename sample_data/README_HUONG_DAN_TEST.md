@@ -1,4 +1,4 @@
-# BỘ DỮ LIỆU MẪU KIỂM THỬ TOÀN DIỆN ACCODESK ULTRA PRO
+# BỘ DỮ LIỆU MẪU KIỂM THỬ TOÀN DIỆN Phần mềm Kế Toán
 
 Thư mục này chứa đầy đủ các file dữ liệu chuẩn để kiểm thử 100% tính năng của hệ thống.
 

@@ -5,6 +5,7 @@ import { exportTransactionsToExcel } from '../../services/excelService';
 import { exportValidationDiagnosticsPDF } from '../../services/pdfExporter';
 import { AdvancedFilterBar, filterTransactionsHelper } from '../common/AdvancedFilterBar';
 import { ColumnVisibilityModal, ColumnDef } from '../common/ColumnVisibilityModal';
+import { StatCard } from '../common';
 import { ShieldAlert, CheckCircle2, AlertTriangle, Edit3, Download, CheckCheck, FileText, Eye, Check, SlidersHorizontal } from 'lucide-react';
 
 interface ErrorDiagnosticsProps {
@@ -38,7 +39,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
   const [density, setDensity] = useState<'NORMAL' | 'COMPACT'>('NORMAL');
 
-  // Load column preference from localStorage
   const [columns, setColumns] = useState<ColumnDef[]>(() => {
     const saved = localStorage.getItem('accodesk_cols_error_diag');
     if (saved) {
@@ -72,7 +72,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
     status: 'ALL',
   });
 
-  // Filtered List combining Status pills + Advanced Filter Bar
   const searchFiltered = filterTransactionsHelper(transactions, advancedParams);
   const filteredTxs = searchFiltered.filter((t) => {
     if (filterStatus === 'ALL') return true;
@@ -100,7 +99,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
       amount: Number(editForm.amount || 0),
     } as NormalizedTransaction;
 
-    // Re-run validation rule with cross-file check
     const res = validateTransaction(updatedTx, transactions);
     updatedTx.errors = res.errors;
     updatedTx.validationStatus = res.status;
@@ -129,49 +127,40 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header Stat Cards Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-500/30 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
-          <div>
-            <div className="text-[10px] text-rose-700 dark:text-rose-400 font-bold uppercase tracking-wider">CÓ LỖI CẦN SỬA</div>
-            <div className="text-base font-extrabold text-rose-700 dark:text-rose-300 mt-0.5">{errorCount} dòng</div>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 flex items-center justify-center">
-            <ShieldAlert className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
-          <div>
-            <div className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider">CẢNH BÁO CHÚ Ý</div>
-            <div className="text-base font-extrabold text-amber-700 dark:text-amber-300 mt-0.5">{warningCount} dòng</div>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center">
-            <AlertTriangle className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
-          <div>
-            <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">KẾ TOÁN ĐÃ DUYỆT</div>
-            <div className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 mt-0.5">{approvedCount} dòng</div>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
+        <StatCard
+          label="CÓ LỖI CẦN SỬA"
+          value={`${errorCount} dòng`}
+          icon={ShieldAlert}
+          variant="rose"
+          compact
+          onClick={() => setFilterStatus('ERROR')}
+        />
+        <StatCard
+          label="CẢNH BÁO CHÚ Ý"
+          value={`${warningCount} dòng`}
+          icon={AlertTriangle}
+          variant="amber"
+          compact
+          onClick={() => setFilterStatus('WARNING')}
+        />
+        <StatCard
+          label="KẾ TOÁN ĐÃ DUYỆT"
+          value={`${approvedCount} dòng`}
+          icon={CheckCircle2}
+          variant="emerald"
+          compact
+          onClick={() => setFilterStatus('APPROVED')}
+        />
       </div>
 
-      {/* Advanced Filter Bar Component */}
       <AdvancedFilterBar
         onFilterChange={(params) => setAdvancedParams(params)}
         totalCount={transactions.length}
         filteredCount={filteredTxs.length}
       />
 
-      {/* Main Error Inspection Grid */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-3 shadow-sm">
-        {/* Status Pill Filters and Export Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-1.5 flex-wrap text-xs">
             <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">Lọc lỗi:</span>
@@ -210,7 +199,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Density Switcher */}
             <button
               onClick={() => setDensity(density === 'NORMAL' ? 'COMPACT' : 'NORMAL')}
               className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
@@ -220,7 +208,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
               <span>{density === 'NORMAL' ? 'Dòng vừa' : 'Dòng gọn'}</span>
             </button>
 
-            {/* Column Visibility Button */}
             <button
               onClick={() => setIsColumnModalOpen(true)}
               className="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:hover:bg-brand-500/30 dark:text-brand-300 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-brand-200 dark:border-brand-500/30 cursor-pointer"
@@ -241,7 +228,7 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
               onClick={() => exportTransactionsToExcel(transactions, 'Bao_Cao_Kiem_Loi_Ke_Toan')}
               className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
             >
-              <Download className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+              <Download className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
               <span>Xuất Excel</span>
             </button>
 
@@ -249,13 +236,12 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
               onClick={() => exportValidationDiagnosticsPDF(null, transactions)}
               className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
             >
-              <FileText className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+              <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span>Xuất PDF</span>
             </button>
           </div>
         </div>
 
-        {/* Data Grid with Sticky Columns & Max Dynamic Viewport Height */}
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[calc(100vh-210px)] scrollbar-thin">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[1300px] border-collapse">
             <thead className="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 shadow-sm">
@@ -298,7 +284,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
 
                 return (
                   <tr key={t.id} className={`transition-colors ${rowBg}`}>
-                    {/* Sticky Select Col */}
                     {isColVisible('select') && (
                       <td className={`${cellPadding} sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-center shadow-r`}>
                         <input
@@ -310,7 +295,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Date Col */}
                     {isColVisible('date') && (
                       <td className={`${cellPadding} font-bold text-slate-900 dark:text-slate-200`}>
                         {isEditing ? (
@@ -326,7 +310,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Sticky VoucherNo Col */}
                     {isColVisible('voucherNo') && (
                       <td className={`${cellPadding} text-brand-700 dark:text-brand-300 font-bold sticky left-12 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-r`}>
                         {isEditing ? (
@@ -342,7 +325,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Description Col */}
                     {isColVisible('description') && (
                       <td className={`${cellPadding} font-medium`}>
                         {isEditing ? (
@@ -358,7 +340,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Debit Acc Col */}
                     {isColVisible('debitAcc') && (
                       <td className={`${cellPadding} font-mono text-amber-700 dark:text-amber-300 font-bold`}>
                         {isEditing ? (
@@ -374,7 +355,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Credit Acc Col */}
                     {isColVisible('creditAcc') && (
                       <td className={`${cellPadding} font-mono text-emerald-700 dark:text-emerald-300 font-bold`}>
                         {isEditing ? (
@@ -390,7 +370,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Amount Col */}
                     {isColVisible('amount') && (
                       <td className={`${cellPadding} text-right font-extrabold tabular-num text-slate-900 dark:text-slate-100`}>
                         {isEditing ? (
@@ -406,7 +385,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Partner Col */}
                     {isColVisible('partner') && (
                       <td className={`${cellPadding} text-slate-800 dark:text-slate-300 font-medium`}>
                         {isEditing ? (
@@ -435,14 +413,12 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Source File Col */}
                     {isColVisible('sourceFile') && (
                       <td className={`${cellPadding} text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-[180px]`}>
                         {t.sourceFileName}
                       </td>
                     )}
 
-                    {/* Error & Warnings Col */}
                     {isColVisible('errors') && (
                       <td className={`${cellPadding}`}>
                         {t.errors.length > 0 ? (
@@ -470,7 +446,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
                       </td>
                     )}
 
-                    {/* Sticky Actions Col */}
                     {isColVisible('actions') && (
                       <td className={`${cellPadding} text-center sticky right-0 z-10 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-l`}>
                         {isEditing ? (
@@ -499,7 +474,6 @@ export const ErrorDiagnostics: React.FC<ErrorDiagnosticsProps> = ({
         </div>
       </div>
 
-      {/* Column Visibility Picker Modal */}
       <ColumnVisibilityModal
         isOpen={isColumnModalOpen}
         onClose={() => setIsColumnModalOpen(false)}

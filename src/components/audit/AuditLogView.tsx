@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuditLogItem } from '../../types/accounting';
-import { History, ShieldCheck, Search, Filter, Clock, UserCheck, Trash2, CheckSquare } from 'lucide-react';
+import { History, Search, Filter, Clock, UserCheck, Trash2 } from 'lucide-react';
 import { db } from '../../services/storage';
 
 interface AuditLogViewProps {
@@ -72,7 +72,6 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Title */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
@@ -88,7 +87,6 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
         </span>
       </div>
 
-      {/* Control Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm text-xs">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative flex-1 w-full">
@@ -122,7 +120,6 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
           </div>
         </div>
         
-        {/* Bulk Action Bar */}
         {(selectedIds.length > 0 || logs.length > 0) && (
           <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
@@ -158,7 +155,6 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
         )}
       </div>
 
-      {/* Logs Timeline Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 max-h-[500px]">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
@@ -185,7 +181,6 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
                   key={log.id} 
                   className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-default ${selectedIds.includes(log.id) ? 'bg-brand-50/50 dark:bg-brand-900/10' : ''}`}
                   onClick={(e) => {
-                    // Prevent triggering if clicked on a button/input inside the row
                     if ((e.target as HTMLElement).tagName !== 'INPUT') {
                       handleSelectOne(log.id);
                     }
