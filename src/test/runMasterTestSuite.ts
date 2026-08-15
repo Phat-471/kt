@@ -59,6 +59,8 @@ import {
   calculateTradeUnionSummary,
   getTradeUnionAccounts,
   generateUnionVoucherHTML,
+  generateBatchUnionVouchersHTML,
+  parseUnionTransactionsFromExcel,
 } from '../services/tradeUnionService';
 import { calculateEnterpriseRiskScore } from '../services/riskScoreEngine';
 import { suggestJournalEntry } from '../services/journalSuggestService';
@@ -1085,6 +1087,26 @@ async function runAllTests() {
   const htmlReceipt = generateUnionVoucherHTML(mockUnionReceipt, { id: 'client-1', code: 'C01', name: 'Công ty Test', taxCode: '0101234567', address: 'Hà Nội', financialYear: 2026, createdAt: '', updatedAt: '' });
   assert(htmlReceipt.includes('PHIẾU THU CÔNG ĐOÀN'), 'S17.12: Sinh HTML Phiếu Thu Công Đoàn chuẩn Mẫu số C40-HD');
   assert(htmlReceipt.includes('CÔNG ĐOÀN VIỆT NAM'), 'S17.13: HTML Phiếu có tiêu ngữ Tổng LĐLĐ Việt Nam');
+
+  const batchHTML = generateBatchUnionVouchersHTML([mockUnionReceipt, mockUnionPayment], null);
+  assert(batchHTML.includes('PHIẾU THU CÔNG ĐOÀN') && batchHTML.includes('PHIẾU CHI CÔNG ĐOÀN'), 'S17.14: Sinh tài liệu HTML In hàng loạt / Lưu PDF chứa đầy đủ cả phiếu thu và phiếu chi');
+  assert(batchHTML.includes('page-break'), 'S17.15: Thiết lập ngắt trang chuẩn A4 cho từng phiếu khi in hoặc lưu PDF');
+
+  // Test parse Excel hàng loạt
+  const XLSX = await import('xlsx');
+  const testWb = XLSX.utils.book_new();
+  const testData = [
+    { 'Loại Phiếu (*)': 'THU', 'Số Phiếu (*)': 'PT-TEST-01', 'Ngày Lập (*)': '2026-08-15', 'Khoản Mục (*)': 'KPCĐ_2_PERCENT', 'Người Nộp / Nhận (*)': 'DN ABC', 'Lý Do Thu / Chi (*)': 'Thu KPCĐ 2%', 'Số Tiền (VND) (*)': 3000000 },
+    { 'Loại Phiếu (*)': 'CHI', 'Số Phiếu (*)': 'PC-TEST-01', 'Ngày Lập (*)': '2026-08-16', 'Khoản Mục (*)': 'THAM_HOI_OM_DAU', 'Người Nộp / Nhận (*)': 'Lê Văn C', 'Lý Do Thu / Chi (*)': 'Chi thăm hỏi', 'Số Tiền (VND) (*)': 500000 },
+  ];
+  const testWs = XLSX.utils.json_to_sheet(testData);
+  XLSX.utils.book_append_sheet(testWb, testWs, 'Sheet1');
+  const testBuf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
+
+  const parsed = await parseUnionTransactionsFromExcel(testBuf, 'client-1');
+  assert(parsed.valid.length === 2, 'S17.16: Đọc và chuyển đổi chính xác 2 phiếu thu chi từ file Excel');
+  assert(parsed.valid[0].amount === 3000000 && parsed.valid[0].voucherType === 'UNION_RECEIPT', 'S17.17: Nhận diện đúng phiếu thu KPCĐ 3,000,000 đ');
+  assert(parsed.valid[1].amount === 500000 && parsed.valid[1].voucherType === 'UNION_PAYMENT', 'S17.18: Nhận diện đúng phiếu chi thăm hỏi 500,000 đ');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

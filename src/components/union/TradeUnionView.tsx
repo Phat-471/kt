@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Client, TradeUnionTransaction, TradeUnionCategory, TradeUnionVoucherType } from '../../types/accounting';
 import { db, logAuditEvent } from '../../services/storage';
 import { 
@@ -22,7 +22,13 @@ import {
   HeartHandshake,
   Gift,
   Award,
-  Landmark
+  Landmark,
+  Upload,
+  Download,
+  CheckSquare,
+  Square,
+  FileDown,
+  Layers
 } from 'lucide-react';
 import { PageHeader, StatCard, SubTabNav, SearchBar, BaseModal, EmptyState, TabItem } from '../common';
 import { formatNumber } from '../../utils/formatters';
@@ -32,7 +38,10 @@ import {
   calculateTradeUnionContribution,
   calculateTradeUnionSummary,
   generateUnionVoucherHTML,
-  exportUnionFinancialReportToExcel
+  generateBatchUnionVouchersHTML,
+  exportUnionFinancialReportToExcel,
+  downloadUnionExcelTemplate,
+  parseUnionTransactionsFromExcel
 } from '../../services/tradeUnionService';
 
 interface TradeUnionViewProps {
@@ -50,15 +59,22 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [voucherFilter, setVoucherFilter] = useState<'ALL' | 'RECEIPT' | 'PAYMENT'>('ALL');
 
-  // Modal Lập Phiếu
+  // Checkbox chọn hàng loạt
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Modal Lập / Sửa Phiếu Đơn
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<TradeUnionTransaction | null>(null);
   const [modalType, setModalType] = useState<TradeUnionVoucherType>('UNION_RECEIPT');
 
-  // Preview / Print Modal
-  const [previewTx, setPreviewTx] = useState<TradeUnionTransaction | null>(null);
+  // Modal Import Excel Hàng Loạt
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedList, setImportedList] = useState<TradeUnionTransaction[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importFileName, setImportFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form State
+  // Form State cho tạo phiếu đơn
   const [formData, setFormData] = useState<Partial<TradeUnionTransaction>>({
     voucherType: 'UNION_RECEIPT',
     voucherNo: '',
@@ -74,7 +90,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
   });
 
   // State cho công cụ tính nhanh KPCĐ 2%
-  const [grossPayroll, setGrossPayroll] = useState<number>(100000000); // 100 triệu
+  const [grossPayroll, setGrossPayroll] = useState<number>(100000000);
   const [memberCount, setMemberCount] = useState<number>(15);
   const [avgSalary, setAvgSalary] = useState<number>(8000000);
 
@@ -106,6 +122,22 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
     return calculateTradeUnionContribution(grossPayroll, memberCount, avgSalary);
   }, [grossPayroll, memberCount, avgSalary]);
 
+  // Chọn / bỏ chọn tất cả
+  const isAllSelected = filteredTransactions.length > 0 && selectedIds.length === filteredTransactions.length;
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredTransactions.map(t => t.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
   const handleOpenCreateModal = (type: TradeUnionVoucherType) => {
     setEditingItem(null);
     setModalType(type);
@@ -135,12 +167,13 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
     setIsModalOpen(true);
   };
 
+  // Lưu chứng từ đơn (Đã khắc phục hoàn toàn lỗi click tạo phiếu)
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeClient) return;
+    const targetClientId = activeClient?.id || 'default-client';
 
     if (!formData.voucherNo?.trim() || !formData.personName?.trim() || !formData.amount || formData.amount <= 0) {
-      setNotification({ message: 'Vui lòng điền đầy đủ số chứng từ, họ tên và số tiền hợp lệ!', type: 'ERROR' });
+      setNotification({ message: 'Vui lòng điền đầy đủ số chứng từ, họ tên và số tiền hợp lệ (> 0)!', type: 'ERROR' });
       return;
     }
 
@@ -154,12 +187,12 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
           updatedAt: now,
         };
         await db.unionTransactions.put(updated);
-        await logAuditEvent('EDIT_TX', 'Cập nhật Phiếu Công Đoàn', `Đã cập nhật ${updated.voucherNo} (${formatNumber(updated.amount)} đ)`, activeClient.id);
+        await logAuditEvent('EDIT_TX', 'Cập nhật Phiếu Công Đoàn', `Đã cập nhật ${updated.voucherNo} (${formatNumber(updated.amount)} đ)`, targetClientId);
         setNotification({ message: `Đã cập nhật thành công chứng từ ${updated.voucherNo}!`, type: 'SUCCESS' });
       } else {
         const newItem: TradeUnionTransaction = {
           id: `union-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          clientId: activeClient.id,
+          clientId: targetClientId,
           voucherType: modalType,
           voucherNo: formData.voucherNo!.trim(),
           date: formData.date || new Date().toISOString().slice(0, 10),
@@ -175,7 +208,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
           updatedAt: now,
         };
         await db.unionTransactions.add(newItem);
-        await logAuditEvent('EDIT_TX', 'Lập Phiếu Công Đoàn', `Tạo mới ${newItem.voucherNo} - ${newItem.reason} (${formatNumber(newItem.amount)} đ)`, activeClient.id);
+        await logAuditEvent('EDIT_TX', 'Lập Phiếu Công Đoàn', `Tạo mới ${newItem.voucherNo} - ${newItem.reason} (${formatNumber(newItem.amount)} đ)`, targetClientId);
         setNotification({ message: `Đã lưu thành công ${modalType === 'UNION_RECEIPT' ? 'Phiếu Thu' : 'Phiếu Chi'} ${newItem.voucherNo}!`, type: 'SUCCESS' });
       }
 
@@ -189,16 +222,32 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
     if (!confirm(`Bạn có chắc chắn muốn xóa chứng từ công đoàn ${voucherNo}?`)) return;
     try {
       await db.unionTransactions.delete(id);
-      if (activeClient) {
-        await logAuditEvent('EDIT_TX', 'Xóa Chứng Từ Công Đoàn', `Đã xóa chứng từ ${voucherNo}`, activeClient.id);
-      }
+      const targetClientId = activeClient?.id || 'default-client';
+      await logAuditEvent('EDIT_TX', 'Xóa Chứng Từ Công Đoàn', `Đã xóa chứng từ ${voucherNo}`, targetClientId);
+      setSelectedIds(prev => prev.filter(item => item !== id));
       setNotification({ message: `Đã xóa chứng từ ${voucherNo} thành công!`, type: 'SUCCESS' });
     } catch (err: any) {
       setNotification({ message: `Lỗi xóa: ${err.message}`, type: 'ERROR' });
     }
   };
 
-  const handlePrintVoucher = (tx: TradeUnionTransaction) => {
+  // Xóa hàng loạt
+  const handleDeleteBatch = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} chứng từ đã chọn?`)) return;
+    try {
+      await db.unionTransactions.bulkDelete(selectedIds);
+      const targetClientId = activeClient?.id || 'default-client';
+      await logAuditEvent('EDIT_TX', 'Xóa Hàng Loạt Chứng Từ CĐ', `Đã xóa ${selectedIds.length} chứng từ công đoàn`, targetClientId);
+      setSelectedIds([]);
+      setNotification({ message: `Đã xóa thành công ${selectedIds.length} chứng từ!`, type: 'SUCCESS' });
+    } catch (err: any) {
+      setNotification({ message: `Lỗi xóa hàng loạt: ${err.message}`, type: 'ERROR' });
+    }
+  };
+
+  // In đơn 1 phiếu
+  const handlePrintSingle = (tx: TradeUnionTransaction) => {
     const html = generateUnionVoucherHTML(tx, activeClient);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -211,69 +260,74 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
     }
   };
 
+  // In Hàng Loạt / Lưu PDF Hàng Loạt
+  const handlePrintBatch = (txList: TradeUnionTransaction[]) => {
+    if (txList.length === 0) {
+      setNotification({ message: 'Vui lòng chọn ít nhất 1 chứng từ để in hàng loạt!', type: 'ERROR' });
+      return;
+    }
+
+    const html = generateBatchUnionVouchersHTML(txList, activeClient);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 400);
+    }
+  };
+
+  // Xử lý đọc file Excel hàng loạt
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFileName(file.name);
+    try {
+      const buffer = await file.arrayBuffer();
+      const targetClientId = activeClient?.id || 'default-client';
+      const result = await parseUnionTransactionsFromExcel(buffer, targetClientId);
+      setImportedList(result.valid);
+      setImportErrors(result.errors);
+    } catch (err: any) {
+      setImportErrors([`Lỗi cấu trúc tệp Excel: ${err.message}`]);
+      setImportedList([]);
+    }
+  };
+
+  // Xác nhận lưu dữ liệu import hàng loạt vào CSDL
+  const handleConfirmBatchImport = async () => {
+    if (importedList.length === 0) {
+      setNotification({ message: 'Không có dữ liệu hợp lệ để nhập!', type: 'ERROR' });
+      return;
+    }
+
+    try {
+      await db.unionTransactions.bulkAdd(importedList);
+      const targetClientId = activeClient?.id || 'default-client';
+      await logAuditEvent('EDIT_TX', 'Import Excel Hàng Loạt CĐ', `Đã nhập ${importedList.length} phiếu thu chi công đoàn từ file ${importFileName}`, targetClientId);
+      
+      setNotification({ 
+        message: `Thành công! Đã tự động tạo hàng loạt ${importedList.length} phiếu thu chi công đoàn vào hệ thống.`, 
+        type: 'SUCCESS' 
+      });
+      setIsImportModalOpen(false);
+      setImportedList([]);
+      setImportErrors([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err: any) {
+      setNotification({ message: `Lỗi nhập hàng loạt: ${err.message}`, type: 'ERROR' });
+    }
+  };
+
   const handleExportExcel = () => {
     if (unionTransactions.length === 0) {
       setNotification({ message: 'Không có dữ liệu để xuất báo cáo Excel!', type: 'ERROR' });
       return;
     }
     exportUnionFinancialReportToExcel(unionTransactions, activeClient, selectedYear);
-  };
-
-  const handleQuickCreateBudgetReceipts = async () => {
-    if (!activeClient) return;
-    try {
-      const now = new Date().toISOString();
-      const dateStr = new Date().toISOString().slice(0, 10);
-      
-      // Tạo phiếu thu KPCĐ 2%
-      const receipt1: TradeUnionTransaction = {
-        id: `union-${Date.now()}-1`,
-        clientId: activeClient.id,
-        voucherType: 'UNION_RECEIPT',
-        voucherNo: `PT-KPCĐ-${selectedYear}-${String(unionTransactions.length + 1).padStart(3, '0')}`,
-        date: dateStr,
-        category: 'KPCĐ_2_PERCENT',
-        personName: 'Đại diện Doanh Nghiệp',
-        department: 'Phòng Kế Toán / Nhân Sự',
-        reason: `Trích nộp Kinh phí công đoàn 2% theo quỹ lương Tháng (${formatNumber(budgetCalc.payrollGrossInsurance)} đ)`,
-        amount: budgetCalc.kpcdTotal,
-        paymentMethod: 'BANK',
-        attachedDocs: 'Bảng lương tháng',
-        notes: `75% giữ lại CĐCS: ${formatNumber(budgetCalc.kpcdRetained)} đ; 25% nộp cấp trên: ${formatNumber(budgetCalc.kpcdPaySuperior)} đ`,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      // Tạo phiếu thu Đoàn phí 1% nếu có
-      const receipt2: TradeUnionTransaction = {
-        id: `union-${Date.now()}-2`,
-        clientId: activeClient.id,
-        voucherType: 'UNION_RECEIPT',
-        voucherNo: `PT-ĐPCĐ-${selectedYear}-${String(unionTransactions.length + 2).padStart(3, '0')}`,
-        date: dateStr,
-        category: 'DOAN_PHI_1_PERCENT',
-        personName: `Đại diện ${budgetCalc.unionMembersCount} đoàn viên công đoàn`,
-        department: 'Ban Chấp Hành CĐCS',
-        reason: `Thu đoàn phí công đoàn 1% tháng của ${budgetCalc.unionMembersCount} đoàn viên`,
-        amount: budgetCalc.doanPhiTotal,
-        paymentMethod: 'CASH',
-        attachedDocs: 'Danh sách thu đoàn phí',
-        notes: 'Đoàn phí 1% lương đoàn viên',
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await db.unionTransactions.bulkAdd([receipt1, receipt2]);
-      await logAuditEvent('EDIT_TX', 'Sinh Phiếu Thu KPCĐ Tự Động', `Sinh 2 phiếu thu KPCĐ 2% (${formatNumber(budgetCalc.kpcdTotal)} đ) và Đoàn phí (${formatNumber(budgetCalc.doanPhiTotal)} đ)`, activeClient.id);
-      
-      setNotification({ 
-        message: `Đã tự động tạo 2 phiếu thu KPCĐ (${formatNumber(budgetCalc.kpcdTotal)} đ) và Đoàn phí (${formatNumber(budgetCalc.doanPhiTotal)} đ) thành công!`, 
-        type: 'SUCCESS' 
-      });
-      setActiveTab('JOURNAL');
-    } catch (err: any) {
-      setNotification({ message: `Lỗi tạo phiếu thu tự động: ${err.message}`, type: 'ERROR' });
-    }
   };
 
   const tabs: TabItem<'JOURNAL' | 'BUDGET_ESTIMATE' | 'REPORT_B07'>[] = [
@@ -288,9 +342,21 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
         variant="gradient"
         icon={Users}
         title="Kế Toán & Thu Chi Tài Chính Công Đoàn Cơ Sở"
-        subtitle={`Quản lý kinh phí công đoàn 2%, đoàn phí 1%, lập & in phiếu thu C40-HD, phiếu chi C41-HD chuẩn Tổng LĐLĐ VN${activeClient ? ` — ${activeClient.name}` : ''}`}
+        subtitle={`Quản lý kinh phí công đoàn 2%, đoàn phí 1%, lập & in phiếu thu C40-HD, phiếu chi C41-HD, nhập & in hàng loạt${activeClient ? ` — ${activeClient.name}` : ''}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => {
+                setImportedList([]);
+                setImportErrors([]);
+                setImportFileName('');
+                setIsImportModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Upload className="w-4 h-4" />
+              <span>📥 Nhập File Excel (Hàng Loạt)</span>
+            </button>
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
@@ -373,7 +439,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
       {activeTab === 'JOURNAL' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <SearchBar
                 value={searchTerm}
                 onChange={setSearchTerm}
@@ -383,35 +449,80 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
                 <button
                   onClick={() => setVoucherFilter('ALL')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${voucherFilter === 'ALL' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${voucherFilter === 'ALL' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
                 >
                   Tất cả ({unionTransactions.length})
                 </button>
                 <button
                   onClick={() => setVoucherFilter('RECEIPT')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${voucherFilter === 'RECEIPT' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-600'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${voucherFilter === 'RECEIPT' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-600'}`}
                 >
                   Phiếu Thu ({summary.receiptCount})
                 </button>
                 <button
                   onClick={() => setVoucherFilter('PAYMENT')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${voucherFilter === 'PAYMENT' ? 'bg-rose-500 text-white shadow-sm' : 'text-rose-600'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${voucherFilter === 'PAYMENT' ? 'bg-rose-500 text-white shadow-sm' : 'text-rose-600'}`}
                 >
                   Phiếu Chi ({summary.paymentCount})
                 </button>
               </div>
             </div>
 
-            <div className="text-xs text-slate-500 font-semibold">
-              Hiển thị: <strong className="text-slate-900 dark:text-slate-100">{filteredTransactions.length}</strong> chứng từ
-            </div>
+            {/* THANH TÁC VỤ HÀNG LOẠT KHI CÓ CHỌN */}
+            {selectedIds.length > 0 ? (
+              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-xl animate-fade-in">
+                <span className="text-xs font-extrabold text-indigo-700 dark:text-indigo-300">
+                  Đã chọn: {selectedIds.length} phiếu
+                </span>
+                <button
+                  onClick={() => {
+                    const selectedTxs = unionTransactions.filter(t => selectedIds.includes(t.id));
+                    handlePrintBatch(selectedTxs);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-all active:scale-95 shadow-sm"
+                  title="In hoặc Lưu PDF tất cả các phiếu đã chọn một lần"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>🖨️ In / Lưu PDF Hàng Loạt</span>
+                </button>
+                <button
+                  onClick={handleDeleteBatch}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-all active:scale-95 shadow-sm"
+                  title="Xóa các chứng từ đã chọn"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePrintBatch(filteredTransactions)}
+                  disabled={filteredTransactions.length === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50"
+                  title="In toàn bộ danh sách đang hiển thị"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>In Toàn Bộ ({filteredTransactions.length})</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300 min-w-[1000px] border-collapse">
+              <table className="w-full text-xs text-left text-slate-700 dark:text-slate-300 min-w-[1050px] border-collapse">
                 <thead className="bg-slate-100 dark:bg-slate-950 font-bold border-b border-slate-200 dark:border-slate-800 text-[11px]">
                   <tr>
+                    <th className="p-3 w-10 text-center">
+                      <button 
+                        onClick={toggleSelectAll} 
+                        className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                        title={isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                      >
+                        {isAllSelected ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </th>
                     <th className="p-3 w-12 text-center">STT</th>
                     <th className="p-3 w-28">Loại Phiếu</th>
                     <th className="p-3 w-32">Số Chứng Từ</th>
@@ -428,9 +539,21 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
                   {filteredTransactions.map((tx, index) => {
                     const isReceipt = tx.voucherType === 'UNION_RECEIPT';
                     const accs = getTradeUnionAccounts(tx.category, tx.voucherType, tx.paymentMethod);
+                    const isSelected = selectedIds.includes(tx.id);
 
                     return (
-                      <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      <tr 
+                        key={tx.id} 
+                        className={`transition-colors ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-950/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'}`}
+                      >
+                        <td className="p-3 text-center">
+                          <button 
+                            onClick={() => toggleSelectOne(tx.id)} 
+                            className="cursor-pointer text-slate-400 hover:text-slate-700"
+                          >
+                            {isSelected ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        </td>
                         <td className="p-3 text-center font-bold text-slate-400">{index + 1}</td>
                         <td className="p-3">
                           {isReceipt ? (
@@ -467,22 +590,22 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
-                              onClick={() => handlePrintVoucher(tx)}
-                              className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 rounded-lg text-emerald-600 hover:text-emerald-800 transition-colors"
-                              title="In Phiếu Thu / Chi A4"
+                              onClick={() => handlePrintSingle(tx)}
+                              className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 rounded-lg text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer"
+                              title="In / Lưu PDF Phiếu Này (A4)"
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleOpenEditModal(tx)}
-                              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                               title="Chỉnh sửa chứng từ"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteTransaction(tx.id, tx.voucherNo)}
-                              className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/50 rounded-lg text-rose-500 hover:text-rose-700 transition-colors"
+                              className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/50 rounded-lg text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
                               title="Xóa chứng từ"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -494,11 +617,11 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
                   })}
                   {filteredTransactions.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="py-12">
+                      <td colSpan={11} className="py-12">
                         <EmptyState
                           icon={Users}
                           title="Chưa có chứng từ Thu - Chi Công Đoàn"
-                          description="Nhấn nút '+ Lập Phiếu Thu (C40-HD)' hoặc '+ Lập Phiếu Chi (C41-HD)' ở góc trên để tạo mới hoặc sử dụng tab Dự toán để sinh tự động."
+                          description="Nhấn nút '+ Lập Phiếu Thu', '+ Lập Phiếu Chi' hoặc '📥 Nhập File Excel (Hàng Loạt)' ở trên để bắt đầu."
                         />
                       </td>
                     </tr>
@@ -526,7 +649,56 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
               </div>
 
               <button
-                onClick={handleQuickCreateBudgetReceipts}
+                onClick={async () => {
+                  const targetClientId = activeClient?.id || 'default-client';
+                  const now = new Date().toISOString();
+                  const dateStr = new Date().toISOString().slice(0, 10);
+                  
+                  const receipt1: TradeUnionTransaction = {
+                    id: `union-${Date.now()}-1`,
+                    clientId: targetClientId,
+                    voucherType: 'UNION_RECEIPT',
+                    voucherNo: `PT-KPCĐ-${selectedYear}-${String(unionTransactions.length + 1).padStart(3, '0')}`,
+                    date: dateStr,
+                    category: 'KPCĐ_2_PERCENT',
+                    personName: 'Đại diện Doanh Nghiệp',
+                    department: 'Phòng Kế Toán / Nhân Sự',
+                    reason: `Trích nộp Kinh phí công đoàn 2% theo quỹ lương Tháng (${formatNumber(budgetCalc.payrollGrossInsurance)} đ)`,
+                    amount: budgetCalc.kpcdTotal,
+                    paymentMethod: 'BANK',
+                    attachedDocs: 'Bảng lương tháng',
+                    notes: `75% giữ lại CĐCS: ${formatNumber(budgetCalc.kpcdRetained)} đ; 25% nộp cấp trên: ${formatNumber(budgetCalc.kpcdPaySuperior)} đ`,
+                    createdAt: now,
+                    updatedAt: now,
+                  };
+
+                  const receipt2: TradeUnionTransaction = {
+                    id: `union-${Date.now()}-2`,
+                    clientId: targetClientId,
+                    voucherType: 'UNION_RECEIPT',
+                    voucherNo: `PT-ĐPCĐ-${selectedYear}-${String(unionTransactions.length + 2).padStart(3, '0')}`,
+                    date: dateStr,
+                    category: 'DOAN_PHI_1_PERCENT',
+                    personName: `Đại diện ${budgetCalc.unionMembersCount} đoàn viên công đoàn`,
+                    department: 'Ban Chấp Hành CĐCS',
+                    reason: `Thu đoàn phí công đoàn 1% tháng của ${budgetCalc.unionMembersCount} đoàn viên`,
+                    amount: budgetCalc.doanPhiTotal,
+                    paymentMethod: 'CASH',
+                    attachedDocs: 'Danh sách thu đoàn phí',
+                    notes: 'Đoàn phí 1% lương đoàn viên',
+                    createdAt: now,
+                    updatedAt: now,
+                  };
+
+                  await db.unionTransactions.bulkAdd([receipt1, receipt2]);
+                  await logAuditEvent('EDIT_TX', 'Sinh Phiếu Thu KPCĐ Tự Động', `Sinh 2 phiếu thu KPCĐ 2% (${formatNumber(budgetCalc.kpcdTotal)} đ) và Đoàn phí (${formatNumber(budgetCalc.doanPhiTotal)} đ)`, targetClientId);
+                  
+                  setNotification({ 
+                    message: `Đã tự động tạo 2 phiếu thu KPCĐ (${formatNumber(budgetCalc.kpcdTotal)} đ) và Đoàn phí (${formatNumber(budgetCalc.doanPhiTotal)} đ) thành công!`, 
+                    type: 'SUCCESS' 
+                  });
+                  setActiveTab('JOURNAL');
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-xl text-xs font-extrabold transition-all active:scale-95 shadow-md cursor-pointer shrink-0"
               >
                 <Coins className="w-4 h-4 text-amber-200" />
@@ -732,7 +904,130 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
         </div>
       )}
 
-      {/* MODAL LẬP PHIẾU THU / PHIẾU CHI CÔNG ĐOÀN */}
+      {/* MODAL IMPORT EXCEL HÀNG LOẠT */}
+      <BaseModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Nhập Dữ Liệu Thu - Chi Công Đoàn Hàng Loạt (Excel)"
+        subtitle="Hỗ trợ tải lên file Excel chứa hàng loạt phiếu thu/chi để tự động sinh vào hệ thống và in ấn hàng loạt"
+        icon={Upload}
+        maxWidth="2xl"
+      >
+        <div className="space-y-4 text-xs">
+          {/* Hộp tải file mẫu */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="font-extrabold text-slate-900 dark:text-slate-100">Chưa có tệp định dạng chuẩn?</div>
+              <div className="text-slate-500 text-[11px]">Tải file Excel mẫu gồm đầy đủ cột Loại phiếu, Mã khoản mục, Số tiền, Người nộp/nhận...</div>
+            </div>
+            <button
+              onClick={downloadUnionExcelTemplate}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold cursor-pointer transition-all active:scale-95 shrink-0 shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Tải File Excel Mẫu (.xlsx)</span>
+            </button>
+          </div>
+
+          {/* Vùng chọn file */}
+          <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-400 rounded-2xl p-6 text-center transition-colors">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx, .xls, .csv"
+              onChange={handleFileChange}
+              className="hidden"
+              id="union-excel-upload"
+            />
+            <label htmlFor="union-excel-upload" className="cursor-pointer space-y-2 block">
+              <Upload className="w-8 h-8 text-brand-500 mx-auto" />
+              <div className="font-bold text-slate-800 dark:text-slate-200">
+                {importFileName ? `Đã chọn: ${importFileName}` : 'Nhấn vào đây để chọn tệp Excel (.xlsx, .xls) hoặc kéo thả vào'}
+              </div>
+              <div className="text-[11px] text-slate-400">Hệ thống sẽ tự động quét và phân loại toàn bộ phiếu thu, phiếu chi</div>
+            </label>
+          </div>
+
+          {/* Cảnh báo lỗi nếu có */}
+          {importErrors.length > 0 && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl space-y-1">
+              <div className="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4" />
+                <span>Một số dòng bị bỏ qua hoặc thiếu thông tin:</span>
+              </div>
+              <ul className="list-disc list-inside text-[11px] text-rose-600 dark:text-rose-400 max-h-24 overflow-y-auto">
+                {importErrors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Bảng xem trước danh sách chuẩn bị nhập */}
+          {importedList.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
+                <span>Dữ Liệu Xem Trước Hợp Lệ ({importedList.length} phiếu):</span>
+                <span className="text-brand-600 dark:text-brand-400">
+                  Tổng tiền: {formatNumber(importedList.reduce((s, i) => s + i.amount, 0))} đ
+                </span>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-[11px] text-left">
+                  <thead className="bg-slate-100 dark:bg-slate-950 font-bold sticky top-0">
+                    <tr>
+                      <th className="p-2">Loại</th>
+                      <th className="p-2">Số Phiếu</th>
+                      <th className="p-2">Ngày</th>
+                      <th className="p-2">Người Nộp / Nhận</th>
+                      <th className="p-2">Lý Do</th>
+                      <th className="p-2 text-right">Số Tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {importedList.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <td className="p-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${item.voucherType === 'UNION_RECEIPT' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {item.voucherType === 'UNION_RECEIPT' ? 'THU' : 'CHI'}
+                          </span>
+                        </td>
+                        <td className="p-2 font-mono font-bold">{item.voucherNo}</td>
+                        <td className="p-2 font-mono">{item.date}</td>
+                        <td className="p-2 font-medium">{item.personName}</td>
+                        <td className="p-2 truncate max-w-xs">{item.reason}</td>
+                        <td className="p-2 text-right font-bold tabular-num">{formatNumber(item.amount)} đ</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              disabled={importedList.length === 0}
+              onClick={handleConfirmBatchImport}
+              className="px-5 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white rounded-xl font-extrabold shadow-sm cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Xác Nhận Tạo Hàng Loạt ({importedList.length} Phiếu)</span>
+            </button>
+          </div>
+        </div>
+      </BaseModal>
+
+      {/* MODAL LẬP PHIẾU THU / PHIẾU CHI CÔNG ĐOÀN ĐƠN LẺ */}
       <BaseModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -843,7 +1138,7 @@ export const TradeUnionView: React.FC<TradeUnionViewProps> = ({
               required
               value={formData.reason || ''}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-              placeholder="VD: Chi tiền thăm hỏi thai sản chị Nguyễn Thị Mai, Chi quà tết Nguyên Đán..."
+              placeholder="VD: Nộp kinh phí công đoàn 2% theo quỹ lương, Chi tiền thăm hỏi thai sản..."
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
