@@ -54,6 +54,12 @@ import {
   calculatePrepaidSummary, 
   generatePrepaidAllocationTransaction 
 } from '../services/prepaidExpenseService';
+import {
+  calculateTradeUnionContribution,
+  calculateTradeUnionSummary,
+  getTradeUnionAccounts,
+  generateUnionVoucherHTML,
+} from '../services/tradeUnionService';
 import { calculateEnterpriseRiskScore } from '../services/riskScoreEngine';
 import { suggestJournalEntry } from '../services/journalSuggestService';
 import { getAllCompanies, saveCompanyConfig } from '../services/multiCompanyService';
@@ -1022,6 +1028,63 @@ async function runAllTests() {
   assert(autoTx.creditAcc === '242', 'S16.9: Bút toán sinh tự động ghi Có TK 242');
   assert(autoTx.amount === 1000000, 'S16.10: Số tiền bút toán khớp chính xác 1,000,000 đ');
   assert(autoTx.date === '2026-03-31', 'S16.11: Ngày chứng từ hạch toán là ngày cuối cùng của tháng (2026-03-31)');
+
+  // ============================================================
+  // PHẦN 68: TEST KẾ TOÁN & LẬP PHIẾU THU CHI CÔNG ĐOÀN (C40/C41/B07-CĐ)
+  // ============================================================
+  console.log('\n📌 PHẦN 68: TEST KẾ TOÁN & LẬP PHIẾU THU CHI CÔNG ĐOÀN (C40/C41/B07-CĐ)');
+  const budgetResult = calculateTradeUnionContribution(100000000, 20, 10000000);
+  assert(budgetResult.kpcdTotal === 2000000, 'S17.1: Tính đúng 2% Kinh phí công đoàn trên quỹ lương 100tr = 2,000,000 đ');
+  assert(budgetResult.kpcdRetained === 1500000, 'S17.2: Tính đúng 75% KPCĐ để lại Công đoàn cơ sở = 1,500,000 đ');
+  assert(budgetResult.kpcdPaySuperior === 500000, 'S17.3: Tính đúng 25% KPCĐ nộp Công đoàn cấp trên = 500,000 đ');
+  assert(budgetResult.doanPhiTotal === 2000000, 'S17.4: Tính đúng 1% đoàn phí của 20 đoàn viên (100k/người) = 2,000,000 đ');
+
+  const mockUnionReceipt = {
+    id: 'union_rec_01',
+    clientId: 'client-1',
+    voucherType: 'UNION_RECEIPT' as const,
+    voucherNo: 'PT-CĐ-2026-001',
+    date: '2026-08-10',
+    category: 'KPCĐ_2_PERCENT' as const,
+    personName: 'Đại diện Công ty',
+    reason: 'Trích nộp kinh phí công đoàn 2%',
+    amount: 2000000,
+    paymentMethod: 'BANK' as const,
+    createdAt: '2026-08-10T00:00:00.000Z',
+    updatedAt: '2026-08-10T00:00:00.000Z',
+  };
+
+  const mockUnionPayment = {
+    id: 'union_pay_01',
+    clientId: 'client-1',
+    voucherType: 'UNION_PAYMENT' as const,
+    voucherNo: 'PC-CĐ-2026-001',
+    date: '2026-08-12',
+    category: 'THAM_HOI_OM_DAU' as const,
+    personName: 'Nguyễn Văn Nam',
+    reason: 'Chi thăm hỏi ốm đau nằm viện',
+    amount: 500000,
+    paymentMethod: 'CASH' as const,
+    createdAt: '2026-08-12T00:00:00.000Z',
+    updatedAt: '2026-08-12T00:00:00.000Z',
+  };
+
+  const unionSummary = calculateTradeUnionSummary([mockUnionReceipt, mockUnionPayment]);
+  assert(unionSummary.totalReceipts === 2000000, 'S17.5: Tổng thu quỹ công đoàn = 2,000,000 đ');
+  assert(unionSummary.totalPayments === 500000, 'S17.6: Tổng chi hoạt động công đoàn = 500,000 đ');
+  assert(unionSummary.netBalance === 1500000, 'S17.7: Số dư quỹ công đoàn còn lại = 1,500,000 đ');
+  assert(unionSummary.bankBalance === 2000000, 'S17.8: Số dư tiền gửi ngân hàng quỹ CĐ = 2,000,000 đ');
+  assert(unionSummary.cashBalance === -500000, 'S17.9: Phản ánh biến động tiền mặt quỹ CĐ');
+
+  const recAccounts = getTradeUnionAccounts('KPCĐ_2_PERCENT', 'UNION_RECEIPT', 'BANK');
+  assert(recAccounts.debitAcc === '1121' && recAccounts.creditAcc === '3382', 'S17.10: Hạch toán Thu KPCĐ qua ngân hàng: Nợ 1121 / Có 3382');
+
+  const payAccounts = getTradeUnionAccounts('THAM_HOI_OM_DAU', 'UNION_PAYMENT', 'CASH');
+  assert(payAccounts.debitAcc === '6422' && payAccounts.creditAcc === '1111', 'S17.11: Hạch toán Chi thăm hỏi ốm đau: Nợ 6422 / Có 1111');
+
+  const htmlReceipt = generateUnionVoucherHTML(mockUnionReceipt, { id: 'client-1', code: 'C01', name: 'Công ty Test', taxCode: '0101234567', address: 'Hà Nội', financialYear: 2026, createdAt: '', updatedAt: '' });
+  assert(htmlReceipt.includes('PHIẾU THU CÔNG ĐOÀN'), 'S17.12: Sinh HTML Phiếu Thu Công Đoàn chuẩn Mẫu số C40-HD');
+  assert(htmlReceipt.includes('CÔNG ĐOÀN VIỆT NAM'), 'S17.13: HTML Phiếu có tiêu ngữ Tổng LĐLĐ Việt Nam');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);

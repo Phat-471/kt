@@ -158,3 +158,37 @@ export interface PrepaidAllocationSchedule {
   transactionId?: string;
 }
 
+export type TradeUnionVoucherType = 'UNION_RECEIPT' | 'UNION_PAYMENT';
+
+export type TradeUnionCategory = 
+  | 'KPCĐ_2_PERCENT'       // Kinh phí công đoàn 2% DN đóng
+  | 'DOAN_PHI_1_PERCENT'   // Đoàn phí 1% đoàn viên đóng
+  | 'KINH_PHI_CAP_TREN'    // CĐ cấp trên cấp về
+  | 'HO_TRO_KHAC'          // DN hoặc nhà tài trợ hỗ trợ
+  | 'THAM_HOI_OM_DAU'      // Chi thăm hỏi ốm đau, hiếu hỉ, trợ cấp khó khăn
+  | 'QUA_LE_TET'           // Chi quà Tết, 8/3, 20/10, Trung thu, 1/6
+  | 'HOAT_DONG_PHONG_TRAO' // Chi văn hóa, thể thao, tham quan, du lịch
+  | 'KHEN_THUONG'          // Chi khen thưởng đoàn viên xuất sắc
+  | 'NOP_CAP_TREN_25'      // Nộp 25% KPCĐ lên Công đoàn cấp trên
+  | 'PHU_CAP_CAN_BO_CD'    // Phụ cấp cán bộ công đoàn & quản lý CĐ
+  | 'CHI_KHAC';            // Chi khác
+
+export interface TradeUnionTransaction {
+  id: string;
+  clientId: string;
+  voucherType: TradeUnionVoucherType; // UNION_RECEIPT: Phiếu thu C40-HD | UNION_PAYMENT: Phiếu chi C41-HD
+  voucherNo: string;                 // VD: PT-CĐ-2026-001 hoặc PC-CĐ-2026-001
+  date: string;                      // YYYY-MM-DD
+  category: TradeUnionCategory;
+  personName: string;                // Người nộp / Người nhận tiền
+  department?: string;               // Phòng ban / Tổ công đoàn
+  reason: string;                    // Lý do thu / chi
+  amount: number;                    // Số tiền (VND)
+  paymentMethod: 'CASH' | 'BANK';    // Tiền mặt (1111) hoặc Chuyển khoản (1121)
+  attachedDocs?: string;             // Chứng từ kèm theo (hóa đơn, danh sách nhận quà...)
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+

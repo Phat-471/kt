@@ -37,6 +37,7 @@ import { AccountingLedgerView } from './components/reports/AccountingLedgerView'
 import { PayrollView } from './components/payroll/PayrollView';
 import { FixedAssetView } from './components/assets/FixedAssetView';
 import { PrepaidExpenseView } from './components/prepaid/PrepaidExpenseView';
+import { TradeUnionView } from './components/union/TradeUnionView';
 import { ETaxView } from './components/tax/ETaxView';
 import { TrialBalancePivotView } from './components/reports/TrialBalancePivotView';
 import { UserRole } from './services/rolePermissionService';
@@ -128,6 +129,11 @@ export default function App() {
 
   const prepaidExpenses = useLiveQuery(
     () => (activeClientId ? db.prepaidExpenses.where('clientId').equals(activeClientId).toArray() : []),
+    [activeClientId]
+  ) || [];
+
+  const unionTransactions = useLiveQuery(
+    () => (activeClientId ? db.unionTransactions.where('clientId').equals(activeClientId).toArray() : []),
     [activeClientId]
   ) || [];
 
@@ -520,6 +526,13 @@ export default function App() {
               activeClient={activeClient}
               transactions={transactions}
               prepaidExpenses={prepaidExpenses}
+            />
+          )}
+
+          {activeTab === 'trade-union' && (
+            <TradeUnionView
+              activeClient={activeClient}
+              unionTransactions={unionTransactions}
             />
           )}
 
