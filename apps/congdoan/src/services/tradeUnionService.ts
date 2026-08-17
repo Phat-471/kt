@@ -2911,6 +2911,143 @@ export function exportSingleExcelSheet(
   }
 }
 
+export function exportCustomVouchersToExcel(params: {
+  title?: string;
+  subtitle?: string;
+  transactions: TradeUnionTransaction[];
+  client: Client | null;
+  year: number;
+  signers?: UnionSignerSettings | null;
+  fileName?: string;
+}): void {
+  const { title, subtitle, transactions, client, year, signers, fileName } = params;
+  const wb = XLSX.utils.book_new();
+  const unitTitle = signers?.unitTitle || 'CÔNG ĐOÀN CƠ SỞ';
+  const clientName = signers?.companyName || client?.name || 'CÔNG TY TNHH THIẾT KẾ XÂY DỰNG VÀ THƯƠNG MẠI HƯNG PHÁT';
+  const clientAddress = signers?.companyAddress || client?.address || '153G Lũy Bán Bích, P. Tân Thới Hòa, Q. Tân Phú, TP. HCM';
+  const headName = signers?.headOfUnitName || 'Ngô Thị Bích Ngọc';
+  const accountantName = signers?.accountantName || 'Nguyễn Thị Cẩm Ly';
+  const preparerName = signers?.preparerName || 'Nguyễn Thị Cẩm Ly';
+  const safeName = clientName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+
+  const mainTitle = title || `BẢNG KÊ DANH SÁCH CHỨNG TỪ THU - CHI CÔNG ĐOÀN NĂM ${year}`;
+
+  const wsData: any[] = [
+    [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', '', '', '', ''],
+    [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', '', '', ''],
+    [mainTitle, '', '', '', '', '', '', '', '', '', ''],
+    [subtitle || `(Tổng số: ${transactions.length} chứng từ)`, '', '', '', '', '', '', '', '', '', ''],
+    ['STT', 'Ngày Lập', 'Số Phiếu', 'Loại Phiếu', 'Khoản Mục Kế Toán', 'Người Nộp / Nhận Tiền', 'Nội Dung Diễn Giải Chi Tiết', 'Hình Thức', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Kèm Theo']
+  ];
+
+  let totalThu = 0;
+  let totalChi = 0;
+  const startRow = 6;
+
+  transactions.forEach((t, idx) => {
+    const isThu = t.voucherType === 'UNION_RECEIPT';
+    if (isThu) totalThu += t.amount;
+    else totalChi += t.amount;
+
+    wsData.push([
+      idx + 1,
+      t.date,
+      t.voucherNo,
+      isThu ? 'Phiếu Thu (C40)' : 'Phiếu Chi (C41)',
+      getTradeUnionCategoryLabel(t.category),
+      t.personName,
+      t.reason,
+      t.paymentMethod === 'BANK' ? 'Ngân hàng' : 'Tiền mặt',
+      isThu ? t.amount : 0,
+      !isThu ? t.amount : 0,
+      t.attachedDocs || '01'
+    ]);
+  });
+
+  const totalRowIdx = wsData.length;
+  wsData.push(['', '', '', '', '', '', 'TỔNG CỘNG PHÁT SINH:', '', totalThu, totalChi, '']);
+  const balanceRowIdx = wsData.length;
+  wsData.push(['', '', '', '', '', '', 'CHÊNH LỆCH DÒNG TIỀN (THU - CHI):', '', totalThu - totalChi, '', '']);
+  wsData.push(['', '', '', '', '', '', '', '', '', '', '']);
+
+  const signRowStart = wsData.length;
+  wsData.push(['', 'NGƯỜI LẬP BIỂU', '', '', 'KẾ TOÁN CÔNG ĐOÀN', '', '', '', 'CHỦ TỊCH CĐCS', '', '']);
+  wsData.push(['', '(Ký, họ tên)', '', '', '(Ký, họ tên)', '', '', '', '(Ký, họ tên, đóng dấu)', '', '']);
+  wsData.push(['', '', '', '', '', '', '', '', '', '', '']);
+  wsData.push(['', '', '', '', '', '', '', '', '', '', '']);
+  wsData.push(['', preparerName, '', '', accountantName, '', '', '', headName, '', '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 10 } },
+    { s: { r: 4, c: 0 }, e: { r: 4, c: 10 } }
+  ];
+  ws['!cols'] = [
+    { wch: 6 },  { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 32 },
+    { wch: 25 }, { wch: 45 }, { wch: 13 }, { wch: 20 }, { wch: 20 }, { wch: 12 }
+  ];
+
+  // Styles
+  if (ws['A1']) ws['A1'].s = EXCEL_STYLES.companyTitle;
+  if (ws['A2']) ws['A2'].s = EXCEL_STYLES.companyAddress;
+  if (ws['A4']) ws['A4'].s = EXCEL_STYLES.mainTitleBanner;
+  if (ws['A5']) ws['A5'].s = EXCEL_STYLES.subTitle;
+
+  for (let c = 0; c <= 10; c++) {
+    const ref = getCellAddress(5, c);
+    if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeader;
+  }
+
+  for (let i = 0; i < transactions.length; i++) {
+    const r = startRow + i;
+    const isOdd = i % 2 === 1;
+    if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+    if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+    if (ws[getCellAddress(r, 2)]) ws[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
+    if (ws[getCellAddress(r, 3)]) ws[getCellAddress(r, 3)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+    if (ws[getCellAddress(r, 4)]) ws[getCellAddress(r, 4)].s = EXCEL_STYLES.dataCellLeft(isOdd);
+    if (ws[getCellAddress(r, 5)]) ws[getCellAddress(r, 5)].s = EXCEL_STYLES.dataCellLeft(isOdd, true);
+    if (ws[getCellAddress(r, 6)]) ws[getCellAddress(r, 6)].s = EXCEL_STYLES.dataCellLeft(isOdd);
+    if (ws[getCellAddress(r, 7)]) ws[getCellAddress(r, 7)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+    if (ws[getCellAddress(r, 8)]) ws[getCellAddress(r, 8)].s = EXCEL_STYLES.dataAmountThu(isOdd);
+    if (ws[getCellAddress(r, 9)]) ws[getCellAddress(r, 9)].s = EXCEL_STYLES.dataAmountChi(isOdd);
+    if (ws[getCellAddress(r, 10)]) ws[getCellAddress(r, 10)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+  }
+
+  for (let c = 0; c <= 10; c++) {
+    const ref = getCellAddress(totalRowIdx, c);
+    if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowLabel; }
+    else if (c === 8) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountThu; }
+    else if (c === 9) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountChi; }
+    else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowEmpty; }
+
+    const refB = getCellAddress(balanceRowIdx, c);
+    if (c === 6) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowLabel; }
+    else if (c === 8) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowAmount; }
+    else { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowEmpty; }
+  }
+
+  // Chữ ký
+  if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_STYLES.signRole;
+  if (ws[getCellAddress(signRowStart, 4)]) ws[getCellAddress(signRowStart, 4)].s = EXCEL_STYLES.signRole;
+  if (ws[getCellAddress(signRowStart, 8)]) ws[getCellAddress(signRowStart, 8)].s = EXCEL_STYLES.signRole;
+
+  if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_STYLES.signNote;
+  if (ws[getCellAddress(signRowStart + 1, 4)]) ws[getCellAddress(signRowStart + 1, 4)].s = EXCEL_STYLES.signNote;
+  if (ws[getCellAddress(signRowStart + 1, 8)]) ws[getCellAddress(signRowStart + 1, 8)].s = EXCEL_STYLES.signNote;
+
+  if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_STYLES.signName;
+  if (ws[getCellAddress(signRowStart + 4, 4)]) ws[getCellAddress(signRowStart + 4, 4)].s = EXCEL_STYLES.signName;
+  if (ws[getCellAddress(signRowStart + 4, 8)]) ws[getCellAddress(signRowStart + 4, 8)].s = EXCEL_STYLES.signName;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'DANH_SACH_THU_CHI');
+  const targetFileName = fileName || `Danh_Sach_Thu_Chi_${safeName}_${year}.xlsx`;
+  XLSX.writeFile(wb, targetFileName);
+}
+
 // =========================================================================
 // 8. CÁC HÀM XỬ LÝ BIẾN ĐỘNG THÁNG, QUÝ & TỔNG HỢP NĂM (SHEET TC)
 // =========================================================================

@@ -32,7 +32,9 @@ import {
   UserCheck,
   LifeBuoy,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Search,
+  X
 } from 'lucide-react';
 import { PageHeader, StatCard, SubTabNav, BaseModal, TabItem, FeedbackModal, UpdateCheckerModal } from './components/common';
 import { formatNumber } from './utils/formatters';
@@ -134,6 +136,19 @@ export default function App() {
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
+  // Quick Employee Search in Voucher Modal
+  const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
+
+  const filteredModalEmployees = useMemo(() => {
+    if (!employeeSearchQuery.trim()) return employees;
+    const q = employeeSearchQuery.toLowerCase().trim();
+    return employees.filter(e => 
+      e.code.toLowerCase().includes(q) || 
+      e.fullName.toLowerCase().includes(q) || 
+      (e.department || '').toLowerCase().includes(q)
+    );
+  }, [employees, employeeSearchQuery]);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).electronAPI) {
       (window as any).electronAPI.onNavigate((tab: TradeUnionFeatureTab) => {
@@ -205,9 +220,10 @@ export default function App() {
   };
 
   const handleOpenAddModal = (type: TradeUnionVoucherType) => {
-    setModalType(type);
     setEditingItem(null);
+    setModalType(type);
     setSelectedEmployeeCode('');
+    setEmployeeSearchQuery('');
     const m = selectedMonth !== 'ALL' ? selectedMonth : (new Date().getMonth() + 1);
     const dateStr = `${selectedYear}-${String(m).padStart(2, '0')}-15`;
     const prefix = type === 'UNION_RECEIPT' ? 'PT' : 'PC';
@@ -418,6 +434,11 @@ export default function App() {
     setNotification({ message: 'Đã xóa nhân viên khỏi danh sách!', type: 'SUCCESS' });
   };
 
+  const handleUpdateEmployee = async (emp: UnionEmployee) => {
+    await db.unionEmployees.put(emp);
+    setNotification({ message: `Đã cập nhật thông tin nhân viên ${emp.fullName} (Mã: ${emp.code})!`, type: 'SUCCESS' });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -591,7 +612,7 @@ export default function App() {
             title="Kiểm tra phiên bản & Cập nhật phần mềm"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>v1.1.0 (Cập Nhật)</span>
+            <span>v1.2.0 (Cập Nhật)</span>
           </button>
 
           {/* Nút Báo Cáo Lỗi & Hỗ Trợ Trực Tiếp */}
@@ -707,12 +728,14 @@ export default function App() {
           />
         </div>
 
-        {/* Thanh Chọn Phân Hệ */}
-        <SubTabNav
-          tabs={navTabs}
-          activeTab={activeTab}
-          onChange={(tabId) => setActiveTab(tabId as any)}
-        />
+        {/* Thanh Chọn Phân Hệ Cố Định Khi Scroll */}
+        <div className="sticky top-[61px] z-30 bg-slate-100/95 backdrop-blur-md py-2 -my-2 transition-all shadow-xs">
+          <SubTabNav
+            tabs={navTabs}
+            activeTab={activeTab}
+            onChange={(tabId) => setActiveTab(tabId as any)}
+          />
+        </div>
 
         {/* 4 Phân Hệ Tinh Gọn */}
         {activeTab === 'VOUCHERS' && (
@@ -732,6 +755,9 @@ export default function App() {
             onPrintBatchSelected={handlePrintBatchSelected}
             onPrintMonth={handlePrintMonth}
             onDeleteSelected={handleDeleteSelected}
+            client={activeClient}
+            signerSettings={signerSettings}
+            selectedYear={selectedYear}
           />
         )}
 
@@ -757,6 +783,9 @@ export default function App() {
             onPrintCashBook={handlePrintCashBook}
             onPrintBankBook={handlePrintBankBook}
             onPrintReportB07={handlePrintB07Report}
+            client={activeClient}
+            signerSettings={signerSettings}
+            selectedYear={selectedYear}
           />
         )}
 
@@ -766,6 +795,7 @@ export default function App() {
             onSaveSignerSettings={handleSaveSigners}
             employees={employees}
             onAddEmployee={handleAddEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
             onDeleteEmployee={handleDeleteEmployee}
           />
         )}
@@ -920,8 +950,8 @@ export default function App() {
           title={editingItem ? `Chỉnh Sửa: ${editingItem.voucherNo}` : modalType === 'UNION_RECEIPT' ? 'Lập Phiếu Thu (Mẫu C40-BB)' : 'Lập Phiếu Chi (Mẫu C41-BB)'}
         >
           <div className="space-y-3.5 text-xs">
-            {/* Tích chọn nhân viên nhanh */}
-            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5">
+            {/* Tích chọn nhân viên nhanh kèm ô tìm kiếm theo mã */}
+            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-slate-700 font-bold flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-blue-600" />
@@ -929,15 +959,42 @@ export default function App() {
                 </label>
                 <span className="text-[10px] text-blue-600">Tự điền tên & ghép mã vào nội dung</span>
               </div>
+
+              {/* Ô Tìm Kiếm Nhanh Theo Mã NV hoặc Tên */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-blue-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={employeeSearchQuery}
+                  onChange={(e) => setEmployeeSearchQuery(e.target.value)}
+                  placeholder="🔍 Nhập mã NV (ví dụ: 01, 15) hoặc tên để tìm nhanh..."
+                  className="w-full bg-white border border-blue-300 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-xs"
+                />
+                {employeeSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setEmployeeSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown danh sách đã lọc */}
               <select
                 value={selectedEmployeeCode}
                 onChange={(e) => handleSelectEmployee(e.target.value)}
                 className="w-full bg-white border border-blue-300 rounded-lg px-3 py-1.5 text-slate-900 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
               >
-                <option value="">-- Bấm để chọn nhân viên ({employees.length} người) --</option>
-                {employees.map(emp => (
+                <option value="">
+                  {filteredModalEmployees.length === 0 
+                    ? '-- Không tìm thấy nhân viên phù hợp --' 
+                    : `-- Bấm để chọn nhân viên (${filteredModalEmployees.length} kết quả) --`}
+                </option>
+                {filteredModalEmployees.map(emp => (
                   <option key={emp.id} value={emp.code}>
-                    {emp.fullName} - Mã: {emp.code} ({emp.department || 'CĐCS'})
+                    [Mã: {emp.code}] {emp.fullName} - {emp.department || 'CĐCS'}
                   </option>
                 ))}
               </select>
