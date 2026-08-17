@@ -11,7 +11,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'Phần Mềm Kế Toán Tài Chính Công Đoàn Cơ Sở - v1.1.0',
-    icon: path.join(__dirname, '../public/favicon.ico'),
+    icon: path.join(__dirname, '../assets/icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

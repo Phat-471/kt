@@ -9,11 +9,12 @@ echo.
 
 cd /d "%~dp0\apps\congdoan"
 
-call npm run build:exe
+call npm run build:installer
 
 echo.
 echo ========================================================
-echo   HOAN TAT!
-echo   File cai dat .exe nam trong thu muc: apps\congdoan\release
+echo   HOAN TAT DONG GOI FILE CAI DAT (.EXE)!
+echo   File cai dat duy nhat: apps\congdoan\release\KeToanCongDoan-Setup-v1.1.0.exe
+echo   (Mang file nay sang may tinh khac, nhap dup la cai dat tu dong)
 echo ========================================================
 pause

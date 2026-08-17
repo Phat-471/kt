@@ -569,8 +569,8 @@ export default function App() {
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600 rounded-xl text-white shadow-md shadow-blue-500/20">
-            <Users className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-blue-500/20 border border-slate-200 bg-white flex items-center justify-center p-0.5">
+            <img src="./logo.png" alt="Logo Kế Toán Công Đoàn" className="w-full h-full object-contain rounded-lg" />
           </div>
           <div>
             <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
