@@ -167,15 +167,17 @@ ipcMain.handle('install-update', async (_event, options = {}) => {
       throw new Error('Không tìm thấy file cài đặt đã tải.');
     }
 
-    // Chạy file cài đặt: /S cho chế độ silent cài đặt nền nếu cần
-    const args = options.silent ? ['/S'] : [];
+    // Mặc định chạy ở chế độ Silent /S (cài đặt ngầm không hiện popup hỏi han)
+    const isSilent = options.silent !== false;
+    const args = isSilent ? ['/S'] : [];
+
     const child = spawn(installerPath, args, {
       detached: true,
       stdio: 'ignore'
     });
     child.unref();
 
-    // Thoát ứng dụng để bộ cài tiến hành cập nhật
+    // Thoát ứng dụng ngay để bộ cài tiến hành ghi đè và tự khởi động lại app mới
     setTimeout(() => {
       app.quit();
     }, 500);

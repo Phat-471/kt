@@ -5,14 +5,28 @@
 Unicode true
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 ; General Settings
 Name "Kế Toán Tài Chính Công Đoàn"
-OutFile "release\KeToanCongDoan-Setup-v1.2.1.exe"
+OutFile "release\KeToanCongDoan-Setup-v1.2.2.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user
 SetCompressor /SOLID zlib
+
+; Auto-Relaunch on silent update
+Function .onInit
+  ; Đợi 1 giây để tiến trình cũ giải phóng tài nguyên nếu vừa đóng
+  Sleep 1000
+FunctionEnd
+
+Function .onInstSuccess
+  ; Nếu chạy ở chế độ im lặng (/S), tự động khởi động lại ứng dụng phiên bản mới
+  ${If} ${Silent}
+    ExecShell "" "$INSTDIR\KeToanCongDoan.exe"
+  ${EndIf}
+FunctionEnd
 
 ; Interface Configuration
 !define MUI_ICON "assets\icon.ico"
@@ -50,7 +64,7 @@ Section "KeToanCongDoan (required)" SecCore
   WriteRegStr HKCU "Software\KeToanCongDoan" "Install_Dir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayName" "Phần Mềm Kế Toán Tài Chính Công Đoàn"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayIcon" "$INSTDIR\KeToanCongDoan.exe,0"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.2.1"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.2.2"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "Publisher" "Công Đoàn Cơ Sở"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "NoModify" 1

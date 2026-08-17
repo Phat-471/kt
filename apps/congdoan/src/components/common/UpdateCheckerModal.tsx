@@ -203,7 +203,7 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
   const handleExecuteInstall = async () => {
     setIsInstalling(true);
     if (window.electronAPI?.installUpdate) {
-      await window.electronAPI.installUpdate({ silent: false });
+      await window.electronAPI.installUpdate({ silent: true });
     }
   };
 
@@ -296,10 +296,10 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
               <div className="bg-emerald-100/80 p-3.5 rounded-xl border border-emerald-400 space-y-2">
                 <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
-                  <span>Đã tải xong bản cài đặt! Đang chuẩn bị cập nhật...</span>
+                  <span>Tải thành công! Đang tự động cập nhật ngầm...</span>
                 </div>
                 <div className="text-xs text-emerald-800">
-                  Ứng dụng sẽ tự động đóng và tiến hành cài đặt bản {latestRelease.tagName} trong <strong>{countdown ?? 1}s</strong>.
+                  Ứng dụng sẽ tự đóng, nâng cấp âm thầm và mở lại phiên bản <strong>{latestRelease.tagName}</strong> trong <strong>{countdown ?? 1}s</strong>.
                 </div>
               </div>
             )}
@@ -335,7 +335,7 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
                   className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-md transition-all text-xs"
                 >
                   <HardDrive className="w-4 h-4" />
-                  <span>{isInstalling ? 'Đang khởi động cài đặt...' : 'Cài Đặt Ngay'}</span>
+                  <span>{isInstalling ? 'Đang cập nhật ngầm & mở lại app...' : 'Cài Đặt Ngay'}</span>
                 </button>
               </div>
             )}
