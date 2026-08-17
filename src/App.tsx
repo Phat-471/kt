@@ -47,6 +47,13 @@ import { startAutoBackupScheduler, stopAutoBackupScheduler } from './services/au
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const appParam = urlParams.get('app') || urlParams.get('tab');
+      if (appParam === 'trade-union' || appParam === 'cong-doan' || appParam === 'union') return 'trade-union';
+      const hash = window.location.hash.replace('#', '').trim();
+      if (hash === 'trade-union' || hash === 'cong-doan' || hash === 'union') return 'trade-union';
+    }
     const saved = localStorage.getItem('accodesk_active_tab') as TabType;
     return saved || 'dashboard';
   });

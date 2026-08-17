@@ -158,26 +158,114 @@ export interface PrepaidAllocationSchedule {
   transactionId?: string;
 }
 
+export interface TradeUnionMemberContribution {
+  stt: number;
+  employeeId?: string;
+  employeeCode?: string;
+  fullName: string;
+  insuranceSalary: number;
+  status?: 'ACTIVE' | 'MATERNITY' | 'UNPAID_LEAVE' | 'RESIGNED';
+  kpcdRetainedAmount: number; // 75% trên 2%
+  kpcdSuperiorAmount: number; // 25% trên 2%
+  doanPhiRetainedAmount: number; // 70% trên 0.5% (hoặc 1%)
+  doanPhiSuperiorAmount: number; // 30% trên 0.5% (hoặc 1%)
+  totalAmount: number;
+  notes?: string;
+}
+
+export interface TradeUnionContributionPeriod {
+  periodKey: string; // VD: "012026", "062026", "Q1.2026"
+  periodLabel: string; // VD: "Tháng 06/2026", "Quý 01/2026"
+  periodType?: 'MONTH' | 'QUARTER';
+  year: number;
+  month?: number;
+  quarter?: number;
+  totalEmployees: number;
+  totalMembers: number;
+  totalInsuranceSalary: number;
+  totalKpcd: number; // 2%
+  totalKpcdRetained: number; // 75%
+  totalKpcdSuperior: number; // 25%
+  totalDoanPhi: number; // 0.5%
+  totalDoanPhiRetained: number; // 70%
+  totalDoanPhiSuperior: number; // 30%
+  netPayableToSuperior: number; // 25% KPCĐ + 30% ĐP
+  reportDate?: string;
+  preparerName?: string;
+  members: TradeUnionMemberContribution[];
+}
+
+export interface TradeUnionMonthlyYearSummaryRow {
+  monthNumber: number;
+  monthLabel: string; // VD: "Tháng 1/2026"
+  employeeCount: number;
+  insuranceSalaryFund: number;
+  kpcdTotal2Pct: number; // (4) = (3) x 2%
+  kpcdRetained75Pct: number; // (5) = (4) x 75%
+  kpcdPayable25Pct: number; // (6) = (4) - (5)
+  doanPhiRetained70Pct: number; // (7) = (3) x 0.5% x 70%
+  doanPhiPayable30Pct: number; // (8) = (3) x 0.5% x 30%
+  totalContribution: number;
+}
+
+export interface TradeUnionYearSummaryTC {
+  year: number;
+  companyName: string;
+  companyAddress: string;
+  taxCode: string;
+  monthlyRows: TradeUnionMonthlyYearSummaryRow[];
+  totalEmployeeAverage: number;
+  totalInsuranceSalaryFund: number;
+  totalKpcd2Pct: number;
+  totalKpcdRetained75Pct: number;
+  totalKpcdPayable25Pct: number;
+  totalDoanPhiRetained70Pct: number;
+  totalDoanPhiPayable30Pct: number;
+  grandTotalContribution: number;
+}
+
+export interface UnionSignerSettings {
+  id: string;
+  unitTitle: string;
+  companyName: string;
+  companyAddress: string;
+  headOfUnitTitle: string;
+  headOfUnitName: string;
+  accountantName: string;
+  preparerName: string;
+  treasurerName: string;
+  updatedAt?: string;
+}
+
+export interface UnionEmployee {
+  id: string;
+  code: string;
+  fullName: string;
+  department?: string;
+  insuranceSalary?: number;
+  isActive?: boolean;
+}
+
 export type TradeUnionVoucherType = 'UNION_RECEIPT' | 'UNION_PAYMENT';
 
 export type TradeUnionCategory = 
   | 'KPCĐ_2_PERCENT'       // Kinh phí công đoàn 2% DN đóng
-  | 'DOAN_PHI_1_PERCENT'   // Đoàn phí 1% đoàn viên đóng
+  | 'DOAN_PHI_1_PERCENT'   // Đoàn phí 1% (hoặc 0.5% theo QĐ 61/QĐ-TLĐ) đoàn viên đóng
   | 'KINH_PHI_CAP_TREN'    // CĐ cấp trên cấp về
   | 'HO_TRO_KHAC'          // DN hoặc nhà tài trợ hỗ trợ
   | 'THAM_HOI_OM_DAU'      // Chi thăm hỏi ốm đau, hiếu hỉ, trợ cấp khó khăn
-  | 'QUA_LE_TET'           // Chi quà Tết, 8/3, 20/10, Trung thu, 1/6
+  | 'QUA_LE_TET'           // Chi quà Tết, 8/3, 20/10, Trung thu, 1/6, 2/9, 30/4
   | 'HOAT_DONG_PHONG_TRAO' // Chi văn hóa, thể thao, tham quan, du lịch
   | 'KHEN_THUONG'          // Chi khen thưởng đoàn viên xuất sắc
-  | 'NOP_CAP_TREN_25'      // Nộp 25% KPCĐ lên Công đoàn cấp trên
+  | 'NOP_CAP_TREN_25'      // Nộp KPCĐ/Đoàn phí lên Công đoàn cấp trên (25% KPCĐ, 30% ĐP)
   | 'PHU_CAP_CAN_BO_CD'    // Phụ cấp cán bộ công đoàn & quản lý CĐ
   | 'CHI_KHAC';            // Chi khác
 
 export interface TradeUnionTransaction {
   id: string;
   clientId: string;
-  voucherType: TradeUnionVoucherType; // UNION_RECEIPT: Phiếu thu C40-HD | UNION_PAYMENT: Phiếu chi C41-HD
-  voucherNo: string;                 // VD: PT-CĐ-2026-001 hoặc PC-CĐ-2026-001
+  voucherType: TradeUnionVoucherType; // UNION_RECEIPT: Phiếu thu C40-HD/C40-BB | UNION_PAYMENT: Phiếu chi C41-HD/C41-BB
+  voucherNo: string;                 // VD: PT-CĐ-2026-001 hoặc PC-CĐ-2026-001 hoặc PC2025/01
   date: string;                      // YYYY-MM-DD
   category: TradeUnionCategory;
   personName: string;                // Người nộp / Người nhận tiền
@@ -190,5 +278,66 @@ export interface TradeUnionTransaction {
   createdAt: string;
   updatedAt: string;
 }
+
+
+/** Danh sách chi quà Lễ/Tết */
+export interface TradeUnionEventGiftList {
+  eventKey: string;                   // VD: "tet_duong_lich", "tet_nguyen_dan", "8_3", "30_04", "02_09", "trung_thu", "20_10"
+  eventName: string;                  // VD: "Quà Tết Dương Lịch 2026", "Quà 8/3", "Quà Trung Thu"
+  year: number;
+  giftPerPerson: number;              // Số tiền quà / người
+  totalPersons: number;
+  totalAmount: number;
+  beneficiaries: Array<{
+    stt: number;
+    fullName: string;
+    department?: string;
+    amount: number;
+    signature?: string;
+    notes?: string;
+  }>;
+  isSynced?: boolean;
+}
+
+/** Dòng chỉ tiêu Báo cáo Quyết toán B07-TLĐ */
+export interface TradeUnionSettlementItemB07 {
+  stt: string;                        // I, II, 2.1, 2.2, 3.1...
+  content: string;                    // Tên chỉ tiêu
+  code: number;                       // Mã số Mục lục TCCĐ (10, 21, 22, 23, 30, 31, 32, 33, 34, 38, 40...)
+  plannedAmount?: number;             // Dự toán được giao
+  settledAmount: number;              // Quyết toán năm (thực hiện)
+  approvedAmount?: number;            // Cấp trên duyệt
+}
+
+/** Báo cáo Quyết toán B07-TLĐ hoàn chỉnh */
+export interface TradeUnionSettlementB07Report {
+  title: string;
+  periodText: string;                 // VD: "Năm 2026" hoặc "Từ ngày 01/01/2026 đến 31/12/2026"
+  clientName: string;
+  clientAddress: string;
+  decisionRef?: string;
+  basicIndicators: {
+    totalEmployeesKpcd: number;       // Số lao động đóng KPCĐ
+    salaryFundKpcd: number;           // Quỹ lương đóng KPCĐ
+    totalMembers: number;             // Số đoàn viên
+    salaryFundDoanPhi: number;        // Quỹ lương đóng ĐPCĐ
+    fullTimeCadres?: number;          // Số cán bộ CĐ chuyên trách
+  };
+  items: TradeUnionSettlementItemB07[];
+  closingCash: number;                // Tồn quỹ tiền mặt cuối kỳ
+  closingBank: number;                // Tồn tiền gửi NH cuối kỳ
+}
+
+/** Biên bản kiểm kê quỹ tiền mặt Công đoàn */
+export interface TradeUnionCashCountSheet {
+  year: number;
+  countDate: string;
+  boardMembers: Array<{ name: string; position: string }>;
+  bookBalance: number;
+  actualBalance: number;
+  difference: number;
+  denominations: Array<{ faceValue: number; count: number; total: number }>;
+}
+
 
 

@@ -15,7 +15,7 @@ import {
 } from '../types/accounting';
 import { numberToVietnameseWords } from './documentGenerator';
 import { formatNumber } from '../utils/formatters';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 
 export function getTradeUnionCategoryLabel(category: TradeUnionCategory): string {
   switch (category) {
@@ -3665,5 +3665,4 @@ export function exportYearSummaryTCToExcel(
   XLSX.utils.book_append_sheet(wb, ws, 'TC');
   XLSX.writeFile(wb, `Bang_Tinh_Kinh_Phi_Doan_Phi_TC_${summary.year}.xlsx`);
 }
-
 

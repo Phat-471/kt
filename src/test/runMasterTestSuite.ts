@@ -60,7 +60,15 @@ import {
   getTradeUnionAccounts,
   generateUnionVoucherHTML,
   generateBatchUnionVouchersHTML,
-  parseUnionTransactionsFromExcel,
+  generateSettlementB07HTML,
+  generateCashBookHTML,
+  detectAndParseUnionExcel,
+  parsePhiCongDoanWorkbook,
+  parseBaoCaoQuyetToanWorkbook,
+  parseThuChiVoucherWorkbook,
+  syncContributionPeriodToTransactions,
+  syncEventGiftToTransaction,
+  computeSettlementReportB07,
 } from '../services/tradeUnionService';
 import { calculateEnterpriseRiskScore } from '../services/riskScoreEngine';
 import { suggestJournalEntry } from '../services/journalSuggestService';
@@ -1035,11 +1043,17 @@ async function runAllTests() {
   // PHẦN 68: TEST KẾ TOÁN & LẬP PHIẾU THU CHI CÔNG ĐOÀN (C40/C41/B07-CĐ)
   // ============================================================
   console.log('\n📌 PHẦN 68: TEST KẾ TOÁN & LẬP PHIẾU THU CHI CÔNG ĐOÀN (C40/C41/B07-CĐ)');
-  const budgetResult = calculateTradeUnionContribution(100000000, 20, 10000000);
+  const budgetResult = calculateTradeUnionContribution(100000000, 20, 10000000, 0.01, 0.75, 0.70);
   assert(budgetResult.kpcdTotal === 2000000, 'S17.1: Tính đúng 2% Kinh phí công đoàn trên quỹ lương 100tr = 2,000,000 đ');
   assert(budgetResult.kpcdRetained === 1500000, 'S17.2: Tính đúng 75% KPCĐ để lại Công đoàn cơ sở = 1,500,000 đ');
   assert(budgetResult.kpcdPaySuperior === 500000, 'S17.3: Tính đúng 25% KPCĐ nộp Công đoàn cấp trên = 500,000 đ');
   assert(budgetResult.doanPhiTotal === 2000000, 'S17.4: Tính đúng 1% đoàn phí của 20 đoàn viên (100k/người) = 2,000,000 đ');
+
+  // Test tỷ lệ 0.5% mới theo QĐ 61/QĐ-TLĐ
+  const budgetNewQd61 = calculateTradeUnionContribution(100000000, 20, 10000000, 0.005, 0.75, 0.70);
+  assert(budgetNewQd61.doanPhiTotal === 1000000, 'S17.5: Mức đoàn phí 0.5% theo QĐ 61/QĐ-TLĐ = 1,000,000 đ');
+  assert(budgetNewQd61.doanPhiRetained === 700000, 'S17.6: 70% đoàn phí CĐCS giữ lại = 700,000 đ');
+  assert(budgetNewQd61.doanPhiPaySuperior === 300000, 'S17.7: 30% đoàn phí nộp cấp trên = 300,000 đ');
 
   const mockUnionReceipt = {
     id: 'union_rec_01',
@@ -1072,41 +1086,91 @@ async function runAllTests() {
   };
 
   const unionSummary = calculateTradeUnionSummary([mockUnionReceipt, mockUnionPayment]);
-  assert(unionSummary.totalReceipts === 2000000, 'S17.5: Tổng thu quỹ công đoàn = 2,000,000 đ');
-  assert(unionSummary.totalPayments === 500000, 'S17.6: Tổng chi hoạt động công đoàn = 500,000 đ');
-  assert(unionSummary.netBalance === 1500000, 'S17.7: Số dư quỹ công đoàn còn lại = 1,500,000 đ');
-  assert(unionSummary.bankBalance === 2000000, 'S17.8: Số dư tiền gửi ngân hàng quỹ CĐ = 2,000,000 đ');
-  assert(unionSummary.cashBalance === -500000, 'S17.9: Phản ánh biến động tiền mặt quỹ CĐ');
+  assert(unionSummary.totalReceipts === 2000000, 'S17.8: Tổng thu quỹ công đoàn = 2,000,000 đ');
+  assert(unionSummary.totalPayments === 500000, 'S17.9: Tổng chi hoạt động công đoàn = 500,000 đ');
+  assert(unionSummary.netBalance === 1500000, 'S17.10: Số dư quỹ công đoàn còn lại = 1,500,000 đ');
+  assert(unionSummary.bankBalance === 2000000, 'S17.11: Số dư tiền gửi ngân hàng quỹ CĐ = 2,000,000 đ');
+  assert(unionSummary.cashBalance === -500000, 'S17.12: Phản ánh biến động tiền mặt quỹ CĐ');
 
   const recAccounts = getTradeUnionAccounts('KPCĐ_2_PERCENT', 'UNION_RECEIPT', 'BANK');
-  assert(recAccounts.debitAcc === '1121' && recAccounts.creditAcc === '3382', 'S17.10: Hạch toán Thu KPCĐ qua ngân hàng: Nợ 1121 / Có 3382');
+  assert(recAccounts.debitAcc === '1121' && recAccounts.creditAcc === '3382', 'S17.13: Hạch toán Thu KPCĐ qua ngân hàng: Nợ 1121 / Có 3382');
 
   const payAccounts = getTradeUnionAccounts('THAM_HOI_OM_DAU', 'UNION_PAYMENT', 'CASH');
-  assert(payAccounts.debitAcc === '6422' && payAccounts.creditAcc === '1111', 'S17.11: Hạch toán Chi thăm hỏi ốm đau: Nợ 6422 / Có 1111');
+  assert(payAccounts.debitAcc === '6422' && payAccounts.creditAcc === '1111', 'S17.14: Hạch toán Chi thăm hỏi ốm đau: Nợ 6422 / Có 1111');
 
   const htmlReceipt = generateUnionVoucherHTML(mockUnionReceipt, { id: 'client-1', code: 'C01', name: 'Công ty Test', taxCode: '0101234567', address: 'Hà Nội', financialYear: 2026, createdAt: '', updatedAt: '' });
-  assert(htmlReceipt.includes('PHIẾU THU CÔNG ĐOÀN'), 'S17.12: Sinh HTML Phiếu Thu Công Đoàn chuẩn Mẫu số C40-HD');
-  assert(htmlReceipt.includes('CÔNG ĐOÀN VIỆT NAM'), 'S17.13: HTML Phiếu có tiêu ngữ Tổng LĐLĐ Việt Nam');
+  assert(htmlReceipt.includes('PHIẾU THU CÔNG ĐOÀN'), 'S17.15: Sinh HTML Phiếu Thu Công Đoàn chuẩn Mẫu số C40-BB');
+  assert(htmlReceipt.includes('CÔNG ĐOÀN CƠ SỞ'), 'S17.16: HTML Phiếu có tiêu ngữ Công Đoàn Cơ Sở');
 
   const batchHTML = generateBatchUnionVouchersHTML([mockUnionReceipt, mockUnionPayment], null);
-  assert(batchHTML.includes('PHIẾU THU CÔNG ĐOÀN') && batchHTML.includes('PHIẾU CHI CÔNG ĐOÀN'), 'S17.14: Sinh tài liệu HTML In hàng loạt / Lưu PDF chứa đầy đủ cả phiếu thu và phiếu chi');
-  assert(batchHTML.includes('page-break'), 'S17.15: Thiết lập ngắt trang chuẩn A4 cho từng phiếu khi in hoặc lưu PDF');
+  assert(batchHTML.includes('PHIẾU THU CÔNG ĐOÀN') && batchHTML.includes('PHIẾU CHI CÔNG ĐOÀN'), 'S17.17: Sinh tài liệu HTML In hàng loạt / Lưu PDF chứa đầy đủ cả phiếu thu và phiếu chi');
+  assert(batchHTML.includes('page-break'), 'S17.18: Thiết lập ngắt trang chuẩn A4 cho từng phiếu khi in hoặc lưu PDF');
 
-  // Test parse Excel hàng loạt
-  const XLSX = await import('xlsx');
-  const testWb = XLSX.utils.book_new();
-  const testData = [
-    { 'Loại Phiếu (*)': 'THU', 'Số Phiếu (*)': 'PT-TEST-01', 'Ngày Lập (*)': '2026-08-15', 'Khoản Mục (*)': 'KPCĐ_2_PERCENT', 'Người Nộp / Nhận (*)': 'DN ABC', 'Lý Do Thu / Chi (*)': 'Thu KPCĐ 2%', 'Số Tiền (VND) (*)': 3000000 },
-    { 'Loại Phiếu (*)': 'CHI', 'Số Phiếu (*)': 'PC-TEST-01', 'Ngày Lập (*)': '2026-08-16', 'Khoản Mục (*)': 'THAM_HOI_OM_DAU', 'Người Nộp / Nhận (*)': 'Lê Văn C', 'Lý Do Thu / Chi (*)': 'Chi thăm hỏi', 'Số Tiền (VND) (*)': 500000 },
+  // ============================================================
+  // PHẦN 69: TEST LIÊN KẾT 3 FILE EXCEL, TỰ ĐỘNG ĐỒNG BỘ VÀ QUYẾT TOÁN B07-TLĐ
+  // ============================================================
+  console.log('\n📌 PHẦN 69: TEST LIÊN KẾT 3 FILE EXCEL, TỰ ĐỘNG ĐỒNG BỘ VÀ QUYẾT TOÁN B07-TLĐ');
+  
+  // Test Sync Engine từ Bảng trích nộp tháng/quý
+  const mockPeriod = {
+    periodKey: '012026',
+    periodLabel: 'Tháng 01/2026',
+    year: 2026,
+    totalEmployees: 10,
+    totalMembers: 10,
+    totalInsuranceSalary: 57000000,
+    totalKpcd: 1140000,
+    totalKpcdRetained: 855000,
+    totalKpcdSuperior: 285000,
+    totalDoanPhi: 285000,
+    totalDoanPhiRetained: 199500,
+    totalDoanPhiSuperior: 85500,
+    netPayableToSuperior: 370500,
+    members: [],
+  };
+
+  const syncedPeriodTxs = syncContributionPeriodToTransactions(mockPeriod, 'client-1');
+  assert(syncedPeriodTxs.length === 2, 'S18.1: Bảng trích nộp sinh đủ 2 chứng từ: Thu đoàn phí & UNC nộp cấp trên');
+  assert(syncedPeriodTxs[0].voucherType === 'UNION_RECEIPT' && syncedPeriodTxs[0].amount === 199500, 'S18.2: Phiếu thu đoàn phí ghi nhận 70% CĐCS giữ lại = 199,500 đ');
+  assert(syncedPeriodTxs[1].voucherType === 'UNION_PAYMENT' && syncedPeriodTxs[1].paymentMethod === 'BANK' && syncedPeriodTxs[1].amount === 370500, 'S18.3: UNC nộp cấp trên = 285k (KPCĐ) + 85.5k (ĐP) = 370,500 đ');
+
+  // Test Sync Chi Quà Lễ Tết
+  const mockGiftList = {
+    eventKey: 'tet_2026',
+    eventName: 'Quà Tết Nguyên Đán 2026',
+    year: 2026,
+    giftPerPerson: 500000,
+    totalPersons: 40,
+    totalAmount: 20000000,
+    beneficiaries: [],
+  };
+  const syncedGiftTx = syncEventGiftToTransaction(mockGiftList, 'client-1');
+  assert(syncedGiftTx.voucherType === 'UNION_PAYMENT' && syncedGiftTx.amount === 20000000, 'S18.4: Tự động sinh Phiếu Chi Quà Tết 20,000,000 đ vào Sổ Quỹ Tiền Mặt');
+
+  // Test Tổng hợp Báo Cáo Quyết Toán B07-TLĐ
+  const allTestTxs = [
+    { ...mockUnionReceipt, date: '2026-01-10', amount: 5000000, category: 'DOAN_PHI_1_PERCENT' as const },
+    { ...mockUnionReceipt, date: '2026-02-15', amount: 10000000, category: 'KPCĐ_2_PERCENT' as const },
+    { ...mockUnionPayment, date: '2026-03-20', amount: 3000000, category: 'THAM_HOI_OM_DAU' as const },
+    { ...mockUnionPayment, date: '2026-04-10', amount: 4000000, category: 'QUA_LE_TET' as const },
+    { ...mockUnionPayment, date: '2026-05-15', amount: 2000000, category: 'HOAT_DONG_PHONG_TRAO' as const },
+    { ...mockUnionPayment, date: '2026-06-20', amount: 3000000, category: 'NOP_CAP_TREN_25' as const },
   ];
-  const testWs = XLSX.utils.json_to_sheet(testData);
-  XLSX.utils.book_append_sheet(testWb, testWs, 'Sheet1');
-  const testBuf = XLSX.write(testWb, { type: 'array', bookType: 'xlsx' });
 
-  const parsed = await parseUnionTransactionsFromExcel(testBuf, 'client-1');
-  assert(parsed.valid.length === 2, 'S17.16: Đọc và chuyển đổi chính xác 2 phiếu thu chi từ file Excel');
-  assert(parsed.valid[0].amount === 3000000 && parsed.valid[0].voucherType === 'UNION_RECEIPT', 'S17.17: Nhận diện đúng phiếu thu KPCĐ 3,000,000 đ');
-  assert(parsed.valid[1].amount === 500000 && parsed.valid[1].voucherType === 'UNION_PAYMENT', 'S17.18: Nhận diện đúng phiếu chi thăm hỏi 500,000 đ');
+  const reportB07Generated = computeSettlementReportB07(allTestTxs, null, 2026);
+  assert(reportB07Generated.items.find(i => i.code === 20)?.settledAmount === 15000000, 'S18.5: Tổng Thu trên B07-TLĐ = 15,000,000 đ');
+  assert(reportB07Generated.items.find(i => i.code === 22)?.settledAmount === 5000000, 'S18.6: Đoàn phí công đoàn (Mã 22) = 5,000,000 đ');
+  assert(reportB07Generated.items.find(i => i.code === 23)?.settledAmount === 10000000, 'S18.7: Kinh phí công đoàn (Mã 23) = 10,000,000 đ');
+  assert(reportB07Generated.items.find(i => i.code === 30)?.settledAmount === 12000000, 'S18.8: Tổng Chi trên B07-TLĐ = 12,000,000 đ');
+  assert(reportB07Generated.items.find(i => i.code === 31)?.settledAmount === 7000000, 'S18.9: Chi chăm lo thăm hỏi & quà lễ tết (Mã 31) = 3M + 4M = 7,000,000 đ');
+  assert(reportB07Generated.items.find(i => i.code === 50)?.settledAmount === 3000000, 'S18.10: Tích lũy tài chính cuối kỳ (Mã 50) = 15M - 12M = 3,000,000 đ');
+
+  // Test HTML B07-TLĐ and Sổ Quỹ TM
+  const b07HTML = generateSettlementB07HTML(reportB07Generated, null);
+  assert(b07HTML.includes('BÁO CÁO QUYẾT TOÁN THU, CHI TÀI CHÍNH CÔNG ĐOÀN') && b07HTML.includes('Mẫu: B07-TLĐ'), 'S18.11: Sinh HTML Báo Cáo Quyết Toán chuẩn Mẫu B07-TLĐ');
+
+  const cashBookHTML = generateCashBookHTML(allTestTxs, null, 2026);
+  assert(cashBookHTML.includes('SỔ QUỸ TIỀN MẶT CÔNG ĐOÀN') && cashBookHTML.includes('Mẫu số S11H / S12-H'), 'S18.12: Sinh HTML Sổ Quỹ Tiền Mặt chuẩn Mẫu S11H / S12-H');
 
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
@@ -1114,3 +1178,4 @@ async function runAllTests() {
 }
 
 runAllTests();
+

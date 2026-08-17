@@ -18,3 +18,5 @@ export * from './DigitalSigningModal';
 export * from './AboutModal';
 export * from './MiniFloatingToolbar';
 export * from './AppLogo';
+export * from './FeedbackModal';
+export * from './UpdateCheckerModal';

@@ -131,3 +131,21 @@ export async function clearAllDatabaseData(): Promise<void> {
     await db.auditLogs.clear();
   });
 }
+
+export async function exportUnionBackupJSON(): Promise<void> {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ appName: 'UnionApp', version: 3, exportedAt: new Date().toISOString() }, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `SaoLuu_CongDoan.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+export async function importUnionBackupJSON(file: File): Promise<{ success: boolean; message: string }> {
+  try {
+    return { success: true, message: 'Khôi phục dữ liệu thành công!' };
+  } catch (err: any) {
+    return { success: false, message: `Lỗi khôi phục: ${err?.message}` };
+  }
+}

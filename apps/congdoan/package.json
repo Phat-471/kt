@@ -1,0 +1,65 @@
+{
+  "name": "cong-doan-app",
+  "private": true,
+  "version": "1.1.0",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5175 --open",
+    "build": "tsc && vite build",
+    "preview": "vite preview --port 5175",
+    "test": "npx tsx src/test/runTestSuite.ts",
+    "electron:dev": "electron .",
+    "build:exe": "tsc && vite build && electron-packager . KeToanCongDoan --platform=win32 --arch=x64 --out=release --overwrite --prune=true --ignore=\"node_modules/typescript|node_modules/vite|node_modules/@types\""
+  },
+  "build": {
+    "appId": "com.ketoancongdoan.app",
+    "productName": "KeToanCongDoan",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Ke Toan Cong Doan"
+    }
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "dexie": "^4.0.10",
+    "dexie-react-hooks": "^1.1.7",
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.0.1",
+    "xlsx": "^0.18.5",
+    "xlsx-js-style": "^1.2.0"
+  },
+  "devDependencies": {
+    "@noble/hashes": "^1.7.1",
+    "@types/node": "^22.13.4",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "electron-packager": "^17.1.2",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
+  }
+}
