@@ -17,7 +17,9 @@ SetCompressor /SOLID zlib
 
 ; Auto-Relaunch on silent update
 Function .onInit
-  Sleep 1000
+  ; Đóng mọi tiến trình KeToanCongDoan.exe đang chạy trước khi ghi đè bản mới
+  nsExec::Exec 'taskkill /F /IM KeToanCongDoan.exe /T'
+  Sleep 1500
 FunctionEnd
 
 Function .onInstSuccess

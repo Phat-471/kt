@@ -231,10 +231,10 @@ ipcMain.handle('install-update', async (_event, options = {}) => {
     });
     child.unref();
 
-    // Thoát ứng dụng ngay để bộ cài tiến hành ghi đè và tự khởi động lại app mới
+    // Thoát ứng dụng dứt khoát để bộ cài giải phóng lock và ghi đè bản mới
     setTimeout(() => {
-      app.quit();
-    }, 500);
+      app.exit(0);
+    }, 300);
 
     return { success: true };
   } catch (err) {

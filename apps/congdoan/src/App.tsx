@@ -137,7 +137,19 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState<'UNION_ACCOUNTING' | 'BLUEPRINT_MANAGER'>('UNION_ACCOUNTING');
+  const [activeWorkspace, setActiveWorkspace] = useState<'UNION_ACCOUNTING' | 'BLUEPRINT_MANAGER'>(() => {
+    try {
+      return (localStorage.getItem('ACCODESK_ACTIVE_WORKSPACE') as any) || 'UNION_ACCOUNTING';
+    } catch {
+      return 'UNION_ACCOUNTING';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ACCODESK_ACTIVE_WORKSPACE', activeWorkspace);
+    } catch {}
+  }, [activeWorkspace]);
 
   // Quick Employee Search in Voucher Modal
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');

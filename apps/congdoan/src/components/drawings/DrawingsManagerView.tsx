@@ -96,8 +96,32 @@ type DisplayMode = 'TABLE' | 'GRID';
 
 export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBackToAccounting }) => {
   // Navigation State
-  const [activeMainTab, setActiveMainTab] = useState<BlueprintMainTab>('DRAWINGS_LIST');
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('TABLE');
+  const [activeMainTab, setActiveMainTab] = useState<BlueprintMainTab>(() => {
+    try {
+      return (localStorage.getItem('ACCODESK_DRAWINGS_ACTIVE_TAB') as BlueprintMainTab) || 'DRAWINGS_LIST';
+    } catch {
+      return 'DRAWINGS_LIST';
+    }
+  });
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
+    try {
+      return (localStorage.getItem('ACCODESK_DRAWINGS_DISPLAY_MODE') as DisplayMode) || 'TABLE';
+    } catch {
+      return 'TABLE';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ACCODESK_DRAWINGS_ACTIVE_TAB', activeMainTab);
+    } catch {}
+  }, [activeMainTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ACCODESK_DRAWINGS_DISPLAY_MODE', displayMode);
+    } catch {}
+  }, [displayMode]);
 
   // Data State từ Dexie DB
   const [projects, setProjects] = useState<DrawingProject[]>([]);
