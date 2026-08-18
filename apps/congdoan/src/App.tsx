@@ -720,7 +720,7 @@ export default function App() {
             title="Kiểm tra phiên bản & Cập nhật phần mềm"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-            <span>v1.3.0 (Cập Nhật)</span>
+            <span>v1.3.1 (Cập Nhật)</span>
           </button>
 
           {/* Nút Chuyển Sang Phân Hệ Bản Vẽ (Demo) */}
