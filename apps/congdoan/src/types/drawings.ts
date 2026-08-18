@@ -98,9 +98,48 @@ export interface DrawingItem {
   previewUrl?: string;
   tags: string[];
   revisions: DrawingRevision[];
-  costingLinkId?: string;         // Liên kết định mức BOM / TK 154
-  isVariationOrder?: boolean;     // Có làm thay đổi giá trị hợp đồng/phát sinh chi phí không
-  variationAmount?: number;       // Giá trị phát sinh (+/- VND)
+  costingLinkId?: string;         // Liên kết định mức BOM chi phí (TK 154 / TK 621)
+  isVariationOrder?: boolean;     // Có làm thay đổi giá trị hợp đồng không
+  variationAmount?: number;       // Giá trị phát sinh (+/- VNĐ)
   createdAt: string;
   updatedAt: string;
+}
+
+// Biên bản Giao Nhận / Bàn Giao Hồ Sơ Bản Vẽ (Transmittal Form)
+export interface DrawingTransmittal {
+  id: string;
+  transmittalNo: string;          // Số phiếu: 'TR-2026-08-01'
+  projectId: string;
+  projectName: string;
+  senderCompany: string;          // Bên giao: 'Cty Hưng Phát'
+  senderPerson: string;           // Người giao: 'KTS. Lê Hoàng Sỹ'
+  recipientCompany: string;       // Bên nhận: 'Ban QLDA / TVGS Sài Gòn / Thầu Nhôm Kính'
+  recipientPerson: string;        // Người nhận: 'KS. Trương Hoàng Nam'
+  issueDate: string;              // Ngày giao: '2026-08-18'
+  purpose: 'FOR_APPROVAL' | 'FOR_CONSTRUCTION' | 'FOR_INFORMATION' | 'FOR_REVIEW';
+  drawingItems: {
+    drawingId: string;
+    drawingNumber: string;
+    title: string;
+    revision: string;
+    sheetSize: string;
+    copiesCount: number;          // Số lượng bản in giấy (A1/A2)
+    hasSoftCopy: boolean;         // Kèm file mềm CAD/PDF
+  }[];
+  notes?: string;
+  status: 'PENDING_ACK' | 'CONFIRMED';
+  confirmedAt?: string;
+}
+
+// Thống Kê & Báo Cáo Tháng
+export interface MonthlyDrawingSummary {
+  monthKey: string;               // '2026-08'
+  monthLabel: string;             // 'Tháng 08/2026'
+  totalDrawingsIssued: number;    // Tổng bản vẽ phát hành trong tháng
+  newIssuesCount: number;         // Số bản vẽ mới
+  revisionsCount: number;         // Số bản vẽ hiệu chỉnh
+  variationOrdersCount: number;   // Số bản vẽ phát sinh
+  totalVariationAmount: number;   // Tổng tiền phát sinh trong tháng
+  transmittalsCount: number;      // Số đợt bàn giao hồ sơ
+  pendingApprovalsCount: number;  // Số bản vẽ đang chờ duyệt
 }

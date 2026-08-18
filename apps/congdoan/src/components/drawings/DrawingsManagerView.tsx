@@ -48,7 +48,10 @@ import {
   Table as TableIcon,
   LayoutGrid,
   FileSpreadsheet,
-  X
+  Printer,
+  ClipboardCheck,
+  BarChart3,
+  SendHorizontal
 } from 'lucide-react';
 import { 
   DrawingProject, 
@@ -58,16 +61,23 @@ import {
   DrawingIssueNature,
   DrawingStatus,
   DrawingCompany,
-  DrawingRevision
+  DrawingRevision,
+  DrawingTransmittal,
+  MonthlyDrawingSummary
 } from '../../types/drawings';
 import { db, seedInitialDrawingsData } from '../../services/storage';
 import { exportDrawingsToExcel } from '../../services/drawingsExportService';
+import { 
+  calculateMonthlySummary, 
+  exportMonthlyReportToExcel, 
+  printTransmittalForm 
+} from '../../services/monthlyDrawingsReportService';
 
 interface DrawingsManagerViewProps {
   onBackToAccounting: () => void;
 }
 
-type BlueprintMainTab = 'DRAWINGS_LIST' | 'PROJECTS_LIST' | 'SETTINGS';
+type BlueprintMainTab = 'DRAWINGS_LIST' | 'PROJECTS_LIST' | 'MONTHLY_REPORT' | 'SETTINGS';
 type DisplayMode = 'TABLE' | 'GRID';
 
 export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBackToAccounting }) => {
@@ -80,6 +90,55 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [companies, setCompanies] = useState<DrawingCompany[]>([]);
   const [drawings, setDrawings] = useState<DrawingItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Báo Cáo Tháng & Bàn Giao State
+  const [reportYear, setReportYear] = useState<number>(2026);
+  const [reportMonth, setReportMonth] = useState<number>(8);
+  const [transmittals, setTransmittals] = useState<DrawingTransmittal[]>([
+    {
+      id: 'trans-01',
+      transmittalNo: 'TR-2026-08-01',
+      projectId: 'proj-01',
+      projectName: 'Biệt Thự Phố Vườn Tân Phú',
+      senderCompany: 'CÔNG TY TNHH THIẾT KẾ XÂY DỰNG VÀ THƯƠNG MẠI HƯNG PHÁT',
+      senderPerson: 'KTS. Lê Hoàng Sỹ',
+      recipientCompany: 'TƯ VẤN GIÁM SÁT SÀI GÒN & BAN QLDA CĐT',
+      recipientPerson: 'KS. Trương Hoàng Nam',
+      issueDate: '2026-08-18',
+      purpose: 'FOR_CONSTRUCTION',
+      status: 'CONFIRMED',
+      notes: 'Bàn giao hồ sơ bản vẽ thi công đợt 1 kèm bản sửa đổi kết cấu dầm D2A',
+      drawingItems: [
+        {
+          drawingId: 'draw-01',
+          drawingNumber: 'KT-01',
+          title: 'Mặt Bằng Bố Trí Nội Thất Tầng 1',
+          revision: 'Rev 00',
+          sheetSize: 'A2',
+          copiesCount: 2,
+          hasSoftCopy: true,
+        },
+        {
+          drawingId: 'draw-02',
+          drawingNumber: 'KC-01',
+          title: 'Mặt Bằng Bố Trí Thép Sàn Tầng 2 & Chi Tiết Dầm D2A',
+          revision: 'Rev 01',
+          sheetSize: 'A1',
+          copiesCount: 2,
+          hasSoftCopy: true,
+        },
+        {
+          drawingId: 'draw-03',
+          drawingNumber: 'KC-PS01',
+          title: 'Chi Tiết Bổ Sung Móng Băng Trục 3 Tránh Ống Nước Cũ',
+          revision: 'Rev 00',
+          sheetSize: 'A1',
+          copiesCount: 2,
+          hasSoftCopy: true,
+        }
+      ]
+    }
+  ]);
   
   // Tải dữ liệu từ Dexie DB
   const loadDatabase = async () => {
@@ -169,6 +228,14 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     leadEngineer: 'KS. Võ Huy Phong',
   });
 
+  // Modal Tạo Biên Bản Bàn Giao Mới (Transmittal Modal)
+  const [isTransmittalModalOpen, setIsTransmittalModalOpen] = useState(false);
+  const [selectedDrawingsForTransmittal, setSelectedDrawingsForTransmittal] = useState<string[]>([]);
+  const [transmittalRecipient, setTransmittalRecipient] = useState('TƯ VẤN GIÁM SÁT & CHỦ ĐẦU TƯ');
+  const [transmittalRecipientPerson, setTransmittalRecipientPerson] = useState('KS. Trương Hoàng Nam');
+  const [transmittalPurpose, setTransmittalPurpose] = useState<'FOR_CONSTRUCTION' | 'FOR_APPROVAL' | 'FOR_REVIEW'>('FOR_CONSTRUCTION');
+  const [transmittalNotes, setTransmittalNotes] = useState('');
+
   // Settings Modal: Thêm Công Ty
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [newCompany, setNewCompany] = useState<Partial<DrawingCompany>>({
@@ -228,6 +295,14 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     .filter(d => d.isVariationOrder)
     .reduce((sum, d) => sum + (d.variationAmount || 0), 0);
 
+  // Số liệu tổng hợp báo cáo tháng
+  const monthlySummary = calculateMonthlySummary(allProjectDrawings, transmittals, reportYear, reportMonth);
+  const drawingsInMonth = allProjectDrawings.filter(d => {
+    const mKey = `${reportYear}-${String(reportMonth).padStart(2, '0')}`;
+    return (d.createdAt && d.createdAt.startsWith(mKey)) || d.revisions.some(r => r.changeDate && r.changeDate.startsWith(mKey));
+  });
+  const transmittalsInMonth = transmittals.filter(t => t.issueDate && t.issueDate.startsWith(`${reportYear}-${String(reportMonth).padStart(2, '0')}`));
+
   // =========================================================================
   // XỬ LÝ THÊM - XÓA - SỬA BẢN VẼ (CRUD)
   // =========================================================================
@@ -284,7 +359,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
           currentRevText = `Rev 0${revCount}`;
           nature = 'REVISION_MODIFIED';
 
-          // Đánh dấu bản cũ không còn là current
           updatedRevisions = updatedRevisions.map(r => ({ ...r, isCurrent: false }));
 
           const newRevObj: DrawingRevision = {
@@ -443,6 +517,50 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   };
 
   // =========================================================================
+  // XỬ LÝ TẠO BIÊN BẢN BÀN GIAO (TRANSMITTAL)
+  // =========================================================================
+  const handleCreateTransmittal = () => {
+    if (selectedDrawingsForTransmittal.length === 0) {
+      alert('Vui lòng chọn ít nhất 1 bản vẽ để lập biên bản bàn giao!');
+      return;
+    }
+
+    const selectedDrawItems = drawings
+      .filter(d => selectedDrawingsForTransmittal.includes(d.id))
+      .map(d => ({
+        drawingId: d.id,
+        drawingNumber: d.drawingNumber,
+        title: d.title,
+        revision: d.currentRevision,
+        sheetSize: d.sheetSize,
+        copiesCount: 2,
+        hasSoftCopy: true,
+      }));
+
+    const newTrans: DrawingTransmittal = {
+      id: `trans-${Date.now()}`,
+      transmittalNo: `TR-${reportYear}-${String(reportMonth).padStart(2, '0')}-${String(transmittals.length + 1).padStart(2, '0')}`,
+      projectId: activeProject.id,
+      projectName: activeProject.projectName,
+      senderCompany: activeProject.mainContractorName,
+      senderPerson: activeProject.leadArchitect,
+      recipientCompany: transmittalRecipient,
+      recipientPerson: transmittalRecipientPerson,
+      issueDate: new Date().toISOString().slice(0, 10),
+      purpose: transmittalPurpose,
+      status: 'CONFIRMED',
+      notes: transmittalNotes,
+      drawingItems: selectedDrawItems,
+    };
+
+    setTransmittals([newTrans, ...transmittals]);
+    setIsTransmittalModalOpen(false);
+    setSelectedDrawingsForTransmittal([]);
+    setTransmittalNotes('');
+    alert(`Đã tạo Biên bản bàn giao số [${newTrans.transmittalNo}] thành công!`);
+  };
+
+  // =========================================================================
   // XỬ LÝ XUẤT EXCEL
   // =========================================================================
   const handleExportFilteredExcel = () => {
@@ -469,6 +587,14 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       drawings: allProjectDrawings,
       isAll: true
     });
+  };
+
+  const handleExportMonthlyExcel = () => {
+    if (drawingsInMonth.length === 0) {
+      alert(`Không có bản vẽ nào phát hành hoặc hiệu chỉnh trong ${monthlySummary.monthLabel}!`);
+      return;
+    }
+    exportMonthlyReportToExcel(activeProject, monthlySummary, drawingsInMonth, transmittalsInMonth);
   };
 
   // Badge Bộ Môn
@@ -596,14 +722,14 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
-                Thêm • Xóa • Sửa Bản Vẽ & Công Trình • Xuất Excel • Quản Lý Revisions
+                Thêm • Sửa • Xóa Bản Vẽ • Báo Cáo Tháng & Bàn Giao Hồ Sơ • Xuất Excel & In PDF
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Chính (Bản Vẽ / Công Trình / Cài Đặt) */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-bold">
+        {/* Tab Navigation Chính (4 Tabs: Bản Vẽ / Công Trình / Báo Cáo Tháng / Cài Đặt) */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-bold flex-wrap">
           <button
             onClick={() => setActiveMainTab('DRAWINGS_LIST')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
@@ -629,6 +755,18 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
           </button>
 
           <button
+            onClick={() => setActiveMainTab('MONTHLY_REPORT')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              activeMainTab === 'MONTHLY_REPORT'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+            <span>3. Báo Cáo Tháng & Bàn Giao</span>
+          </button>
+
+          <button
             onClick={() => setActiveMainTab('SETTINGS')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
               activeMainTab === 'SETTINGS'
@@ -637,7 +775,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>3. Cài Đặt Hệ Thống</span>
+            <span>4. Cài Đặt Hệ Thống</span>
           </button>
         </div>
       </header>
@@ -1152,7 +1290,169 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: CÀI ĐẶT HỆ THỐNG BẢN VẼ (SETTINGS TAB)                              */}
+        {/* TAB 3: BÁO CÁO THÁNG & BÀN GIAO HỒ SƠ BẢN VẼ (NEW FEATURE)               */}
+        {/* ========================================================================= */}
+        {activeMainTab === 'MONTHLY_REPORT' && (
+          <div className="space-y-6">
+            {/* Bộ Lọc Tháng / Năm & Nút Xuất Báo Cáo Excel */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900">Báo Cáo Tiến Độ Bản Vẽ & Chi Phí Phát Sinh Tháng</h2>
+                  <p className="text-xs text-slate-500">Dự án: <strong className="text-blue-700">{activeProject.projectName}</strong> • Phân tích theo từng kỳ tháng</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap text-xs">
+                {/* Chọn Tháng */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                  <Calendar className="w-4 h-4 text-indigo-600" />
+                  <span className="text-slate-500 font-bold">Kỳ Báo Cáo:</span>
+                  <select
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(Number(e.target.value))}
+                    className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                      <option key={m} value={m}>Tháng {m < 10 ? `0${m}` : m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={reportYear}
+                    onChange={(e) => setReportYear(Number(e.target.value))}
+                    className="bg-transparent text-slate-900 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value={2026}>2026</option>
+                    <option value={2025}>2025</option>
+                  </select>
+                </div>
+
+                {/* Nút Xuất Báo Cáo Tháng Ra Excel */}
+                <button
+                  onClick={handleExportMonthlyExcel}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition-all"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Xuất Báo Cáo Tháng (Excel)</span>
+                </button>
+
+                {/* Nút Tạo Biên Bản Bàn Giao */}
+                <button
+                  onClick={() => setIsTransmittalModalOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all"
+                >
+                  <SendHorizontal className="w-4 h-4" />
+                  <span>+ Lập Biên Bản Bàn Giao</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Thẻ KPI Tháng */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1 shadow-xs">
+                <div className="text-slate-500 font-bold flex items-center justify-between">
+                  <span>Bản Vẽ Xử Lý Trong Tháng</span>
+                  <Layers className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="text-2xl font-extrabold text-blue-700 font-mono">{monthlySummary.totalDrawingsIssued}</div>
+                <div className="text-[11px] text-slate-400">Bao gồm {monthlySummary.newIssuesCount} bản mới, {monthlySummary.revisionsCount} bản sửa</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1 shadow-xs">
+                <div className="text-slate-500 font-bold flex items-center justify-between">
+                  <span>Phát Sinh Thiết Kế Tháng</span>
+                  <Flame className="w-4 h-4 text-rose-600" />
+                </div>
+                <div className="text-2xl font-extrabold text-rose-700 font-mono">
+                  {monthlySummary.totalVariationAmount > 0 ? `+${(monthlySummary.totalVariationAmount / 1000000).toFixed(0)} Tr` : '0 đ'}
+                </div>
+                <div className="text-[11px] text-rose-600 font-semibold">{monthlySummary.variationOrdersCount} bản vẽ làm tăng khối lượng</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1 shadow-xs">
+                <div className="text-slate-500 font-bold flex items-center justify-between">
+                  <span>Đợt Bàn Giao Hồ Sơ</span>
+                  <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-2xl font-extrabold text-emerald-700 font-mono">{monthlySummary.transmittalsCount}</div>
+                <div className="text-[11px] text-slate-400">Đã lập biên bản & ký nhận</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1 shadow-xs">
+                <div className="text-slate-500 font-bold flex items-center justify-between">
+                  <span>Chờ CĐT / TVGS Phê Duyệt</span>
+                  <Clock className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-2xl font-extrabold text-amber-700 font-mono">{monthlySummary.pendingApprovalsCount}</div>
+                <div className="text-[11px] text-slate-400">Cần đốc thúc ký duyệt AFC</div>
+              </div>
+            </div>
+
+            {/* Danh Sách Các Đợt Bàn Giao Hồ Sơ (Transmittals) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-indigo-600" />
+                  <h3 className="font-bold text-slate-900 text-sm">Danh Sách Biên Bản Bàn Giao Hồ Sơ Bản Vẽ (Transmittal Logs)</h3>
+                </div>
+                <span className="text-xs text-slate-500">Căn cứ pháp lý bàn giao hồ sơ thi công tại hiện trường</span>
+              </div>
+
+              <div className="space-y-3">
+                {transmittals.map((trans) => (
+                  <div key={trans.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex justify-between items-start flex-wrap gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-bold text-indigo-700 bg-white px-2.5 py-0.5 rounded border border-indigo-200 shadow-2xs">
+                          {trans.transmittalNo}
+                        </span>
+                        <span className="ml-2 text-xs font-bold text-slate-800">Ngày giao: {trans.issueDate}</span>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Bên Giao: <strong>{trans.senderCompany}</strong> ({trans.senderPerson}) $\rightarrow$ Bên Nhận: <strong>{trans.recipientCompany}</strong> ({trans.recipientPerson})
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => printTransmittalForm(trans, activeProject)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg text-xs font-bold transition-all border border-blue-200"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>In Biên Bản (A4)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="text-xs bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                      <div className="font-semibold text-slate-700">Các bản vẽ bàn giao ({trans.drawingItems.length} bản vẽ):</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                        {trans.drawingItems.map((item, idx) => (
+                          <div key={idx} className="p-2 bg-slate-50 rounded border border-slate-100 text-[11px]">
+                            <div className="font-mono font-bold text-blue-700">[{item.drawingNumber}] {item.revision}</div>
+                            <div className="line-clamp-1 text-slate-700">{item.title}</div>
+                            <div className="text-slate-400 mt-0.5">{item.sheetSize} • {item.copiesCount} bản in</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {trans.notes && (
+                      <div className="text-xs text-slate-500 italic">
+                        <strong>Ghi chú:</strong> {trans.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: CÀI ĐẶT HỆ THỐNG BẢN VẼ (SETTINGS TAB)                              */}
         {/* ========================================================================= */}
         {activeMainTab === 'SETTINGS' && (
           <div className="space-y-6">
@@ -1277,8 +1577,124 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       </main>
 
       {/* ========================================================================= */}
-      {/* MODAL CHI TIẾT BẢN VẼ & TIMELINE REVISIONS                                */}
+      {/* MODAL LẬP BIÊN BẢN BÀN GIAO HỒ SƠ (CREATE TRANSMITTAL MODAL)              */}
       {/* ========================================================================= */}
+      {isTransmittalModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 max-w-2xl w-full space-y-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div>
+                <span className="font-bold text-slate-900 text-sm">Lập Biên Bản Bàn Giao Hồ Sơ Bản Vẽ (Transmittal Form)</span>
+                <p className="text-[11px] text-slate-500">Công trình: {activeProject.projectName}</p>
+              </div>
+              <button onClick={() => setIsTransmittalModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Đơn Vị Nhận Hồ Sơ (*):</label>
+                  <input
+                    type="text"
+                    value={transmittalRecipient}
+                    onChange={(e) => setTransmittalRecipient(e.target.value)}
+                    placeholder="Tư Vấn Giám Sát Sài Gòn / Ban QLDA CĐT..."
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Người Đại Diện Ký Nhận (*):</label>
+                  <input
+                    type="text"
+                    value={transmittalRecipientPerson}
+                    onChange={(e) => setTransmittalRecipientPerson(e.target.value)}
+                    placeholder="KS. Nguyễn Văn A..."
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Mục Đích Phát Hành:</label>
+                  <select
+                    value={transmittalPurpose}
+                    onChange={(e) => setTransmittalPurpose(e.target.value as any)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg font-semibold"
+                  >
+                    <option value="FOR_CONSTRUCTION">🏗️ Bàn giao thi công tại hiện trường (AFC)</option>
+                    <option value="FOR_APPROVAL">📋 Trình phê duyệt / Thẩm tra</option>
+                    <option value="FOR_REVIEW">🔍 Trình xem xét ý kiến</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Ghi Chú Đợt Giao:</label>
+                  <input
+                    type="text"
+                    value={transmittalNotes}
+                    onChange={(e) => setTransmittalNotes(e.target.value)}
+                    placeholder="Bàn giao đợt 2 có bản vẽ sửa dầm..."
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-3 py-1.5 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">
+                  Chọn Các Bản Vẽ Cần Bàn Giao ({selectedDrawingsForTransmittal.length} đã chọn):
+                </label>
+                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-slate-50 p-1">
+                  {allProjectDrawings.map((draw) => {
+                    const isChecked = selectedDrawingsForTransmittal.includes(draw.id);
+                    return (
+                      <label key={draw.id} className="flex items-center gap-2.5 p-2 hover:bg-white cursor-pointer rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedDrawingsForTransmittal([...selectedDrawingsForTransmittal, draw.id]);
+                            } else {
+                              setSelectedDrawingsForTransmittal(selectedDrawingsForTransmittal.filter(id => id !== draw.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-blue-600"
+                        />
+                        <div className="flex-1 flex items-center justify-between">
+                          <div>
+                            <span className="font-mono font-bold text-blue-700">[{draw.drawingNumber}]</span>
+                            <span className="ml-1.5 font-semibold text-slate-800">{draw.title}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-mono bg-slate-200 px-1.5 py-0.2 rounded">
+                            {draw.currentRevision} • {draw.sheetSize}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                onClick={() => setIsTransmittalModalOpen(false)}
+                className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCreateTransmittal}
+                className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+              >
+                Tạo Biên Bản & In Ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHI TIẾT BẢN VẼ & TIMELINE REVISIONS */}
       {selectedDrawing && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-xs">
@@ -1438,9 +1854,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL THÊM / SỬA BẢN VẼ (CREATE / EDIT DRAWING MODAL)                     */}
-      {/* ========================================================================= */}
+      {/* MODAL THÊM / SỬA BẢN VẼ */}
       {isDrawingModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-5 max-w-xl w-full space-y-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
@@ -1455,7 +1869,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             </div>
 
             <div className="space-y-3.5">
-              {/* Đơn vị phát hành */}
               <div>
                 <label className="text-slate-700 font-bold block mb-1">Đơn Vị / Công Ty Phát Hành:</label>
                 <select 
@@ -1471,7 +1884,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </select>
               </div>
 
-              {/* Số hiệu & Tính chất */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">Số Hiệu Bản Vẽ (*):</label>
@@ -1499,7 +1911,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Tiêu đề */}
               <div>
                 <label className="text-slate-700 font-bold block mb-1">Tên / Tiêu Đề Bản Vẽ (*):</label>
                 <input
@@ -1511,7 +1922,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 />
               </div>
 
-              {/* Bộ môn, Giai đoạn, Khổ giấy */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">Bộ Môn:</label>
@@ -1565,7 +1975,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Tác giả & Người duyệt */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">KTS / Kỹ Sư Thực Hiện:</label>
@@ -1587,7 +1996,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Số tiền phát sinh (Nếu có) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-700 font-bold block mb-1">Giá Trị Phát Sinh (+VNĐ nếu có):</label>
@@ -1610,7 +2018,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Tùy chọn Thêm Lần Hiệu Chỉnh Mới (Nếu đang sửa) */}
               {editingDrawing && (
                 <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900">
@@ -1658,9 +2065,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL THÊM CÔNG TRÌNH MỚI                                                 */}
-      {/* ========================================================================= */}
+      {/* MODAL THÊM CÔNG TRÌNH */}
       {isProjectModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl text-xs">
