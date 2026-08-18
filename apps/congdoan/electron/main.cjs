@@ -221,20 +221,13 @@ ipcMain.handle('install-update', async (_event, options = {}) => {
     // Tạo bản snapshot phiên bản hiện tại trước khi ghi đè
     createPreUpdateBackup();
 
-    // Mặc định chạy ở chế độ Silent /S (cài đặt ngầm không hiện popup hỏi han)
-    const isSilent = options.silent !== false;
-    const args = isSilent ? ['/S'] : [];
+    // Mở bộ cài đặt đáng tin cậy qua Windows Shell để đảm bảo UAC & Windows Defender không chặn ngầm
+    await shell.openPath(installerPath);
 
-    const child = spawn(installerPath, args, {
-      detached: true,
-      stdio: 'ignore'
-    });
-    child.unref();
-
-    // Thoát ứng dụng dứt khoát để bộ cài giải phóng lock và ghi đè bản mới
+    // Thoát ứng dụng dứt khoát để bộ cài tiến hành cài đặt đè
     setTimeout(() => {
       app.exit(0);
-    }, 300);
+    }, 800);
 
     return { success: true };
   } catch (err) {
