@@ -335,6 +335,14 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => exportSingleExcelSheet('CASH_COUNT', cashTransactions, client || null, effectiveYear, undefined, signerSettings || null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                title="Xuất Biên bản kiểm kê quỹ tiền mặt mẫu số C34-HD"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                <span>Xuất BB Kiểm Kê (C34-HD)</span>
+              </button>
+              <button
                 onClick={handleExportCashBookExcel}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold transition-all shadow-sm"
               >

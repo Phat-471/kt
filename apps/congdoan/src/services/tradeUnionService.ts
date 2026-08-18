@@ -2135,6 +2135,121 @@ function getCellAddress(r: number, c: number): string {
   return XLSX.utils.encode_cell({ r, c });
 }
 
+// =========================================================================
+// CÁC ĐỊNH DẠNG STYLE EXCEL CHUẨN FORM TT107 & HÌNH ẢNH THỰC TẾ
+// =========================================================================
+
+const BORDER_ALL_THIN = {
+  top: { style: 'thin', color: { rgb: '000000' } },
+  bottom: { style: 'thin', color: { rgb: '000000' } },
+  left: { style: 'thin', color: { rgb: '000000' } },
+  right: { style: 'thin', color: { rgb: '000000' } }
+};
+
+const BORDER_TOTAL_DOUBLE = {
+  top: { style: 'thin', color: { rgb: '000000' } },
+  bottom: { style: 'double', color: { rgb: '000000' } },
+  left: { style: 'thin', color: { rgb: '000000' } },
+  right: { style: 'thin', color: { rgb: '000000' } }
+};
+
+const TNR_FONT = 'Times New Roman';
+
+export const EXCEL_FORM_STYLES = {
+  headerOrgLeft: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  },
+  headerOrgSubLeft: {
+    font: { name: TNR_FONT, sz: 10, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  },
+  headerFormCodeRight: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  headerFormCircularRight: {
+    font: { name: TNR_FONT, sz: 9, italic: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  mainTitle: {
+    font: { name: TNR_FONT, sz: 14, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  mainTitleYear: {
+    font: { name: TNR_FONT, sz: 12, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  tableHeaderBox: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: BORDER_ALL_THIN
+  },
+  colSymbolBox: {
+    font: { name: TNR_FONT, sz: 9.5, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: BORDER_ALL_THIN
+  },
+  dataCenter: {
+    font: { name: TNR_FONT, sz: 10, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: BORDER_ALL_THIN
+  },
+  dataLeft: {
+    font: { name: TNR_FONT, sz: 10, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+    border: BORDER_ALL_THIN
+  },
+  dataNumber: {
+    font: { name: TNR_FONT, sz: 10, color: { rgb: '000000' } },
+    numFmt: '#,##0',
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: BORDER_ALL_THIN
+  },
+  // Ô THU TIỀN MẶT NỀN VÀNG SÁNG NHƯ HÌNH 1
+  dataNumberThuYellow: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    fill: { fgColor: { rgb: 'FFFF00' } },
+    numFmt: '#,##0',
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: BORDER_ALL_THIN
+  },
+  totalRowCenter: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: BORDER_TOTAL_DOUBLE
+  },
+  totalRowNumber: {
+    font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } },
+    numFmt: '#,##0',
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: BORDER_TOTAL_DOUBLE
+  },
+  infoPageNote: {
+    font: { name: TNR_FONT, sz: 9.5, color: { rgb: '000000' } },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  },
+  signDateRight: {
+    font: { name: TNR_FONT, sz: 10, italic: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  signTitle: {
+    font: { name: TNR_FONT, sz: 10.5, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  signSub: {
+    font: { name: TNR_FONT, sz: 9, italic: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  },
+  signName: {
+    font: { name: TNR_FONT, sz: 10.5, bold: true, color: { rgb: '000000' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  }
+};
+
+/**
+ * Xuất Trọn Bộ 5 Sheet Sổ Sách Tài Chính Chuẩn TT107 & Hình Mẫu Người Dùng Cung Cấp
+ */
 export function exportUnionFinancialReportToExcel(
   transactions: TradeUnionTransaction[],
   client: Client | null,
@@ -2142,383 +2257,454 @@ export function exportUnionFinancialReportToExcel(
   signers?: UnionSignerSettings | null
 ): void {
   const wb = XLSX.utils.book_new();
-  const unitTitle = signers?.unitTitle || 'CÔNG ĐOÀN CƠ SỞ';
-  const clientName = signers?.companyName || client?.name || 'CÔNG TY TNHH THIẾT KẾ XÂY DỰNG VÀ THƯƠNG MẠI HƯNG PHÁT';
-  const clientAddress = signers?.companyAddress || client?.address || '153G Lũy Bán Bích, P. Tân Thới Hòa, Q. Tân Phú, TP. HCM';
-  const headName = signers?.headOfUnitName || 'Ngô Thị Bích Ngọc';
-  const accountantName = signers?.accountantName || 'Nguyễn Thị Cẩm Ly';
-  const preparerName = signers?.preparerName || 'Nguyễn Thị Cẩm Ly';
-  const treasurerName = signers?.treasurerName || 'Bùi Xuân Mai Thảo';
+  const superiorUnion = 'LIÊN ĐOÀN LAO ĐỘNG TP HỒ CHÍ MINH';
+  const companyName = signers?.companyName || client?.name || 'CTY TNHH TKXD & TM Hưng Phát';
+  const headName = (signers?.headOfUnitName || 'NGÔ THỊ BÍCH NGỌC').toUpperCase();
+  const accountantName = (signers?.accountantName || 'NGUYỄN THỊ CẨM LY').toUpperCase();
+  const preparerName = (signers?.preparerName || 'NGUYỄN THỊ CẨM LY').toUpperCase();
+  const treasurerName = (signers?.treasurerName || 'VÕ THỊ MỘNG THÚY').toUpperCase();
 
-  // -------------------------------------------------------------
-  // Sheet 1: DANH SÁCH TẤT CẢ PHIẾU THU & CHI
-  // -------------------------------------------------------------
-  const ws1Data: any[] = [
-    [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', '', '', '', ''],
-    [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', '', '', '', ''],
-    [`BẢNG KÊ DANH SÁCH CHỨNG TỪ THU - CHI CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', '', '', '', '', ''],
-    ['', '', '', '', '', '', '', '', '', '', ''],
-    ['STT', 'Ngày Lập', 'Số Phiếu', 'Loại Phiếu', 'Khoản Mục', 'Họ Tên Đối Tác', 'Nội Dung Diễn Giải', 'Hình Thức', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Kèm Theo']
-  ];
+  // Lấy số dư đầu kỳ từ localStorage hoặc mặc định
+  let openingCash = 438010;
+  let openingBank = 123430;
+  try {
+    const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[year]) {
+        if (typeof parsed[year].cash === 'number') openingCash = parsed[year].cash;
+        if (typeof parsed[year].bank === 'number') openingBank = parsed[year].bank;
+      }
+    }
+  } catch (e) {}
 
-  let totalThu1 = 0;
-  let totalChi1 = 0;
-  const startRow1 = 6;
-
-  transactions.forEach((t, idx) => {
-    const isThu = t.voucherType === 'UNION_RECEIPT';
-    if (isThu) totalThu1 += t.amount;
-    else totalChi1 += t.amount;
-
-    ws1Data.push([
-      idx + 1,
-      t.date,
-      t.voucherNo,
-      isThu ? 'Phiếu Thu (C40)' : 'Phiếu Chi (C41)',
-      getTradeUnionCategoryLabel(t.category),
-      t.personName,
-      t.reason,
-      t.paymentMethod === 'BANK' ? 'Ngân hàng' : 'Tiền mặt',
-      isThu ? t.amount : 0,
-      !isThu ? t.amount : 0,
-      t.attachedDocs || '01'
-    ]);
-  });
-
-  const totalRowIdx1 = ws1Data.length;
-  ws1Data.push(['', '', '', '', '', '', 'TỔNG CỘNG PHÁT SINH:', '', totalThu1, totalChi1, '']);
-  const balanceRowIdx1 = ws1Data.length;
-  ws1Data.push(['', '', '', '', '', '', 'TỒN QUỸ CÒN LẠI:', '', totalThu1 - totalChi1, '', '']);
-  ws1Data.push(['', '', '', '', '', '', '', '', '', '', '']);
-
-  const signRowStart1 = ws1Data.length;
-  ws1Data.push(['', 'NGƯỜI LẬP BIỂU', '', '', 'KẾ TOÁN CÔNG ĐOÀN', '', '', '', 'CHỦ TỊCH CĐCS', '', '']);
-  ws1Data.push(['', '(Ký, họ tên)', '', '', '(Ký, họ tên)', '', '', '', '(Ký, họ tên, đóng dấu)', '', '']);
-  ws1Data.push(['', '', '', '', '', '', '', '', '', '', '']);
-  ws1Data.push(['', '', '', '', '', '', '', '', '', '', '']);
-  ws1Data.push(['', preparerName, '', '', accountantName, '', '', '', headName, '', '']);
-
-  const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
-  ws1['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-    { s: { r: 3, c: 0 }, e: { r: 3, c: 10 } }
-  ];
-  ws1['!cols'] = [
-    { wch: 6 },  // STT
-    { wch: 13 }, // Ngày Lập
-    { wch: 15 }, // Số Phiếu
-    { wch: 16 }, // Loại Phiếu
-    { wch: 32 }, // Khoản Mục
-    { wch: 24 }, // Họ Tên
-    { wch: 42 }, // Diễn Giải
-    { wch: 13 }, // Hình Thức
-    { wch: 20 }, // Thu
-    { wch: 20 }, // Chi
-    { wch: 12 }  // Kèm Theo
-  ];
-
-  // Styling ws1
-  const numRows1 = ws1Data.length;
-  ws1['!rows'] = Array(numRows1).fill({ hpt: 20 });
-  ws1['!rows'][3] = { hpt: 32 };
-  ws1['!rows'][5] = { hpt: 28 };
-
-  // Set Styles for ws1
-  if (ws1['A1']) ws1['A1'].s = EXCEL_STYLES.companyTitle;
-  if (ws1['A2']) ws1['A2'].s = EXCEL_STYLES.companyAddress;
-  if (ws1['A4']) ws1['A4'].s = EXCEL_STYLES.mainTitleBanner;
-
-  for (let c = 0; c <= 10; c++) {
-    const ref = getCellAddress(5, c);
-    if (ws1[ref]) ws1[ref].s = EXCEL_STYLES.tableHeader;
-  }
-
-  for (let i = 0; i < transactions.length; i++) {
-    const r = startRow1 + i;
-    const isOdd = i % 2 === 1;
-    if (ws1[getCellAddress(r, 0)]) ws1[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws1[getCellAddress(r, 1)]) ws1[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws1[getCellAddress(r, 2)]) ws1[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-    if (ws1[getCellAddress(r, 3)]) ws1[getCellAddress(r, 3)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws1[getCellAddress(r, 4)]) ws1[getCellAddress(r, 4)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-    if (ws1[getCellAddress(r, 5)]) ws1[getCellAddress(r, 5)].s = EXCEL_STYLES.dataCellLeft(isOdd, true);
-    if (ws1[getCellAddress(r, 6)]) ws1[getCellAddress(r, 6)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-    if (ws1[getCellAddress(r, 7)]) ws1[getCellAddress(r, 7)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws1[getCellAddress(r, 8)]) ws1[getCellAddress(r, 8)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-    if (ws1[getCellAddress(r, 9)]) ws1[getCellAddress(r, 9)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-    if (ws1[getCellAddress(r, 10)]) ws1[getCellAddress(r, 10)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-  }
-
-  for (let c = 0; c <= 10; c++) {
-    const ref = getCellAddress(totalRowIdx1, c);
-    if (c === 6) { if (ws1[ref]) ws1[ref].s = EXCEL_STYLES.totalRowLabel; }
-    else if (c === 8) { if (ws1[ref]) ws1[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-    else if (c === 9) { if (ws1[ref]) ws1[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-    else { if (ws1[ref]) ws1[ref].s = EXCEL_STYLES.totalRowEmpty; }
-
-    const refB = getCellAddress(balanceRowIdx1, c);
-    if (c === 6) { if (ws1[refB]) ws1[refB].s = EXCEL_STYLES.balanceRowLabel; }
-    else if (c === 8) { if (ws1[refB]) ws1[refB].s = EXCEL_STYLES.balanceRowAmount; }
-    else { if (ws1[refB]) ws1[refB].s = EXCEL_STYLES.balanceRowEmpty; }
-  }
-
-  // Chữ ký ws1
-  if (ws1[getCellAddress(signRowStart1, 1)]) ws1[getCellAddress(signRowStart1, 1)].s = EXCEL_STYLES.signRole;
-  if (ws1[getCellAddress(signRowStart1, 4)]) ws1[getCellAddress(signRowStart1, 4)].s = EXCEL_STYLES.signRole;
-  if (ws1[getCellAddress(signRowStart1, 8)]) ws1[getCellAddress(signRowStart1, 8)].s = EXCEL_STYLES.signRole;
-
-  if (ws1[getCellAddress(signRowStart1 + 1, 1)]) ws1[getCellAddress(signRowStart1 + 1, 1)].s = EXCEL_STYLES.signNote;
-  if (ws1[getCellAddress(signRowStart1 + 1, 4)]) ws1[getCellAddress(signRowStart1 + 1, 4)].s = EXCEL_STYLES.signNote;
-  if (ws1[getCellAddress(signRowStart1 + 1, 8)]) ws1[getCellAddress(signRowStart1 + 1, 8)].s = EXCEL_STYLES.signNote;
-
-  if (ws1[getCellAddress(signRowStart1 + 4, 1)]) ws1[getCellAddress(signRowStart1 + 4, 1)].s = EXCEL_STYLES.signName;
-  if (ws1[getCellAddress(signRowStart1 + 4, 4)]) ws1[getCellAddress(signRowStart1 + 4, 4)].s = EXCEL_STYLES.signName;
-  if (ws1[getCellAddress(signRowStart1 + 4, 8)]) ws1[getCellAddress(signRowStart1 + 4, 8)].s = EXCEL_STYLES.signName;
-
-  XLSX.utils.book_append_sheet(wb, ws1, 'DANH_SACH_THU_CHI');
-
-  // -------------------------------------------------------------
-  // Sheet 2: SỔ QUỸ TIỀN MẶT (MẪU S11H)
-  // -------------------------------------------------------------
+  // =========================================================================
+  // SHEET 1: SỔ QUỸ TIỀN MẶT NĂM 2026 (MẪU S11H - CHUẨN HÌNH 1 & HÌNH 3)
+  // =========================================================================
   const cashTxs = transactions.filter(t => t.paymentMethod === 'CASH');
-  const ws2Data: any[] = [
-    [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', 'Mẫu số: S11H'],
-    [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
-    ['', '', '', '', '', '', '', ''],
-    [`SỔ QUỸ TIỀN MẶT CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', '', ''],
-    ['Tài khoản tiền mặt: TK 1111', '', '', '', '', '', '', ''],
-    ['STT', 'Ngày Tháng', 'Số Phiếu Thu', 'Số Phiếu Chi', 'Họ Tên & Diễn Giải Nghiệp Vụ', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Tồn Quỹ (VNĐ)']
-  ];
+  const ws1: any = {};
 
-  let runningCash = 0;
+  // Header cơ quan & mẫu số
+  ws1['A1'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+  ws1['A2'] = { v: `Công đoàn cơ sở: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+  ws1['G1'] = { v: 'Mẫu số S11H', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+  ws1['G2'] = { v: '(Ban hành kèm theo Thông tư số 107/2017/TT-BTC', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+  ws1['G3'] = { v: 'ngày 10/10/2017 của Bộ Tài chính)', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+  // Tiêu đề Sổ Quỹ
+  ws1['E4'] = { v: 'SỔ QUỸ TIỀN MẶT', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+  ws1['E5'] = { v: `NĂM ${year}`, t: 's', s: EXCEL_FORM_STYLES.mainTitleYear };
+
+  // Header Bảng (Dòng 7 & 8)
+  ws1['A7'] = { v: 'Ngày tháng\nghi sổ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['B7'] = { v: 'Ngày tháng\nchứng từ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['C7'] = { v: 'SỐ HIỆU CHỨNG TỪ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['C8'] = { v: 'Thu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['D8'] = { v: 'Chi', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['E7'] = { v: 'DIỄN GIẢI', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['F7'] = { v: 'SỐ TIỀN', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['F8'] = { v: 'Thu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['G8'] = { v: 'Chi', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['H8'] = { v: 'Tồn quỹ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws1['I7'] = { v: 'Ghi chú', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+  // Dòng 9: Ký hiệu số cột
+  ws1['A9'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['B9'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['C9'] = { v: 'C', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['D9'] = { v: 'D', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['E9'] = { v: 'E', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['F9'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['G9'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['H9'] = { v: '3', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws1['I9'] = { v: 'G', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+  // Dòng 10: Số dư đầu kỳ
+  ws1['A10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws1['B10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws1['C10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws1['D10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws1['E10'] = { v: 'Số dư đầu kỳ', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws1['F10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+  ws1['G10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+  ws1['H10'] = { v: openingCash, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws1['I10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+
+  let curCash = openingCash;
   let totalCashThu = 0;
   let totalCashChi = 0;
 
   cashTxs.forEach((t, idx) => {
+    const rNum = 11 + idx;
     const isThu = t.voucherType === 'UNION_RECEIPT';
     if (isThu) {
-      runningCash += t.amount;
+      curCash += t.amount;
       totalCashThu += t.amount;
     } else {
-      runningCash -= t.amount;
+      curCash -= t.amount;
       totalCashChi += t.amount;
     }
 
-    ws2Data.push([
-      idx + 1,
-      t.date,
-      isThu ? t.voucherNo : '',
-      !isThu ? t.voucherNo : '',
-      `${t.reason} - ${t.personName}`,
-      isThu ? t.amount : 0,
-      !isThu ? t.amount : 0,
-      runningCash
-    ]);
+    ws1[`A${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1[`B${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1[`C${rNum}`] = { v: isThu ? t.voucherNo : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1[`D${rNum}`] = { v: !isThu ? t.voucherNo : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1[`E${rNum}`] = { v: t.reason, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+    ws1[`F${rNum}`] = isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumberThuYellow } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws1[`G${rNum}`] = !isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws1[`H${rNum}`] = { v: curCash, t: 'n', s: EXCEL_FORM_STYLES.dataNumber };
+    ws1[`I${rNum}`] = { v: t.attachedDocs ? `Kèm ${t.attachedDocs}` : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
   });
 
-  const totalRowIdx2 = ws2Data.length;
-  ws2Data.push(['', '', '', '', 'TỔNG CỘNG SỐ PHÁT SINH:', totalCashThu, totalCashChi, runningCash]);
-  ws2Data.push(['', '', '', '', '', '', '', '']);
+  const totalRow1 = 11 + cashTxs.length;
+  ws1[`A${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`B${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`C${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`D${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`E${totalRow1}`] = { v: 'Cộng :', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`F${totalRow1}`] = { v: totalCashThu, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`G${totalRow1}`] = { v: totalCashChi, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`H${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`I${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
 
-  const signRowStart2 = ws2Data.length;
-  ws2Data.push(['', 'THỦ QUỸ CÔNG ĐOÀN', '', 'KẾ TOÁN CÔNG ĐOÀN', '', '', 'CHỦ TỊCH CĐCS', '']);
-  ws2Data.push(['', '(Ký, họ tên)', '', '(Ký, họ tên)', '', '', '(Ký, họ tên, đóng dấu)', '']);
-  ws2Data.push(['', '', '', '', '', '', '', '']);
-  ws2Data.push(['', '', '', '', '', '', '', '']);
-  ws2Data.push(['', treasurerName, '', accountantName, '', '', headName, '']);
+  const finalBalRow1 = totalRow1 + 1;
+  ws1[`A${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`B${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`C${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`D${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`E${finalBalRow1}`] = { v: 'Số dư cuối kỳ', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws1[`F${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`G${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`H${finalBalRow1}`] = { v: curCash, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws1[`I${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
 
-  const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
-  ws2['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
-    { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
-    { s: { r: 4, c: 0 }, e: { r: 4, c: 7 } }
+  // Thông tin mở sổ & chữ ký
+  const noteRow1 = finalBalRow1 + 1;
+  ws1[`A${noteRow1}`] = { v: '- Sổ này có 01 trang', t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+  ws1[`A${noteRow1 + 1}`] = { v: `- Ngày mở sổ: 01/01/${year}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+
+  ws1[`G${noteRow1 + 2}`] = { v: `Ngày 31 tháng 12 năm ${year}`, t: 's', s: EXCEL_FORM_STYLES.signDateRight };
+
+  const sigRow1 = noteRow1 + 3;
+  ws1[`B${sigRow1}`] = { v: 'Người lập sổ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws1[`B${sigRow1 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws1[`B${sigRow1 + 6}`] = { v: preparerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws1[`E${sigRow1}`] = { v: 'Phụ trách kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws1[`E${sigRow1 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws1[`E${sigRow1 + 6}`] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws1[`G${sigRow1}`] = { v: 'Chủ Tài Khoản', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws1[`G${sigRow1 + 1}`] = { v: '(Ký, họ tên, đóng dấu)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws1[`G${sigRow1 + 6}`] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws1['!ref'] = `A1:I${sigRow1 + 7}`;
+  ws1['!cols'] = [
+    { wch: 13 }, // A: Ngày ghi sổ
+    { wch: 13 }, // B: Ngày chứng từ
+    { wch: 14 }, // C: Thu
+    { wch: 14 }, // D: Chi
+    { wch: 48 }, // E: Diễn giải
+    { wch: 16 }, // F: Số tiền Thu
+    { wch: 16 }, // G: Số tiền Chi
+    { wch: 16 }, // H: Tồn quỹ
+    { wch: 12 }  // I: Ghi chú
   ];
-  ws2['!cols'] = [
-    { wch: 6 },  // STT
-    { wch: 13 }, // Ngày
-    { wch: 16 }, // Thu
-    { wch: 16 }, // Chi
-    { wch: 45 }, // Diễn giải
-    { wch: 20 }, // Thu
-    { wch: 20 }, // Chi
-    { wch: 22 }  // Tồn
+
+  ws1['!merges'] = [
+    // Header merges
+    { s: { r: 0, c: 6 }, e: { r: 0, c: 8 } },
+    { s: { r: 1, c: 6 }, e: { r: 1, c: 8 } },
+    { s: { r: 2, c: 6 }, e: { r: 2, c: 8 } },
+    // Table Header 2-level merges
+    { s: { r: 6, c: 0 }, e: { r: 7, c: 0 } }, // A7:A8
+    { s: { r: 6, c: 1 }, e: { r: 7, c: 1 } }, // B7:B8
+    { s: { r: 6, c: 2 }, e: { r: 6, c: 3 } }, // C7:D7 (SỐ HIỆU CHỨNG TỪ)
+    { s: { r: 6, c: 4 }, e: { r: 7, c: 4 } }, // E7:E8 (DIỄN GIẢI)
+    { s: { r: 6, c: 5 }, e: { r: 6, c: 7 } }, // F7:H7 (SỐ TIỀN)
+    { s: { r: 6, c: 8 }, e: { r: 7, c: 8 } }, // I7:I8 (Ghi chú)
+    // Chữ ký merges
+    { s: { r: noteRow1 + 1, c: 6 }, e: { r: noteRow1 + 1, c: 8 } },
+    { s: { r: sigRow1 - 1, c: 6 }, e: { r: sigRow1 - 1, c: 8 } },
+    { s: { r: sigRow1, c: 6 }, e: { r: sigRow1, c: 8 } },
+    { s: { r: sigRow1 + 5, c: 6 }, e: { r: sigRow1 + 5, c: 8 } },
   ];
 
-  // Styling ws2
-  if (ws2['A1']) ws2['A1'].s = EXCEL_STYLES.companyTitle;
-  if (ws2['A2']) ws2['A2'].s = EXCEL_STYLES.companyAddress;
-  if (ws2['H1']) ws2['H1'].s = EXCEL_STYLES.formCode;
-  if (ws2['H2']) ws2['H2'].s = EXCEL_STYLES.formSubCode;
-  if (ws2['A4']) ws2['A4'].s = EXCEL_STYLES.mainTitleBanner;
-  if (ws2['A5']) ws2['A5'].s = EXCEL_STYLES.subTitle;
+  // Freeze Panes tại dòng 9 (Cố định Header bảng)
+  ws1['!views'] = [{ state: 'frozen', ySplit: 9, xSplit: 0, activeCell: 'A10' }];
 
-  for (let c = 0; c <= 7; c++) {
-    const ref = getCellAddress(5, c);
-    if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.tableHeaderTeal;
-  }
+  XLSX.utils.book_append_sheet(wb, ws1, 'SO_TM_2026');
 
-  for (let i = 0; i < cashTxs.length; i++) {
-    const r = 6 + i;
-    const isOdd = i % 2 === 1;
-    if (ws2[getCellAddress(r, 0)]) ws2[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws2[getCellAddress(r, 1)]) ws2[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws2[getCellAddress(r, 2)]) ws2[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-    if (ws2[getCellAddress(r, 3)]) ws2[getCellAddress(r, 3)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-    if (ws2[getCellAddress(r, 4)]) ws2[getCellAddress(r, 4)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-    if (ws2[getCellAddress(r, 5)]) ws2[getCellAddress(r, 5)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-    if (ws2[getCellAddress(r, 6)]) ws2[getCellAddress(r, 6)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-    if (ws2[getCellAddress(r, 7)]) ws2[getCellAddress(r, 7)].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
-  }
-
-  for (let c = 0; c <= 7; c++) {
-    const ref = getCellAddress(totalRowIdx2, c);
-    if (c === 4) { if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.totalRowLabel; }
-    else if (c === 5) { if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-    else if (c === 6) { if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-    else if (c === 7) { if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.balanceRowAmount; }
-    else { if (ws2[ref]) ws2[ref].s = EXCEL_STYLES.totalRowEmpty; }
-  }
-
-  // Chữ ký ws2
-  if (ws2[getCellAddress(signRowStart2, 1)]) ws2[getCellAddress(signRowStart2, 1)].s = EXCEL_STYLES.signRole;
-  if (ws2[getCellAddress(signRowStart2, 3)]) ws2[getCellAddress(signRowStart2, 3)].s = EXCEL_STYLES.signRole;
-  if (ws2[getCellAddress(signRowStart2, 6)]) ws2[getCellAddress(signRowStart2, 6)].s = EXCEL_STYLES.signRole;
-
-  if (ws2[getCellAddress(signRowStart2 + 1, 1)]) ws2[getCellAddress(signRowStart2 + 1, 1)].s = EXCEL_STYLES.signNote;
-  if (ws2[getCellAddress(signRowStart2 + 1, 3)]) ws2[getCellAddress(signRowStart2 + 1, 3)].s = EXCEL_STYLES.signNote;
-  if (ws2[getCellAddress(signRowStart2 + 1, 6)]) ws2[getCellAddress(signRowStart2 + 1, 6)].s = EXCEL_STYLES.signNote;
-
-  if (ws2[getCellAddress(signRowStart2 + 4, 1)]) ws2[getCellAddress(signRowStart2 + 4, 1)].s = EXCEL_STYLES.signName;
-  if (ws2[getCellAddress(signRowStart2 + 4, 3)]) ws2[getCellAddress(signRowStart2 + 4, 3)].s = EXCEL_STYLES.signName;
-  if (ws2[getCellAddress(signRowStart2 + 4, 6)]) ws2[getCellAddress(signRowStart2 + 4, 6)].s = EXCEL_STYLES.signName;
-
-  XLSX.utils.book_append_sheet(wb, ws2, 'SO_QUY_TIEN_MAT_S11H');
-
-  // -------------------------------------------------------------
-  // Sheet 3: SỔ TIỀN GỬI NGÂN HÀNG (MẪU S12-H)
-  // -------------------------------------------------------------
+  // =========================================================================
+  // SHEET 2: SỔ TIỀN GỬI NGÂN HÀNG (MẪU S12-H - CHUẨN HÌNH 2 & HÌNH 3)
+  // =========================================================================
   const bankTxs = transactions.filter(t => t.paymentMethod === 'BANK');
-  const ws3Data: any[] = [
-    [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', 'Mẫu số: S12-H'],
-    [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
-    ['', '', '', '', '', '', ''],
-    [`SỔ TIỀN GỬI NGÂN HÀNG CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', ''],
-    ['Tài khoản tiền gửi: TK 1121', '', '', '', '', '', ''],
-    ['STT', 'Ngày Tháng', 'Số Chứng Từ / UNC', 'Nội Dung Giao Dịch', 'Gửi Vào / Thu (VNĐ)', 'Rút Ra / Chi (VNĐ)', 'Số Dư Cuối (VNĐ)']
-  ];
+  const ws2: any = {};
 
-  let runningBank = 0;
+  ws2['A1'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+  ws2['A2'] = { v: `Công đoàn cơ sở: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+  ws2['G1'] = { v: 'Mẫu số S12-H', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+  ws2['G2'] = { v: '(Ban hành kèm theo Thông tư số 107/2017/TT-BTC', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+  ws2['G3'] = { v: 'ngày 10/10/2017 của Bộ Tài chính)', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+  ws2['D5'] = { v: 'SỔ TIỀN GỬI NGÂN HÀNG', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+  ws2['D6'] = { v: `Từ ngày 01/01/${year} đến ngày 31/12/${year}`, t: 's', s: EXCEL_FORM_STYLES.mainTitleYear };
+
+  // Header Bảng (Dòng 11 & 12)
+  ws2['A11'] = { v: 'Ngày tháng\nghi sổ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['B11'] = { v: 'Chứng từ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['B12'] = { v: 'Số hiệu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['C12'] = { v: 'Ngày tháng', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['D11'] = { v: 'DIỄN GIẢI', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['E11'] = { v: 'SỐ TIỀN', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['E12'] = { v: 'Thu (gửi vào)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['F12'] = { v: 'Chi (rút ra)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['G12'] = { v: 'Còn lại', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws2['H11'] = { v: 'Ghi chú', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+  // Dòng 13: Ký hiệu cột
+  ws2['A13'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['B13'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['C13'] = { v: 'C', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['D13'] = { v: 'D', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['E13'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['F13'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['G13'] = { v: '3', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws2['H13'] = { v: 'E', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+  // Dòng 14: Số dư đầu kỳ
+  ws2['A14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws2['B14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws2['C14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws2['D14'] = { v: 'Số dư đầu kỳ', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws2['E14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+  ws2['F14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+  ws2['G14'] = { v: openingBank, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws2['H14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+
+  let curBank = openingBank;
   let totalBankThu = 0;
   let totalBankChi = 0;
 
   bankTxs.forEach((t, idx) => {
+    const rNum = 15 + idx;
     const isThu = t.voucherType === 'UNION_RECEIPT';
     if (isThu) {
-      runningBank += t.amount;
+      curBank += t.amount;
       totalBankThu += t.amount;
     } else {
-      runningBank -= t.amount;
+      curBank -= t.amount;
       totalBankChi += t.amount;
     }
 
-    ws3Data.push([
-      idx + 1,
-      t.date,
-      t.voucherNo,
-      `${t.reason} - ${t.personName}`,
-      isThu ? t.amount : 0,
-      !isThu ? t.amount : 0,
-      runningBank
-    ]);
+    ws2[`A${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2[`B${rNum}`] = { v: t.voucherNo, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2[`C${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2[`D${rNum}`] = { v: t.reason, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+    ws2[`E${rNum}`] = isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws2[`F${rNum}`] = !isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws2[`G${rNum}`] = { v: curBank, t: 'n', s: EXCEL_FORM_STYLES.dataNumber };
+    ws2[`H${rNum}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
   });
 
-  const totalRowIdx3 = ws3Data.length;
-  ws3Data.push(['', '', '', 'TỔNG CỘNG PHÁT SINH:', totalBankThu, totalBankChi, runningBank]);
-  ws3Data.push(['', '', '', '', '', '', '']);
+  const totalRow2 = 15 + bankTxs.length;
+  ws2[`A${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`B${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`C${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`D${totalRow2}`] = { v: 'Cộng :', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`E${totalRow2}`] = { v: totalBankThu, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`F${totalRow2}`] = { v: totalBankChi, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`G${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`H${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
 
-  const signRowStart3 = ws3Data.length;
-  ws3Data.push(['', 'NGƯỜI LẬP BIỂU', '', 'KẾ TOÁN CÔNG ĐOÀN', '', 'CHỦ TỊCH CĐCS', '']);
-  ws3Data.push(['', '(Ký, họ tên)', '', '(Ký, họ tên)', '', '(Ký, họ tên, đóng dấu)', '']);
-  ws3Data.push(['', '', '', '', '', '', '']);
-  ws3Data.push(['', '', '', '', '', '', '']);
-  ws3Data.push(['', preparerName, '', accountantName, '', headName, '']);
+  const finalBalRow2 = totalRow2 + 1;
+  ws2[`A${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`B${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`C${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`D${finalBalRow2}`] = { v: 'Số dư cuối kỳ', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+  ws2[`E${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`F${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`G${finalBalRow2}`] = { v: curBank, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+  ws2[`H${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
 
-  const ws3 = XLSX.utils.aoa_to_sheet(ws3Data);
-  ws3['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
-    { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
-    { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } }
+  const noteRow2 = finalBalRow2 + 1;
+  ws2[`A${noteRow2}`] = { v: '- Sổ này có 01 trang', t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+  ws2[`A${noteRow2 + 1}`] = { v: `- Ngày mở sổ: 01/01/${year}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+
+  ws2['G' + (noteRow2 + 2)] = { v: `Ngày 31 tháng 12 năm ${year}`, t: 's', s: EXCEL_FORM_STYLES.signDateRight };
+
+  const sigRow2 = noteRow2 + 3;
+  ws2[`B${sigRow2}`] = { v: 'Người lập sổ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws2[`B${sigRow2 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws2[`B${sigRow2 + 6}`] = { v: preparerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws2[`D${sigRow2}`] = { v: 'Phụ trách kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws2[`D${sigRow2 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws2[`D${sigRow2 + 6}`] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws2[`G${sigRow2}`] = { v: 'Chủ Tài Khoản', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws2[`G${sigRow2 + 1}`] = { v: '(Ký, họ tên, đóng dấu)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws2[`G${sigRow2 + 6}`] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws2['!ref'] = `A1:H${sigRow2 + 7}`;
+  ws2['!cols'] = [
+    { wch: 13 }, // A: Ngày ghi sổ
+    { wch: 14 }, // B: Số hiệu
+    { wch: 13 }, // C: Ngày CT
+    { wch: 48 }, // D: Diễn giải
+    { wch: 16 }, // E: Thu
+    { wch: 16 }, // F: Chi
+    { wch: 16 }, // G: Còn lại
+    { wch: 12 }  // H: Ghi chú
   ];
+
+  ws2['!merges'] = [
+    { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } },
+    { s: { r: 1, c: 6 }, e: { r: 1, c: 7 } },
+    { s: { r: 2, c: 6 }, e: { r: 2, c: 7 } },
+    { s: { r: 10, c: 0 }, e: { r: 11, c: 0 } }, // A11:A12
+    { s: { r: 10, c: 1 }, e: { r: 10, c: 2 } }, // B11:C11 (Chứng từ)
+    { s: { r: 10, c: 3 }, e: { r: 11, c: 3 } }, // D11:D12 (DIỄN GIẢI)
+    { s: { r: 10, c: 4 }, e: { r: 10, c: 6 } }, // E11:G11 (SỐ TIỀN)
+    { s: { r: 10, c: 7 }, e: { r: 11, c: 7 } }, // H11:H12 (Ghi chú)
+    { s: { r: noteRow2 + 1, c: 6 }, e: { r: noteRow2 + 1, c: 7 } },
+    { s: { r: sigRow2 - 1, c: 6 }, e: { r: sigRow2 - 1, c: 7 } },
+    { s: { r: sigRow2, c: 6 }, e: { r: sigRow2, c: 7 } },
+    { s: { r: sigRow2 + 5, c: 6 }, e: { r: sigRow2 + 5, c: 7 } },
+  ];
+
+  ws2['!views'] = [{ state: 'frozen', ySplit: 13, xSplit: 0, activeCell: 'A14' }];
+
+  XLSX.utils.book_append_sheet(wb, ws2, 'SO_NH_2026');
+
+  // =========================================================================
+  // SHEET 3: BẢNG KIỂM KÊ TIỀN MẶT NĂM 2026 (MẪU C34-HD - CHUẨN HÌNH 4)
+  // =========================================================================
+  const ws3: any = {};
+
+  ws3['A2'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+  ws3['A3'] = { v: `CĐCS: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['D2'] = { v: 'Mẫu số C34-HD', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+
+  ws3['B5'] = { v: 'BIÊN BẢN KIỂM KÊ QUỸ TIỀN MẶT', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+  ws3['A7'] = { v: `Hôm nay, ngày 31 tháng 12 năm ${year}, vào hồi 13 giờ 30 phút.`, t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+  ws3['A9'] = { v: 'Ban kiểm kê bao gồm:', t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+  ws3['A10'] = { v: `Ông/Bà: ${headName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['C10'] = { v: 'Chủ tịch CĐCS Trưởng Ban', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['A11'] = { v: `Ông/Bà: ${accountantName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['C11'] = { v: 'Kế toán Ủy viên', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['A12'] = { v: `Ông/Bà: ${treasurerName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+  ws3['C12'] = { v: 'Thủ quỹ', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+  // Bảng chi tiết kiểm kê
+  ws3['A14'] = { v: 'STT', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws3['B14'] = { v: 'Diễn giải', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws3['C14'] = { v: 'Số lượng (tờ)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+  ws3['D14'] = { v: 'Số tiền', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+  ws3['A15'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws3['B15'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws3['C15'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+  ws3['D15'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+  // Tính phân rã mệnh giá tiền mặt từ số tồn cuối kỳ curCash
+  let remaining = curCash;
+  const count500k = Math.floor(remaining / 500000); remaining %= 500000;
+  const count200k = Math.floor(remaining / 200000); remaining %= 200000;
+  const count100k = Math.floor(remaining / 100000); remaining %= 100000;
+  const count50k = Math.floor(remaining / 50000); remaining %= 50000;
+  const count20k = Math.floor(remaining / 20000); remaining %= 20000;
+  const count10k = Math.floor(remaining / 10000); remaining %= 10000;
+  const count5k = Math.floor(remaining / 5000); remaining %= 5000;
+  const count2k = Math.floor(remaining / 2000); remaining %= 2000;
+  const count1k = Math.floor(remaining / 1000); remaining %= 1000;
+  const count500 = Math.floor(remaining / 500); remaining %= 500;
+  const actualCountTotal = curCash - remaining;
+
+  ws3['A16'] = { v: 'I', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['B16'] = { v: 'Số dư theo sổ quỹ', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['C16'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws3['D16'] = { v: curCash, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+  ws3['A17'] = { v: 'II', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['B17'] = { v: 'Số kiểm kê thực tế', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['C17'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws3['D17'] = { v: actualCountTotal, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+  const denominations = [
+    { stt: 1, label: '- Loại 500.000đ', qty: count500k, val: 500000 },
+    { stt: 2, label: '- Loại 200.000đ', qty: count200k, val: 200000 },
+    { stt: 3, label: '- Loại 100.000đ', qty: count100k, val: 100000 },
+    { stt: 4, label: '- Loại 50.000đ', qty: count50k, val: 50000 },
+    { stt: 5, label: '- Loại 20.000đ', qty: count20k, val: 20000 },
+    { stt: 6, label: '- Loại 10.000đ', qty: count10k, val: 10000 },
+    { stt: 7, label: '- Loại 5.000đ', qty: count5k, val: 5000 },
+    { stt: 8, label: '- Loại 2.000đ', qty: count2k, val: 2000 },
+    { stt: 9, label: '- Loại 1.000đ', qty: count1k, val: 1000 },
+    { stt: 10, label: '- Loại 500đ', qty: count500, val: 500 },
+  ];
+
+  denominations.forEach((d, idx) => {
+    const rNum = 18 + idx;
+    ws3[`A${rNum}`] = { v: d.stt, t: 'n', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3[`B${rNum}`] = { v: d.label, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+    ws3[`C${rNum}`] = { v: d.qty > 0 ? d.qty : '', t: d.qty > 0 ? 'n' : 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3[`D${rNum}`] = { v: d.qty > 0 ? d.qty * d.val : '', t: d.qty > 0 ? 'n' : 's', s: EXCEL_FORM_STYLES.dataNumber };
+  });
+
+  ws3['A28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws3['B28'] = { v: '- ...', t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+  ws3['C28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws3['D28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+
+  const diff = actualCountTotal - curCash;
+  ws3['A29'] = { v: 'III', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['B29'] = { v: 'Chênh lệch:', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+  ws3['C29'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+  ws3['D29'] = { v: diff, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+  ws3['A30'] = { v: `- Lý do: ${diff === 0 ? 'Khớp đúng: 0đ' : diff < 0 ? `Thiếu: ${Math.abs(diff)}đ` : `Thừa: ${diff}đ`}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+  ws3['A31'] = { v: `- Kết luận sau khi kiểm quỹ: số tiền mặt kiểm tra ${diff === 0 ? 'khớp đúng 100%' : `thừa (thiếu) ${diff}đ`} so với sổ sách do làm tròn số lẻ trong quá trình thu, chi.`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+
+  ws3['A33'] = { v: 'Kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws3['A34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws3['A37'] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws3['C33'] = { v: 'Thủ quỹ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws3['C34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws3['C37'] = { v: treasurerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws3['D33'] = { v: 'Người chịu trách nhiệm\nkiểm kê quỹ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+  ws3['D34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+  ws3['D37'] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+  ws3['!ref'] = 'A1:D38';
   ws3['!cols'] = [
-    { wch: 6 },
-    { wch: 13 },
-    { wch: 20 },
-    { wch: 45 },
-    { wch: 20 },
-    { wch: 20 },
-    { wch: 22 }
+    { wch: 8 },  // STT
+    { wch: 38 }, // Diễn giải
+    { wch: 18 }, // Số lượng tờ
+    { wch: 22 }  // Số tiền
   ];
 
-  // Styling ws3
-  if (ws3['A1']) ws3['A1'].s = EXCEL_STYLES.companyTitle;
-  if (ws3['A2']) ws3['A2'].s = EXCEL_STYLES.companyAddress;
-  if (ws3['G1']) ws3['G1'].s = EXCEL_STYLES.formCode;
-  if (ws3['G2']) ws3['G2'].s = EXCEL_STYLES.formSubCode;
-  if (ws3['A4']) ws3['A4'].s = EXCEL_STYLES.mainTitleBanner;
-  if (ws3['A5']) ws3['A5'].s = EXCEL_STYLES.subTitle;
+  ws3['!merges'] = [
+    { s: { r: 4, c: 1 }, e: { r: 4, c: 3 } }, // B5:D5
+    { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } }, // A7:D7
+    { s: { r: 29, c: 0 }, e: { r: 29, c: 3 } }, // A30:D30
+    { s: { r: 30, c: 0 }, e: { r: 30, c: 3 } }, // A31:D31
+  ];
 
-  for (let c = 0; c <= 6; c++) {
-    const ref = getCellAddress(5, c);
-    if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.tableHeader;
-  }
+  XLSX.utils.book_append_sheet(wb, ws3, 'BANG_KIEM_KE_TIEN_MAT');
 
-  for (let i = 0; i < bankTxs.length; i++) {
-    const r = 6 + i;
-    const isOdd = i % 2 === 1;
-    if (ws3[getCellAddress(r, 0)]) ws3[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws3[getCellAddress(r, 1)]) ws3[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-    if (ws3[getCellAddress(r, 2)]) ws3[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-    if (ws3[getCellAddress(r, 3)]) ws3[getCellAddress(r, 3)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-    if (ws3[getCellAddress(r, 4)]) ws3[getCellAddress(r, 4)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-    if (ws3[getCellAddress(r, 5)]) ws3[getCellAddress(r, 5)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-    if (ws3[getCellAddress(r, 6)]) ws3[getCellAddress(r, 6)].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
-  }
-
-  for (let c = 0; c <= 6; c++) {
-    const ref = getCellAddress(totalRowIdx3, c);
-    if (c === 3) { if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.totalRowLabel; }
-    else if (c === 4) { if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-    else if (c === 5) { if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-    else if (c === 6) { if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.balanceRowAmount; }
-    else { if (ws3[ref]) ws3[ref].s = EXCEL_STYLES.totalRowEmpty; }
-  }
-
-  // Chữ ký ws3
-  if (ws3[getCellAddress(signRowStart3, 1)]) ws3[getCellAddress(signRowStart3, 1)].s = EXCEL_STYLES.signRole;
-  if (ws3[getCellAddress(signRowStart3, 3)]) ws3[getCellAddress(signRowStart3, 3)].s = EXCEL_STYLES.signRole;
-  if (ws3[getCellAddress(signRowStart3, 5)]) ws3[getCellAddress(signRowStart3, 5)].s = EXCEL_STYLES.signRole;
-
-  if (ws3[getCellAddress(signRowStart3 + 1, 1)]) ws3[getCellAddress(signRowStart3 + 1, 1)].s = EXCEL_STYLES.signNote;
-  if (ws3[getCellAddress(signRowStart3 + 1, 3)]) ws3[getCellAddress(signRowStart3 + 1, 3)].s = EXCEL_STYLES.signNote;
-  if (ws3[getCellAddress(signRowStart3 + 1, 5)]) ws3[getCellAddress(signRowStart3 + 1, 5)].s = EXCEL_STYLES.signNote;
-
-  if (ws3[getCellAddress(signRowStart3 + 4, 1)]) ws3[getCellAddress(signRowStart3 + 4, 1)].s = EXCEL_STYLES.signName;
-  if (ws3[getCellAddress(signRowStart3 + 4, 3)]) ws3[getCellAddress(signRowStart3 + 4, 3)].s = EXCEL_STYLES.signName;
-  if (ws3[getCellAddress(signRowStart3 + 4, 5)]) ws3[getCellAddress(signRowStart3 + 4, 5)].s = EXCEL_STYLES.signName;
-
-  XLSX.utils.book_append_sheet(wb, ws3, 'SO_TIEN_GUI_NH_S12H');
-
-  // -------------------------------------------------------------
-  // Sheet 4: BÁO CÁO QUYẾT TOÁN B07-TLĐ
-  // -------------------------------------------------------------
+  // =========================================================================
+  // SHEET 4: BÁO CÁO QUYẾT TOÁN TÀI CHÍNH CÔNG ĐOÀN (MẪU B07-TLĐ)
+  // =========================================================================
   const reportB07 = computeSettlementReportB07(transactions, client, year);
   const ws4Data: any[] = [
-    ['LIÊN ĐOÀN LAO ĐỘNG QUẬN / HUYỆN', '', '', '', '', 'Mẫu số: B07-TLĐ'],
-    [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '(Theo Hướng dẫn 47/HD-TLĐ)'],
+    [superiorUnion, '', '', '', '', 'Mẫu số: B07-TLĐ'],
+    [`Công đoàn cơ sở: ${companyName}`, '', '', '', '', '(Ban hành theo HD số 47/HD-TLĐ)'],
     ['', '', '', '', '', ''],
     [`BÁO CÁO QUYẾT TOÁN THU, CHI TÀI CHÍNH CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', ''],
     ['', '', '', '', '', ''],
@@ -2570,77 +2756,472 @@ export function exportUnionFinancialReportToExcel(
     { wch: 22 }
   ];
 
-  // Styling ws4
-  if (ws4['A1']) ws4['A1'].s = EXCEL_STYLES.companyTitle;
-  if (ws4['A2']) ws4['A2'].s = EXCEL_STYLES.companyTitle;
-  if (ws4['F1']) ws4['F1'].s = EXCEL_STYLES.formCode;
-  if (ws4['F2']) ws4['F2'].s = EXCEL_STYLES.formSubCode;
-  if (ws4['A4']) ws4['A4'].s = EXCEL_STYLES.mainTitleBanner;
+  if (ws4['A1']) ws4['A1'].s = EXCEL_FORM_STYLES.headerOrgLeft;
+  if (ws4['A2']) ws4['A2'].s = EXCEL_FORM_STYLES.headerOrgSubLeft;
+  if (ws4['F1']) ws4['F1'].s = EXCEL_FORM_STYLES.headerFormCodeRight;
+  if (ws4['F2']) ws4['F2'].s = EXCEL_FORM_STYLES.headerFormCircularRight;
+  if (ws4['A4']) ws4['A4'].s = EXCEL_FORM_STYLES.mainTitle;
 
   for (let c = 0; c <= 5; c++) {
     const ref = getCellAddress(10, c);
-    if (ws4[ref]) ws4[ref].s = EXCEL_STYLES.tableHeader;
+    if (ws4[ref]) ws4[ref].s = EXCEL_FORM_STYLES.tableHeaderBox;
   }
 
   for (let i = 0; i < reportB07.items.length; i++) {
     const r = startIdx4 + i;
     const it = reportB07.items[i];
     const isMajor = it.stt === 'I' || it.stt === 'II' || it.stt === 'III' || it.stt === 'IV';
-    const isOdd = i % 2 === 1;
 
     for (let c = 0; c <= 5; c++) {
       const ref = getCellAddress(r, c);
       if (!ws4[ref]) continue;
       if (isMajor) {
-        ws4[ref].s = EXCEL_STYLES.b07MajorRow;
-        if (c === 4) ws4[ref].s = { ...EXCEL_STYLES.b07MajorRow, numFmt: '#,##0', alignment: { horizontal: 'right', vertical: 'center' } };
+        ws4[ref].s = {
+          font: { name: TNR_FONT, sz: 10.5, bold: true, color: { rgb: '000000' } },
+          border: BORDER_ALL_THIN,
+          alignment: { vertical: 'center', horizontal: c === 4 ? 'right' : c === 0 || c === 2 ? 'center' : 'left' }
+        };
       } else {
-        if (c === 0 || c === 2) ws4[ref].s = EXCEL_STYLES.dataCellCenter(isOdd);
-        else if (c === 1) ws4[ref].s = EXCEL_STYLES.dataCellLeft(isOdd);
-        else ws4[ref].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
+        if (c === 0 || c === 2) ws4[ref].s = EXCEL_FORM_STYLES.dataCenter;
+        else if (c === 1) ws4[ref].s = EXCEL_FORM_STYLES.dataLeft;
+        else ws4[ref].s = EXCEL_FORM_STYLES.dataNumber;
       }
     }
   }
 
-  // Chữ ký ws4
-  if (ws4[getCellAddress(signRowStart4, 1)]) ws4[getCellAddress(signRowStart4, 1)].s = EXCEL_STYLES.signRole;
-  if (ws4[getCellAddress(signRowStart4, 3)]) ws4[getCellAddress(signRowStart4, 3)].s = EXCEL_STYLES.signRole;
-  if (ws4[getCellAddress(signRowStart4, 5)]) ws4[getCellAddress(signRowStart4, 5)].s = EXCEL_STYLES.signRole;
+  if (ws4[getCellAddress(signRowStart4, 1)]) ws4[getCellAddress(signRowStart4, 1)].s = EXCEL_FORM_STYLES.signTitle;
+  if (ws4[getCellAddress(signRowStart4, 3)]) ws4[getCellAddress(signRowStart4, 3)].s = EXCEL_FORM_STYLES.signTitle;
+  if (ws4[getCellAddress(signRowStart4, 5)]) ws4[getCellAddress(signRowStart4, 5)].s = EXCEL_FORM_STYLES.signTitle;
 
-  if (ws4[getCellAddress(signRowStart4 + 1, 1)]) ws4[getCellAddress(signRowStart4 + 1, 1)].s = EXCEL_STYLES.signNote;
-  if (ws4[getCellAddress(signRowStart4 + 1, 3)]) ws4[getCellAddress(signRowStart4 + 1, 3)].s = EXCEL_STYLES.signNote;
-  if (ws4[getCellAddress(signRowStart4 + 1, 5)]) ws4[getCellAddress(signRowStart4 + 1, 5)].s = EXCEL_STYLES.signNote;
+  if (ws4[getCellAddress(signRowStart4 + 1, 1)]) ws4[getCellAddress(signRowStart4 + 1, 1)].s = EXCEL_FORM_STYLES.signSub;
+  if (ws4[getCellAddress(signRowStart4 + 1, 3)]) ws4[getCellAddress(signRowStart4 + 1, 3)].s = EXCEL_FORM_STYLES.signSub;
+  if (ws4[getCellAddress(signRowStart4 + 1, 5)]) ws4[getCellAddress(signRowStart4 + 1, 5)].s = EXCEL_FORM_STYLES.signSub;
 
-  if (ws4[getCellAddress(signRowStart4 + 4, 1)]) ws4[getCellAddress(signRowStart4 + 4, 1)].s = EXCEL_STYLES.signName;
-  if (ws4[getCellAddress(signRowStart4 + 4, 3)]) ws4[getCellAddress(signRowStart4 + 4, 3)].s = EXCEL_STYLES.signName;
-  if (ws4[getCellAddress(signRowStart4 + 4, 5)]) ws4[getCellAddress(signRowStart4 + 4, 5)].s = EXCEL_STYLES.signName;
+  if (ws4[getCellAddress(signRowStart4 + 4, 1)]) ws4[getCellAddress(signRowStart4 + 4, 1)].s = EXCEL_FORM_STYLES.signName;
+  if (ws4[getCellAddress(signRowStart4 + 4, 3)]) ws4[getCellAddress(signRowStart4 + 4, 3)].s = EXCEL_FORM_STYLES.signName;
+  if (ws4[getCellAddress(signRowStart4 + 4, 5)]) ws4[getCellAddress(signRowStart4 + 4, 5)].s = EXCEL_FORM_STYLES.signName;
 
   XLSX.utils.book_append_sheet(wb, ws4, 'QUYET_TOAN_B07_TLD');
 
-  // Lưu file
-  const safeName = clientName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+  // Ghi file Excel
+  const safeName = companyName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
   XLSX.writeFile(wb, `So_Sach_Cong_Doan_${safeName}_${year}.xlsx`);
 }
 
 export function exportSingleExcelSheet(
-  type: 'VOUCHERS' | 'CASH_BOOK' | 'BANK_BOOK' | 'SETTLEMENT_B07',
+  type: 'VOUCHERS' | 'CASH_BOOK' | 'BANK_BOOK' | 'SETTLEMENT_B07' | 'CASH_COUNT',
   transactions: TradeUnionTransaction[],
   client: Client | null,
   year: number,
   filterMonth?: number | 'ALL',
   signers?: UnionSignerSettings | null
 ): void {
-  const wb = XLSX.utils.book_new();
-  const unitTitle = signers?.unitTitle || 'CÔNG ĐOÀN CƠ SỞ';
-  const clientName = signers?.companyName || client?.name || 'CÔNG TY TNHH THIẾT KẾ XÂY DỰNG VÀ THƯƠNG MẠI HƯNG PHÁT';
-  const clientAddress = signers?.companyAddress || client?.address || '153G Lũy Bán Bích, P. Tân Thới Hòa, Q. Tân Phú, TP. HCM';
-  const headName = signers?.headOfUnitName || 'Ngô Thị Bích Ngọc';
-  const accountantName = signers?.accountantName || 'Nguyễn Thị Cẩm Ly';
-  const preparerName = signers?.preparerName || 'Nguyễn Thị Cẩm Ly';
-  const treasurerName = signers?.treasurerName || 'Bùi Xuân Mai Thảo';
-  const safeName = clientName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+  const superiorUnion = 'LIÊN ĐOÀN LAO ĐỘNG TP HỒ CHÍ MINH';
+  const companyName = signers?.companyName || client?.name || 'CTY TNHH TKXD & TM Hưng Phát';
+  const headName = (signers?.headOfUnitName || 'NGÔ THỊ BÍCH NGỌC').toUpperCase();
+  const accountantName = (signers?.accountantName || 'NGUYỄN THỊ CẨM LY').toUpperCase();
+  const preparerName = (signers?.preparerName || 'NGUYỄN THỊ CẨM LY').toUpperCase();
+  const treasurerName = (signers?.treasurerName || 'VÕ THỊ MỘNG THÚY').toUpperCase();
+  const safeName = companyName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
 
-  if (type === 'VOUCHERS') {
+  let openingCash = 438010;
+  let openingBank = 123430;
+  try {
+    const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[year]) {
+        if (typeof parsed[year].cash === 'number') openingCash = parsed[year].cash;
+        if (typeof parsed[year].bank === 'number') openingBank = parsed[year].bank;
+      }
+    }
+  } catch (e) {}
+
+  if (type === 'CASH_BOOK') {
+    const wb = XLSX.utils.book_new();
+    const cashTxs = transactions.filter(t => t.paymentMethod === 'CASH');
+    const ws1: any = {};
+
+    ws1['A1'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+    ws1['A2'] = { v: `Công đoàn cơ sở: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+    ws1['G1'] = { v: 'Mẫu số S11H', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+    ws1['G2'] = { v: '(Ban hành kèm theo Thông tư số 107/2017/TT-BTC', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+    ws1['G3'] = { v: 'ngày 10/10/2017 của Bộ Tài chính)', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+    ws1['E4'] = { v: 'SỔ QUỸ TIỀN MẶT', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+    ws1['E5'] = { v: `NĂM ${year}`, t: 's', s: EXCEL_FORM_STYLES.mainTitleYear };
+
+    ws1['A7'] = { v: 'Ngày tháng\nghi sổ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['B7'] = { v: 'Ngày tháng\nchứng từ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['C7'] = { v: 'SỐ HIỆU CHỨNG TỪ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['C8'] = { v: 'Thu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['D8'] = { v: 'Chi', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['E7'] = { v: 'DIỄN GIẢI', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['F7'] = { v: 'SỐ TIỀN', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['F8'] = { v: 'Thu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['G8'] = { v: 'Chi', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['H8'] = { v: 'Tồn quỹ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws1['I7'] = { v: 'Ghi chú', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+    ws1['A9'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['B9'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['C9'] = { v: 'C', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['D9'] = { v: 'D', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['E9'] = { v: 'E', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['F9'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['G9'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['H9'] = { v: '3', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws1['I9'] = { v: 'G', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+    ws1['A10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1['B10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1['C10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1['D10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws1['E10'] = { v: 'Số dư đầu kỳ', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws1['F10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws1['G10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws1['H10'] = { v: openingCash, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws1['I10'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+
+    let curCash = openingCash;
+    let totalCashThu = 0;
+    let totalCashChi = 0;
+
+    cashTxs.forEach((t, idx) => {
+      const rNum = 11 + idx;
+      const isThu = t.voucherType === 'UNION_RECEIPT';
+      if (isThu) {
+        curCash += t.amount;
+        totalCashThu += t.amount;
+      } else {
+        curCash -= t.amount;
+        totalCashChi += t.amount;
+      }
+
+      ws1[`A${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws1[`B${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws1[`C${rNum}`] = { v: isThu ? t.voucherNo : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws1[`D${rNum}`] = { v: !isThu ? t.voucherNo : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws1[`E${rNum}`] = { v: t.reason, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+      ws1[`F${rNum}`] = isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumberThuYellow } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+      ws1[`G${rNum}`] = !isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+      ws1[`H${rNum}`] = { v: curCash, t: 'n', s: EXCEL_FORM_STYLES.dataNumber };
+      ws1[`I${rNum}`] = { v: t.attachedDocs ? `Kèm ${t.attachedDocs}` : '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    });
+
+    const totalRow1 = 11 + cashTxs.length;
+    ws1[`A${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`B${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`C${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`D${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`E${totalRow1}`] = { v: 'Cộng :', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`F${totalRow1}`] = { v: totalCashThu, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`G${totalRow1}`] = { v: totalCashChi, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`H${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`I${totalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+
+    const finalBalRow1 = totalRow1 + 1;
+    ws1[`A${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`B${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`C${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`D${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`E${finalBalRow1}`] = { v: 'Số dư cuối kỳ', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws1[`F${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`G${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`H${finalBalRow1}`] = { v: curCash, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws1[`I${finalBalRow1}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+
+    const noteRow1 = finalBalRow1 + 1;
+    ws1[`A${noteRow1}`] = { v: '- Sổ này có 01 trang', t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+    ws1[`A${noteRow1 + 1}`] = { v: `- Ngày mở sổ: 01/01/${year}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+    ws1[`G${noteRow1 + 2}`] = { v: `Ngày 31 tháng 12 năm ${year}`, t: 's', s: EXCEL_FORM_STYLES.signDateRight };
+
+    const sigRow1 = noteRow1 + 3;
+    ws1[`B${sigRow1}`] = { v: 'Người lập sổ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws1[`B${sigRow1 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws1[`B${sigRow1 + 6}`] = { v: preparerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws1[`E${sigRow1}`] = { v: 'Phụ trách kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws1[`E${sigRow1 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws1[`E${sigRow1 + 6}`] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws1[`G${sigRow1}`] = { v: 'Chủ Tài Khoản', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws1[`G${sigRow1 + 1}`] = { v: '(Ký, họ tên, đóng dấu)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws1[`G${sigRow1 + 6}`] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws1['!ref'] = `A1:I${sigRow1 + 7}`;
+    ws1['!cols'] = [
+      { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 14 },
+      { wch: 48 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }
+    ];
+    ws1['!merges'] = [
+      { s: { r: 0, c: 6 }, e: { r: 0, c: 8 } },
+      { s: { r: 1, c: 6 }, e: { r: 1, c: 8 } },
+      { s: { r: 2, c: 6 }, e: { r: 2, c: 8 } },
+      { s: { r: 6, c: 0 }, e: { r: 7, c: 0 } },
+      { s: { r: 6, c: 1 }, e: { r: 7, c: 1 } },
+      { s: { r: 6, c: 2 }, e: { r: 6, c: 3 } },
+      { s: { r: 6, c: 4 }, e: { r: 7, c: 4 } },
+      { s: { r: 6, c: 5 }, e: { r: 6, c: 7 } },
+      { s: { r: 6, c: 8 }, e: { r: 7, c: 8 } },
+      { s: { r: noteRow1 + 1, c: 6 }, e: { r: noteRow1 + 1, c: 8 } },
+      { s: { r: sigRow1 - 1, c: 6 }, e: { r: sigRow1 - 1, c: 8 } },
+      { s: { r: sigRow1, c: 6 }, e: { r: sigRow1, c: 8 } },
+      { s: { r: sigRow1 + 5, c: 6 }, e: { r: sigRow1 + 5, c: 8 } },
+    ];
+    ws1['!views'] = [{ state: 'frozen', ySplit: 9, xSplit: 0, activeCell: 'A10' }];
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'SO_TM_2026');
+    XLSX.writeFile(wb, `So_Quy_Tien_Mat_S11H_${safeName}_${year}.xlsx`);
+  } else if (type === 'BANK_BOOK') {
+    const wb = XLSX.utils.book_new();
+    const bankTxs = transactions.filter(t => t.paymentMethod === 'BANK');
+    const ws2: any = {};
+
+    ws2['A1'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+    ws2['A2'] = { v: `Công đoàn cơ sở: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+    ws2['G1'] = { v: 'Mẫu số S12-H', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+    ws2['G2'] = { v: '(Ban hành kèm theo Thông tư số 107/2017/TT-BTC', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+    ws2['G3'] = { v: 'ngày 10/10/2017 của Bộ Tài chính)', t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+    ws2['D5'] = { v: 'SỔ TIỀN GỬI NGÂN HÀNG', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+    ws2['D6'] = { v: `Từ ngày 01/01/${year} đến ngày 31/12/${year}`, t: 's', s: EXCEL_FORM_STYLES.mainTitleYear };
+
+    ws2['A11'] = { v: 'Ngày tháng\nghi sổ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['B11'] = { v: 'Chứng từ', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['B12'] = { v: 'Số hiệu', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['C12'] = { v: 'Ngày tháng', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['D11'] = { v: 'DIỄN GIẢI', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['E11'] = { v: 'SỐ TIỀN', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['E12'] = { v: 'Thu (gửi vào)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['F12'] = { v: 'Chi (rút ra)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['G12'] = { v: 'Còn lại', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws2['H11'] = { v: 'Ghi chú', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+    ws2['A13'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['B13'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['C13'] = { v: 'C', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['D13'] = { v: 'D', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['E13'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['F13'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['G13'] = { v: '3', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws2['H13'] = { v: 'E', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+    ws2['A14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2['B14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2['C14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws2['D14'] = { v: 'Số dư đầu kỳ', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws2['E14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws2['F14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+    ws2['G14'] = { v: openingBank, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws2['H14'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+
+    let curBank = openingBank;
+    let totalBankThu = 0;
+    let totalBankChi = 0;
+
+    bankTxs.forEach((t, idx) => {
+      const rNum = 15 + idx;
+      const isThu = t.voucherType === 'UNION_RECEIPT';
+      if (isThu) {
+        curBank += t.amount;
+        totalBankThu += t.amount;
+      } else {
+        curBank -= t.amount;
+        totalBankChi += t.amount;
+      }
+
+      ws2[`A${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws2[`B${rNum}`] = { v: t.voucherNo, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws2[`C${rNum}`] = { v: t.date, t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws2[`D${rNum}`] = { v: t.reason, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+      ws2[`E${rNum}`] = isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+      ws2[`F${rNum}`] = !isThu ? { v: t.amount, t: 'n', s: EXCEL_FORM_STYLES.dataNumber } : { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+      ws2[`G${rNum}`] = { v: curBank, t: 'n', s: EXCEL_FORM_STYLES.dataNumber };
+      ws2[`H${rNum}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    });
+
+    const totalRow2 = 15 + bankTxs.length;
+    ws2[`A${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`B${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`C${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`D${totalRow2}`] = { v: 'Cộng :', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`E${totalRow2}`] = { v: totalBankThu, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`F${totalRow2}`] = { v: totalBankChi, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`G${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`H${totalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+
+    const finalBalRow2 = totalRow2 + 1;
+    ws2[`A${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`B${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`C${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`D${finalBalRow2}`] = { v: 'Số dư cuối kỳ', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+    ws2[`E${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`F${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`G${finalBalRow2}`] = { v: curBank, t: 'n', s: EXCEL_FORM_STYLES.totalRowNumber };
+    ws2[`H${finalBalRow2}`] = { v: '', t: 's', s: EXCEL_FORM_STYLES.totalRowCenter };
+
+    const noteRow2 = finalBalRow2 + 1;
+    ws2[`A${noteRow2}`] = { v: '- Sổ này có 01 trang', t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+    ws2[`A${noteRow2 + 1}`] = { v: `- Ngày mở sổ: 01/01/${year}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+    ws2['G' + (noteRow2 + 2)] = { v: `Ngày 31 tháng 12 năm ${year}`, t: 's', s: EXCEL_FORM_STYLES.signDateRight };
+
+    const sigRow2 = noteRow2 + 3;
+    ws2[`B${sigRow2}`] = { v: 'Người lập sổ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws2[`B${sigRow2 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws2[`B${sigRow2 + 6}`] = { v: preparerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws2[`D${sigRow2}`] = { v: 'Phụ trách kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws2[`D${sigRow2 + 1}`] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws2[`D${sigRow2 + 6}`] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws2[`G${sigRow2}`] = { v: 'Chủ Tài Khoản', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws2[`G${sigRow2 + 1}`] = { v: '(Ký, họ tên, đóng dấu)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws2[`G${sigRow2 + 6}`] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws2['!ref'] = `A1:H${sigRow2 + 7}`;
+    ws2['!cols'] = [
+      { wch: 13 }, { wch: 14 }, { wch: 13 }, { wch: 48 },
+      { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }
+    ];
+    ws2['!merges'] = [
+      { s: { r: 0, c: 6 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 6 }, e: { r: 1, c: 7 } },
+      { s: { r: 2, c: 6 }, e: { r: 2, c: 7 } },
+      { s: { r: 10, c: 0 }, e: { r: 11, c: 0 } },
+      { s: { r: 10, c: 1 }, e: { r: 10, c: 2 } },
+      { s: { r: 10, c: 3 }, e: { r: 11, c: 3 } },
+      { s: { r: 10, c: 4 }, e: { r: 10, c: 6 } },
+      { s: { r: 10, c: 7 }, e: { r: 11, c: 7 } },
+      { s: { r: noteRow2 + 1, c: 6 }, e: { r: noteRow2 + 1, c: 7 } },
+      { s: { r: sigRow2 - 1, c: 6 }, e: { r: sigRow2 - 1, c: 7 } },
+      { s: { r: sigRow2, c: 6 }, e: { r: sigRow2, c: 7 } },
+      { s: { r: sigRow2 + 5, c: 6 }, e: { r: sigRow2 + 5, c: 7 } },
+    ];
+    ws2['!views'] = [{ state: 'frozen', ySplit: 13, xSplit: 0, activeCell: 'A14' }];
+
+    XLSX.utils.book_append_sheet(wb, ws2, 'SO_NH_2026');
+    XLSX.writeFile(wb, `So_Tien_Gui_NH_S12H_${safeName}_${year}.xlsx`);
+  } else if (type === 'CASH_COUNT') {
+    const wb = XLSX.utils.book_new();
+    const ws3: any = {};
+    const cashTxs = transactions.filter(t => t.paymentMethod === 'CASH');
+    let curCash = openingCash;
+    cashTxs.forEach(t => {
+      if (t.voucherType === 'UNION_RECEIPT') curCash += t.amount;
+      else curCash -= t.amount;
+    });
+
+    ws3['A2'] = { v: superiorUnion, t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+    ws3['A3'] = { v: `CĐCS: ${companyName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['D2'] = { v: 'Mẫu số C34-HD', t: 's', s: EXCEL_FORM_STYLES.headerFormCodeRight };
+
+    ws3['B5'] = { v: 'BIÊN BẢN KIỂM KÊ QUỸ TIỀN MẶT', t: 's', s: EXCEL_FORM_STYLES.mainTitle };
+    ws3['A7'] = { v: `Hôm nay, ngày 31 tháng 12 năm ${year}, vào hồi 13 giờ 30 phút.`, t: 's', s: EXCEL_FORM_STYLES.headerFormCircularRight };
+
+    ws3['A9'] = { v: 'Ban kiểm kê bao gồm:', t: 's', s: EXCEL_FORM_STYLES.headerOrgLeft };
+    ws3['A10'] = { v: `Ông/Bà: ${headName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['C10'] = { v: 'Chủ tịch CĐCS Trưởng Ban', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['A11'] = { v: `Ông/Bà: ${accountantName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['C11'] = { v: 'Kế toán Ủy viên', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['A12'] = { v: `Ông/Bà: ${treasurerName}`, t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+    ws3['C12'] = { v: 'Thủ quỹ', t: 's', s: EXCEL_FORM_STYLES.headerOrgSubLeft };
+
+    ws3['A14'] = { v: 'STT', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws3['B14'] = { v: 'Diễn giải', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws3['C14'] = { v: 'Số lượng (tờ)', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+    ws3['D14'] = { v: 'Số tiền', t: 's', s: EXCEL_FORM_STYLES.tableHeaderBox };
+
+    ws3['A15'] = { v: 'A', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws3['B15'] = { v: 'B', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws3['C15'] = { v: '1', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+    ws3['D15'] = { v: '2', t: 's', s: EXCEL_FORM_STYLES.colSymbolBox };
+
+    let remaining = curCash;
+    const count500k = Math.floor(remaining / 500000); remaining %= 500000;
+    const count200k = Math.floor(remaining / 200000); remaining %= 200000;
+    const count100k = Math.floor(remaining / 100000); remaining %= 100000;
+    const count50k = Math.floor(remaining / 50000); remaining %= 50000;
+    const count20k = Math.floor(remaining / 20000); remaining %= 20000;
+    const count10k = Math.floor(remaining / 10000); remaining %= 10000;
+    const count5k = Math.floor(remaining / 5000); remaining %= 5000;
+    const count2k = Math.floor(remaining / 2000); remaining %= 2000;
+    const count1k = Math.floor(remaining / 1000); remaining %= 1000;
+    const count500 = Math.floor(remaining / 500); remaining %= 500;
+    const actualCountTotal = curCash - remaining;
+
+    ws3['A16'] = { v: 'I', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['B16'] = { v: 'Số dư theo sổ quỹ', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['C16'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3['D16'] = { v: curCash, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+    ws3['A17'] = { v: 'II', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['B17'] = { v: 'Số kiểm kê thực tế', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['C17'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3['D17'] = { v: actualCountTotal, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+    const denominations = [
+      { stt: 1, label: '- Loại 500.000đ', qty: count500k, val: 500000 },
+      { stt: 2, label: '- Loại 200.000đ', qty: count200k, val: 200000 },
+      { stt: 3, label: '- Loại 100.000đ', qty: count100k, val: 100000 },
+      { stt: 4, label: '- Loại 50.000đ', qty: count50k, val: 50000 },
+      { stt: 5, label: '- Loại 20.000đ', qty: count20k, val: 20000 },
+      { stt: 6, label: '- Loại 10.000đ', qty: count10k, val: 10000 },
+      { stt: 7, label: '- Loại 5.000đ', qty: count5k, val: 5000 },
+      { stt: 8, label: '- Loại 2.000đ', qty: count2k, val: 2000 },
+      { stt: 9, label: '- Loại 1.000đ', qty: count1k, val: 1000 },
+      { stt: 10, label: '- Loại 500đ', qty: count500, val: 500 },
+    ];
+
+    denominations.forEach((d, idx) => {
+      const rNum = 18 + idx;
+      ws3[`A${rNum}`] = { v: d.stt, t: 'n', s: EXCEL_FORM_STYLES.dataCenter };
+      ws3[`B${rNum}`] = { v: d.label, t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+      ws3[`C${rNum}`] = { v: d.qty > 0 ? d.qty : '', t: d.qty > 0 ? 'n' : 's', s: EXCEL_FORM_STYLES.dataCenter };
+      ws3[`D${rNum}`] = { v: d.qty > 0 ? d.qty * d.val : '', t: d.qty > 0 ? 'n' : 's', s: EXCEL_FORM_STYLES.dataNumber };
+    });
+
+    ws3['A28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3['B28'] = { v: '- ...', t: 's', s: EXCEL_FORM_STYLES.dataLeft };
+    ws3['C28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3['D28'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataNumber };
+
+    const diff = actualCountTotal - curCash;
+    ws3['A29'] = { v: 'III', t: 's', s: { ...EXCEL_FORM_STYLES.dataCenter, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['B29'] = { v: 'Chênh lệch:', t: 's', s: { ...EXCEL_FORM_STYLES.dataLeft, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+    ws3['C29'] = { v: '', t: 's', s: EXCEL_FORM_STYLES.dataCenter };
+    ws3['D29'] = { v: diff, t: 'n', s: { ...EXCEL_FORM_STYLES.dataNumber, font: { name: TNR_FONT, sz: 10, bold: true, color: { rgb: '000000' } } } };
+
+    ws3['A30'] = { v: `- Lý do: ${diff === 0 ? 'Khớp đúng: 0đ' : diff < 0 ? `Thiếu: ${Math.abs(diff)}đ` : `Thừa: ${diff}đ`}`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+    ws3['A31'] = { v: `- Kết luận sau khi kiểm quỹ: số tiền mặt kiểm tra ${diff === 0 ? 'khớp đúng 100%' : `thừa (thiếu) ${diff}đ`} so với sổ sách do làm tròn số lẻ trong quá trình thu, chi.`, t: 's', s: EXCEL_FORM_STYLES.infoPageNote };
+
+    ws3['A33'] = { v: 'Kế toán', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws3['A34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws3['A37'] = { v: accountantName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws3['C33'] = { v: 'Thủ quỹ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws3['C34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws3['C37'] = { v: treasurerName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws3['D33'] = { v: 'Người chịu trách nhiệm\nkiểm kê quỹ', t: 's', s: EXCEL_FORM_STYLES.signTitle };
+    ws3['D34'] = { v: '(Ký, họ tên)', t: 's', s: EXCEL_FORM_STYLES.signSub };
+    ws3['D37'] = { v: headName, t: 's', s: EXCEL_FORM_STYLES.signName };
+
+    ws3['!ref'] = 'A1:D38';
+    ws3['!cols'] = [{ wch: 8 }, { wch: 38 }, { wch: 18 }, { wch: 22 }];
+    ws3['!merges'] = [
+      { s: { r: 4, c: 1 }, e: { r: 4, c: 3 } },
+      { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } },
+      { s: { r: 29, c: 0 }, e: { r: 29, c: 3 } },
+      { s: { r: 30, c: 0 }, e: { r: 30, c: 3 } },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws3, 'BANG_KIEM_KE_TIEN_MAT');
+    XLSX.writeFile(wb, `Bien_Ban_Kiem_Ke_Quy_TM_${safeName}_${year}.xlsx`);
+  } else if (type === 'VOUCHERS') {
+    const wb = XLSX.utils.book_new();
     let filteredTxs = transactions;
     if (filterMonth && filterMonth !== 'ALL') {
       filteredTxs = transactions.filter(t => {
@@ -2651,8 +3232,8 @@ export function exportSingleExcelSheet(
 
     const titleMonth = filterMonth && filterMonth !== 'ALL' ? `THÁNG ${filterMonth}/${year}` : `NĂM ${year}`;
     const wsData: any[] = [
-      [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', '', '', '', ''],
-      [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '', '', '', ''],
+      [superiorUnion, '', '', '', '', '', '', '', '', '', ''],
+      [`Công đoàn cơ sở: ${companyName}`, '', '', '', '', '', '', '', '', '', ''],
       ['', '', '', '', '', '', '', '', '', '', ''],
       [`BẢNG KÊ DANH SÁCH CHỨNG TỪ THU - CHI CÔNG ĐOÀN ${titleMonth}`, '', '', '', '', '', '', '', '', '', ''],
       ['', '', '', '', '', '', '', '', '', '', ''],
@@ -2707,313 +3288,62 @@ export function exportSingleExcelSheet(
       { wch: 24 }, { wch: 42 }, { wch: 13 }, { wch: 20 }, { wch: 20 }, { wch: 12 }
     ];
 
-    // Styles
-    if (ws['A1']) ws['A1'].s = EXCEL_STYLES.companyTitle;
-    if (ws['A2']) ws['A2'].s = EXCEL_STYLES.companyAddress;
-    if (ws['A4']) ws['A4'].s = EXCEL_STYLES.mainTitleBanner;
+    if (ws['A1']) ws['A1'].s = EXCEL_FORM_STYLES.headerOrgLeft;
+    if (ws['A2']) ws['A2'].s = EXCEL_FORM_STYLES.headerOrgSubLeft;
+    if (ws['A4']) ws['A4'].s = EXCEL_FORM_STYLES.mainTitle;
 
     for (let c = 0; c <= 10; c++) {
       const ref = getCellAddress(5, c);
-      if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeader;
+      if (ws[ref]) ws[ref].s = EXCEL_FORM_STYLES.tableHeaderBox;
     }
 
     for (let i = 0; i < filteredTxs.length; i++) {
       const r = startRow + i;
-      const isOdd = i % 2 === 1;
-      if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 2)]) ws[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-      if (ws[getCellAddress(r, 3)]) ws[getCellAddress(r, 3)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 4)]) ws[getCellAddress(r, 4)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-      if (ws[getCellAddress(r, 5)]) ws[getCellAddress(r, 5)].s = EXCEL_STYLES.dataCellLeft(isOdd, true);
-      if (ws[getCellAddress(r, 6)]) ws[getCellAddress(r, 6)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-      if (ws[getCellAddress(r, 7)]) ws[getCellAddress(r, 7)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 8)]) ws[getCellAddress(r, 8)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-      if (ws[getCellAddress(r, 9)]) ws[getCellAddress(r, 9)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-      if (ws[getCellAddress(r, 10)]) ws[getCellAddress(r, 10)].s = EXCEL_STYLES.dataCellCenter(isOdd);
+      if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_FORM_STYLES.dataCenter;
+      if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_FORM_STYLES.dataCenter;
+      if (ws[getCellAddress(r, 2)]) ws[getCellAddress(r, 2)].s = EXCEL_FORM_STYLES.dataCenter;
+      if (ws[getCellAddress(r, 3)]) ws[getCellAddress(r, 3)].s = EXCEL_FORM_STYLES.dataCenter;
+      if (ws[getCellAddress(r, 4)]) ws[getCellAddress(r, 4)].s = EXCEL_FORM_STYLES.dataLeft;
+      if (ws[getCellAddress(r, 5)]) ws[getCellAddress(r, 5)].s = EXCEL_FORM_STYLES.dataLeft;
+      if (ws[getCellAddress(r, 6)]) ws[getCellAddress(r, 6)].s = EXCEL_FORM_STYLES.dataLeft;
+      if (ws[getCellAddress(r, 7)]) ws[getCellAddress(r, 7)].s = EXCEL_FORM_STYLES.dataCenter;
+      if (ws[getCellAddress(r, 8)]) ws[getCellAddress(r, 8)].s = EXCEL_FORM_STYLES.dataNumber;
+      if (ws[getCellAddress(r, 9)]) ws[getCellAddress(r, 9)].s = EXCEL_FORM_STYLES.dataNumber;
+      if (ws[getCellAddress(r, 10)]) ws[getCellAddress(r, 10)].s = EXCEL_FORM_STYLES.dataCenter;
     }
 
     for (let c = 0; c <= 10; c++) {
       const ref = getCellAddress(totalRowIdx, c);
-      if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowLabel; }
-      else if (c === 8) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-      else if (c === 9) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-      else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowEmpty; }
+      if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_FORM_STYLES.totalRowCenter; }
+      else if (c === 8 || c === 9) { if (ws[ref]) ws[ref].s = EXCEL_FORM_STYLES.totalRowNumber; }
+      else { if (ws[ref]) ws[ref].s = EXCEL_FORM_STYLES.totalRowCenter; }
 
       const refB = getCellAddress(balanceRowIdx, c);
-      if (c === 6) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowLabel; }
-      else if (c === 8) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowAmount; }
-      else { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowEmpty; }
+      if (c === 6) { if (ws[refB]) ws[refB].s = EXCEL_FORM_STYLES.totalRowCenter; }
+      else if (c === 8) { if (ws[refB]) ws[refB].s = EXCEL_FORM_STYLES.totalRowNumber; }
+      else { if (ws[refB]) ws[refB].s = EXCEL_FORM_STYLES.totalRowCenter; }
     }
 
-    // Chữ ký
-    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 4)]) ws[getCellAddress(signRowStart, 4)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 8)]) ws[getCellAddress(signRowStart, 8)].s = EXCEL_STYLES.signRole;
+    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_FORM_STYLES.signTitle;
+    if (ws[getCellAddress(signRowStart, 4)]) ws[getCellAddress(signRowStart, 4)].s = EXCEL_FORM_STYLES.signTitle;
+    if (ws[getCellAddress(signRowStart, 8)]) ws[getCellAddress(signRowStart, 8)].s = EXCEL_FORM_STYLES.signTitle;
 
-    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 4)]) ws[getCellAddress(signRowStart + 1, 4)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 8)]) ws[getCellAddress(signRowStart + 1, 8)].s = EXCEL_STYLES.signNote;
+    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_FORM_STYLES.signSub;
+    if (ws[getCellAddress(signRowStart + 1, 4)]) ws[getCellAddress(signRowStart + 1, 4)].s = EXCEL_FORM_STYLES.signSub;
+    if (ws[getCellAddress(signRowStart + 1, 8)]) ws[getCellAddress(signRowStart + 1, 8)].s = EXCEL_FORM_STYLES.signSub;
 
-    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 4)]) ws[getCellAddress(signRowStart + 4, 4)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 8)]) ws[getCellAddress(signRowStart + 4, 8)].s = EXCEL_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_FORM_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 4)]) ws[getCellAddress(signRowStart + 4, 4)].s = EXCEL_FORM_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 8)]) ws[getCellAddress(signRowStart + 4, 8)].s = EXCEL_FORM_STYLES.signName;
 
     XLSX.utils.book_append_sheet(wb, ws, 'DANH_SACH_THU_CHI');
     XLSX.writeFile(wb, `Danh_Sach_Thu_Chi_${safeName}_${year}${filterMonth && filterMonth !== 'ALL' ? `_T${filterMonth}` : ''}.xlsx`);
-  } else if (type === 'CASH_BOOK') {
-    const cashTxs = transactions.filter(t => t.paymentMethod === 'CASH');
-    let openingCash = 0;
-    try {
-      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed[year]) openingCash = parsed[year].cash || 0;
-      }
-    } catch (e) {}
-
-    const wsData: any[] = [
-      [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', 'Mẫu số: S11H'],
-      [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
-      ['', '', '', '', '', '', '', ''],
-      [`SỔ QUỸ TIỀN MẶT CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', '', ''],
-      ['Tài khoản tiền mặt: TK 1111', '', '', '', '', '', '', ''],
-      ['STT', 'Ngày Tháng', 'Số Phiếu Thu', 'Số Phiếu Chi', 'Họ Tên & Diễn Giải Nghiệp Vụ', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Tồn Quỹ (VNĐ)'],
-      ['', '', '', '', 'Số dư đầu kỳ', '', '', openingCash]
-    ];
-
-    let runningCash = openingCash;
-    let totalCashThu = 0;
-    let totalCashChi = 0;
-
-    cashTxs.forEach((t, idx) => {
-      const isThu = t.voucherType === 'UNION_RECEIPT';
-      if (isThu) {
-        runningCash += t.amount;
-        totalCashThu += t.amount;
-      } else {
-        runningCash -= t.amount;
-        totalCashChi += t.amount;
-      }
-      wsData.push([
-        idx + 1,
-        t.date,
-        isThu ? t.voucherNo : '',
-        !isThu ? t.voucherNo : '',
-        `${t.reason} - ${t.personName}`,
-        isThu ? t.amount : 0,
-        !isThu ? t.amount : 0,
-        runningCash
-      ]);
-    });
-
-    const totalRowIdx = wsData.length;
-    wsData.push(['', '', '', '', 'CỘNG PHÁT SINH:', totalCashThu, totalCashChi, '']);
-    const balanceRowIdx = wsData.length;
-    wsData.push(['', '', '', '', 'SỐ DƯ CUỐI KỲ:', '', '', runningCash]);
-    wsData.push(['', '', '', '', '', '', '', '']);
-
-    const signRowStart = wsData.length;
-    wsData.push(['', 'THỦ QUỸ CÔNG ĐOÀN', '', 'KẾ TOÁN CÔNG ĐOÀN', '', '', 'CHỦ TỊCH CĐCS', '']);
-    wsData.push(['', '(Ký, họ tên)', '', '(Ký, họ tên)', '', '', '(Ký, họ tên, đóng dấu)', '']);
-    wsData.push(['', '', '', '', '', '', '', '']);
-    wsData.push(['', '', '', '', '', '', '', '']);
-    wsData.push(['', treasurerName, '', accountantName, '', '', headName, '']);
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
-      { s: { r: 4, c: 0 }, e: { r: 4, c: 7 } }
-    ];
-    ws['!cols'] = [
-      { wch: 6 }, { wch: 13 }, { wch: 16 }, { wch: 16 }, { wch: 45 }, { wch: 20 }, { wch: 20 }, { wch: 22 }
-    ];
-
-    if (ws['A1']) ws['A1'].s = EXCEL_STYLES.companyTitle;
-    if (ws['A2']) ws['A2'].s = EXCEL_STYLES.companyAddress;
-    if (ws['H1']) ws['H1'].s = EXCEL_STYLES.formCode;
-    if (ws['H2']) ws['H2'].s = EXCEL_STYLES.formSubCode;
-    if (ws['A4']) ws['A4'].s = EXCEL_STYLES.mainTitleBanner;
-    if (ws['A5']) ws['A5'].s = EXCEL_STYLES.subTitle;
-
-    for (let c = 0; c <= 7; c++) {
-      const ref = getCellAddress(5, c);
-      if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeaderTeal;
-    }
-
-    // Dòng số dư đầu kỳ
-    for (let c = 0; c <= 7; c++) {
-      const ref = getCellAddress(6, c);
-      if (c === 4) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowLabel; }
-      else if (c === 7) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowAmount; }
-      else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowEmpty; }
-    }
-
-    for (let i = 0; i < cashTxs.length; i++) {
-      const r = 7 + i;
-      const isOdd = i % 2 === 1;
-      if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 2)]) ws[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-      if (ws[getCellAddress(r, 3)]) ws[getCellAddress(r, 3)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-      if (ws[getCellAddress(r, 4)]) ws[getCellAddress(r, 4)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-      if (ws[getCellAddress(r, 5)]) ws[getCellAddress(r, 5)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-      if (ws[getCellAddress(r, 6)]) ws[getCellAddress(r, 6)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-      if (ws[getCellAddress(r, 7)]) ws[getCellAddress(r, 7)].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
-    }
-
-    for (let c = 0; c <= 7; c++) {
-      const ref = getCellAddress(totalRowIdx, c);
-      if (c === 4) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowLabel; }
-      else if (c === 5) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-      else if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-      else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowEmpty; }
-
-      const refB = getCellAddress(balanceRowIdx, c);
-      if (c === 4) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowLabel; }
-      else if (c === 7) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowAmount; }
-      else { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowEmpty; }
-    }
-
-    // Chữ ký
-    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 3)]) ws[getCellAddress(signRowStart, 3)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 6)]) ws[getCellAddress(signRowStart, 6)].s = EXCEL_STYLES.signRole;
-
-    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 3)]) ws[getCellAddress(signRowStart + 1, 3)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 6)]) ws[getCellAddress(signRowStart + 1, 6)].s = EXCEL_STYLES.signNote;
-
-    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 3)]) ws[getCellAddress(signRowStart + 4, 3)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 6)]) ws[getCellAddress(signRowStart + 4, 6)].s = EXCEL_STYLES.signName;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'SO_QUY_TIEN_MAT_S11H');
-    XLSX.writeFile(wb, `So_Quy_Tien_Mat_S11H_${safeName}_${year}.xlsx`);
-  } else if (type === 'BANK_BOOK') {
-    const bankTxs = transactions.filter(t => t.paymentMethod === 'BANK');
-    let openingBank = 0;
-    try {
-      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed[year]) openingBank = parsed[year].bank || 0;
-      }
-    } catch (e) {}
-
-    const wsData: any[] = [
-      [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', 'Mẫu số: S12-H'],
-      [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
-      ['', '', '', '', '', '', ''],
-      [`SỔ TIỀN GỬI NGÂN HÀNG CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', ''],
-      ['Tài khoản tiền gửi: TK 1121', '', '', '', '', '', ''],
-      ['STT', 'Ngày Tháng', 'Số Chứng Từ / UNC', 'Nội Dung Giao Dịch', 'Gửi Vào / Thu (VNĐ)', 'Rút Ra / Chi (VNĐ)', 'Số Dư Cuối (VNĐ)'],
-      ['', '', '', 'Số dư đầu kỳ', '', '', openingBank]
-    ];
-
-    let runningBank = openingBank;
-    let totalBankThu = 0;
-    let totalBankChi = 0;
-
-    bankTxs.forEach((t, idx) => {
-      const isThu = t.voucherType === 'UNION_RECEIPT';
-      if (isThu) {
-        runningBank += t.amount;
-        totalBankThu += t.amount;
-      } else {
-        runningBank -= t.amount;
-        totalBankChi += t.amount;
-      }
-      wsData.push([
-        idx + 1,
-        t.date,
-        t.voucherNo,
-        `${t.reason} - ${t.personName}`,
-        isThu ? t.amount : 0,
-        !isThu ? t.amount : 0,
-        runningBank
-      ]);
-    });
-
-    const totalRowIdx = wsData.length;
-    wsData.push(['', '', '', 'CỘNG PHÁT SINH:', totalBankThu, totalBankChi, '']);
-    const balanceRowIdx = wsData.length;
-    wsData.push(['', '', '', 'SỐ DƯ CUỐI KỲ:', '', '', runningBank]);
-    wsData.push(['', '', '', '', '', '', '']);
-
-    const signRowStart = wsData.length;
-    wsData.push(['', 'NGƯỜI LẬP BIỂU', '', 'KẾ TOÁN CÔNG ĐOÀN', '', 'CHỦ TỊCH CĐCS', '']);
-    wsData.push(['', '(Ký, họ tên)', '', '(Ký, họ tên)', '', '(Ký, họ tên, đóng dấu)', '']);
-    wsData.push(['', '', '', '', '', '', '']);
-    wsData.push(['', '', '', '', '', '', '']);
-    wsData.push(['', preparerName, '', accountantName, '', headName, '']);
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
-      { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } }
-    ];
-    ws['!cols'] = [
-      { wch: 6 }, { wch: 13 }, { wch: 20 }, { wch: 45 }, { wch: 20 }, { wch: 20 }, { wch: 22 }
-    ];
-
-    if (ws['A1']) ws['A1'].s = EXCEL_STYLES.companyTitle;
-    if (ws['A2']) ws['A2'].s = EXCEL_STYLES.companyAddress;
-    if (ws['G1']) ws['G1'].s = EXCEL_STYLES.formCode;
-    if (ws['G2']) ws['G2'].s = EXCEL_STYLES.formSubCode;
-    if (ws['A4']) ws['A4'].s = EXCEL_STYLES.mainTitleBanner;
-    if (ws['A5']) ws['A5'].s = EXCEL_STYLES.subTitle;
-
-    for (let c = 0; c <= 6; c++) {
-      const ref = getCellAddress(5, c);
-      if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeader;
-    }
-
-    for (let i = 0; i < bankTxs.length; i++) {
-      const r = 6 + i;
-      const isOdd = i % 2 === 1;
-      if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
-      if (ws[getCellAddress(r, 2)]) ws[getCellAddress(r, 2)].s = EXCEL_STYLES.dataVoucherCode(isOdd);
-      if (ws[getCellAddress(r, 3)]) ws[getCellAddress(r, 3)].s = EXCEL_STYLES.dataCellLeft(isOdd);
-      if (ws[getCellAddress(r, 4)]) ws[getCellAddress(r, 4)].s = EXCEL_STYLES.dataAmountThu(isOdd);
-      if (ws[getCellAddress(r, 5)]) ws[getCellAddress(r, 5)].s = EXCEL_STYLES.dataAmountChi(isOdd);
-      if (ws[getCellAddress(r, 6)]) ws[getCellAddress(r, 6)].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
-    }
-
-    for (let c = 0; c <= 6; c++) {
-      const ref = getCellAddress(totalRowIdx, c);
-      if (c === 3) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowLabel; }
-      else if (c === 4) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountThu; }
-      else if (c === 5) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-      else if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowAmount; }
-      else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowEmpty; }
-    }
-
-    // Chữ ký
-    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 3)]) ws[getCellAddress(signRowStart, 3)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 5)]) ws[getCellAddress(signRowStart, 5)].s = EXCEL_STYLES.signRole;
-
-    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 3)]) ws[getCellAddress(signRowStart + 1, 3)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 5)]) ws[getCellAddress(signRowStart + 1, 5)].s = EXCEL_STYLES.signNote;
-
-    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 3)]) ws[getCellAddress(signRowStart + 4, 3)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 5)]) ws[getCellAddress(signRowStart + 4, 5)].s = EXCEL_STYLES.signName;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'SO_TIEN_GUI_NH_S12H');
-    XLSX.writeFile(wb, `So_Tien_Gui_NH_S12H_${safeName}_${year}.xlsx`);
   } else if (type === 'SETTLEMENT_B07') {
+    const wb = XLSX.utils.book_new();
     const reportB07 = computeSettlementReportB07(transactions, client, year);
     const wsData: any[] = [
-      ['LIÊN ĐOÀN LAO ĐỘNG QUẬN / HUYỆN', '', '', '', '', 'Mẫu số: B07-TLĐ'],
-      [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '(Theo Hướng dẫn 47/HD-TLĐ)'],
+      [superiorUnion, '', '', '', '', 'Mẫu số: B07-TLĐ'],
+      [`Công đoàn cơ sở: ${companyName}`, '', '', '', '', '(Theo Hướng dẫn 47/HD-TLĐ)'],
       ['', '', '', '', '', ''],
       [`BÁO CÁO QUYẾT TOÁN THU, CHI TÀI CHÍNH CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', ''],
       ['', '', '', '', '', ''],
@@ -3060,49 +3390,50 @@ export function exportSingleExcelSheet(
       { wch: 8 }, { wch: 55 }, { wch: 14 }, { wch: 22 }, { wch: 22 }, { wch: 22 }
     ];
 
-    if (ws['A1']) ws['A1'].s = EXCEL_STYLES.companyTitle;
-    if (ws['A2']) ws['A2'].s = EXCEL_STYLES.companyTitle;
-    if (ws['F1']) ws['F1'].s = EXCEL_STYLES.formCode;
-    if (ws['F2']) ws['F2'].s = EXCEL_STYLES.formSubCode;
-    if (ws['A4']) ws['A4'].s = EXCEL_STYLES.mainTitleBanner;
+    if (ws['A1']) ws['A1'].s = EXCEL_FORM_STYLES.headerOrgLeft;
+    if (ws['A2']) ws['A2'].s = EXCEL_FORM_STYLES.headerOrgSubLeft;
+    if (ws['F1']) ws['F1'].s = EXCEL_FORM_STYLES.headerFormCodeRight;
+    if (ws['F2']) ws['F2'].s = EXCEL_FORM_STYLES.headerFormCircularRight;
+    if (ws['A4']) ws['A4'].s = EXCEL_FORM_STYLES.mainTitle;
 
     for (let c = 0; c <= 5; c++) {
       const ref = getCellAddress(10, c);
-      if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeader;
+      if (ws[ref]) ws[ref].s = EXCEL_FORM_STYLES.tableHeaderBox;
     }
 
     for (let i = 0; i < reportB07.items.length; i++) {
       const r = startIdx + i;
       const it = reportB07.items[i];
       const isMajor = it.stt === 'I' || it.stt === 'II' || it.stt === 'III' || it.stt === 'IV';
-      const isOdd = i % 2 === 1;
 
       for (let c = 0; c <= 5; c++) {
         const ref = getCellAddress(r, c);
         if (!ws[ref]) continue;
         if (isMajor) {
-          ws[ref].s = EXCEL_STYLES.b07MajorRow;
-          if (c === 4) ws[ref].s = { ...EXCEL_STYLES.b07MajorRow, numFmt: '#,##0', alignment: { horizontal: 'right', vertical: 'center' } };
+          ws[ref].s = {
+            font: { name: TNR_FONT, sz: 10.5, bold: true, color: { rgb: '000000' } },
+            border: BORDER_ALL_THIN,
+            alignment: { vertical: 'center', horizontal: c === 4 ? 'right' : c === 0 || c === 2 ? 'center' : 'left' }
+          };
         } else {
-          if (c === 0 || c === 2) ws[ref].s = EXCEL_STYLES.dataCellCenter(isOdd);
-          else if (c === 1) ws[ref].s = EXCEL_STYLES.dataCellLeft(isOdd);
-          else ws[ref].s = EXCEL_STYLES.dataAmountNeutral(isOdd);
+          if (c === 0 || c === 2) ws[ref].s = EXCEL_FORM_STYLES.dataCenter;
+          else if (c === 1) ws[ref].s = EXCEL_FORM_STYLES.dataLeft;
+          else ws[ref].s = EXCEL_FORM_STYLES.dataNumber;
         }
       }
     }
 
-    // Chữ ký
-    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 3)]) ws[getCellAddress(signRowStart, 3)].s = EXCEL_STYLES.signRole;
-    if (ws[getCellAddress(signRowStart, 5)]) ws[getCellAddress(signRowStart, 5)].s = EXCEL_STYLES.signRole;
+    if (ws[getCellAddress(signRowStart, 1)]) ws[getCellAddress(signRowStart, 1)].s = EXCEL_FORM_STYLES.signTitle;
+    if (ws[getCellAddress(signRowStart, 3)]) ws[getCellAddress(signRowStart, 3)].s = EXCEL_FORM_STYLES.signTitle;
+    if (ws[getCellAddress(signRowStart, 5)]) ws[getCellAddress(signRowStart, 5)].s = EXCEL_FORM_STYLES.signTitle;
 
-    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 3)]) ws[getCellAddress(signRowStart + 1, 3)].s = EXCEL_STYLES.signNote;
-    if (ws[getCellAddress(signRowStart + 1, 5)]) ws[getCellAddress(signRowStart + 1, 5)].s = EXCEL_STYLES.signNote;
+    if (ws[getCellAddress(signRowStart + 1, 1)]) ws[getCellAddress(signRowStart + 1, 1)].s = EXCEL_FORM_STYLES.signSub;
+    if (ws[getCellAddress(signRowStart + 1, 3)]) ws[getCellAddress(signRowStart + 1, 3)].s = EXCEL_FORM_STYLES.signSub;
+    if (ws[getCellAddress(signRowStart + 1, 5)]) ws[getCellAddress(signRowStart + 1, 5)].s = EXCEL_FORM_STYLES.signSub;
 
-    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 3)]) ws[getCellAddress(signRowStart + 4, 3)].s = EXCEL_STYLES.signName;
-    if (ws[getCellAddress(signRowStart + 4, 5)]) ws[getCellAddress(signRowStart + 4, 5)].s = EXCEL_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 1)]) ws[getCellAddress(signRowStart + 4, 1)].s = EXCEL_FORM_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 3)]) ws[getCellAddress(signRowStart + 4, 3)].s = EXCEL_FORM_STYLES.signName;
+    if (ws[getCellAddress(signRowStart + 4, 5)]) ws[getCellAddress(signRowStart + 4, 5)].s = EXCEL_FORM_STYLES.signName;
 
     XLSX.utils.book_append_sheet(wb, ws, 'QUYET_TOAN_B07_TLD');
     XLSX.writeFile(wb, `Bao_Cao_Quyet_Toan_B07_${safeName}_${year}.xlsx`);

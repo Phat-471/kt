@@ -847,7 +847,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               <div className="text-sm font-extrabold tracking-wide text-slate-900 flex items-center gap-2">
                 <span>HƯNG PHÁT BLUEPRINT HUB</span>
                 <span className="px-2 py-0.2 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-[10px] font-mono font-bold">
-                  v1.3.0
+                  v1.3.2
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
