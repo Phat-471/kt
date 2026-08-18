@@ -33,7 +33,9 @@ interface ReleaseInfo {
   sizeBytes?: number;
 }
 
-export const CURRENT_APP_VERSION = 'v1.3.4';
+import { APP_VERSION } from '../../constants/version';
+
+export const CURRENT_APP_VERSION = APP_VERSION;
 const GITHUB_REPO = 'Phat-471/kt';
 
 declare global {

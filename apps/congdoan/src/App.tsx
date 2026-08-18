@@ -38,6 +38,7 @@ import {
   Compass
 } from 'lucide-react';
 import { PageHeader, StatCard, SubTabNav, BaseModal, TabItem } from './components/common';
+import { APP_VERSION, APP_NAME } from './constants/version';
 import { formatNumber } from './utils/formatters';
 import {
   calculateTradeUnionContribution,
@@ -777,9 +778,9 @@ export default function App() {
           </div>
           <div>
             <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <span className="font-black tracking-tight text-blue-950 text-base">KTCD HP</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
-                PRO v1.3.4
+              <span className="font-black tracking-tight text-blue-950 text-base">{APP_NAME}</span>
+              <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-mono">
+                PRO {APP_VERSION}
               </span>
             </div>
             <div className="text-xs text-slate-500">Kế toán Tài chính Công Đoàn & Quản trị Hồ sơ Hưng Phát</div>
@@ -794,7 +795,7 @@ export default function App() {
             title="Kiểm tra phiên bản & Cập nhật phần mềm"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-            <span>v1.3.2 (Cập Nhật)</span>
+            <span className="font-mono">{APP_VERSION} (Cập Nhật)</span>
           </button>
 
           {/* Nút Chuyển Sang Phân Hệ Bản Vẽ (Demo) */}
