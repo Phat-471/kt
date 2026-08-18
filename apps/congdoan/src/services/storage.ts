@@ -77,6 +77,9 @@ export interface UnionBackupPackage {
   signerSettings: UnionSignerSettings[];
   contributionPeriods: TradeUnionContributionPeriod[];
   openingBalances?: UnionOpeningBalance[];
+  drawingProjects?: DrawingProject[];
+  drawingCompanies?: DrawingCompany[];
+  drawings?: DrawingItem[];
 }
 
 export async function exportUnionBackupJSON(): Promise<void> {
@@ -85,22 +88,28 @@ export async function exportUnionBackupJSON(): Promise<void> {
   const signerSettings = await db.unionSignerSettings.toArray();
   const contributionPeriods = await db.unionContributionPeriods.toArray();
   const openingBalances = await db.unionOpeningBalances.toArray();
+  const drawingProjects = await db.drawingProjects.toArray();
+  const drawingCompanies = await db.drawingCompanies.toArray();
+  const drawings = await db.drawings.toArray();
 
   const backupPkg: UnionBackupPackage = {
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     transactions,
     employees,
     signerSettings,
     contributionPeriods,
     openingBalances,
+    drawingProjects,
+    drawingCompanies,
+    drawings,
   };
 
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPkg, null, 2));
   const downloadAnchor = document.createElement('a');
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `SaoLuu_KeToan_CongDoan_${dateStr}.json`);
+  downloadAnchor.setAttribute("download", `SaoLuu_ToanHeThong_KeToan_BanVe_${dateStr}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
@@ -115,7 +124,16 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
       throw new Error('Định dạng file sao lưu không hợp lệ.');
     }
 
-    await db.transaction('rw', [db.unionTransactions, db.unionEmployees, db.unionSignerSettings, db.unionContributionPeriods, db.unionOpeningBalances], async () => {
+    await db.transaction('rw', [
+      db.unionTransactions, 
+      db.unionEmployees, 
+      db.unionSignerSettings, 
+      db.unionContributionPeriods, 
+      db.unionOpeningBalances,
+      db.drawingProjects,
+      db.drawingCompanies,
+      db.drawings
+    ], async () => {
       if (pkg.transactions.length > 0) {
         await db.unionTransactions.clear();
         await db.unionTransactions.bulkPut(pkg.transactions);
@@ -136,14 +154,26 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
         await db.unionOpeningBalances.clear();
         await db.unionOpeningBalances.bulkPut(pkg.openingBalances);
       }
+      if (pkg.drawingProjects && pkg.drawingProjects.length > 0) {
+        await db.drawingProjects.clear();
+        await db.drawingProjects.bulkPut(pkg.drawingProjects);
+      }
+      if (pkg.drawingCompanies && pkg.drawingCompanies.length > 0) {
+        await db.drawingCompanies.clear();
+        await db.drawingCompanies.bulkPut(pkg.drawingCompanies);
+      }
+      if (pkg.drawings && pkg.drawings.length > 0) {
+        await db.drawings.clear();
+        await db.drawings.bulkPut(pkg.drawings);
+      }
     });
 
     return { 
       success: true, 
-      message: `Khôi phục thành công: ${pkg.transactions.length} phiếu thu/chi, ${pkg.employees?.length || 0} nhân viên, ${pkg.contributionPeriods?.length || 0} bảng trích nộp tháng, ${pkg.openingBalances?.length || 0} số dư đầu kỳ!` 
+      message: `Khôi phục thành công: ${pkg.transactions.length} chứng từ, ${pkg.employees?.length || 0} nhân viên, ${pkg.drawings?.length || 0} bản vẽ kỹ thuật.` 
     };
   } catch (err: any) {
-    return { success: false, message: `Lỗi khôi phục: ${err?.message || 'File lỗi'}` };
+    return { success: false, message: `Lỗi đọc file sao lưu: ${err.message}` };
   }
 }
 

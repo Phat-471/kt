@@ -1,5 +1,5 @@
 ; =========================================================================
-; NSIS INSTALLER SCRIPT FOR KE TOAN CONG DOAN (v1.3.2)
+; NSIS INSTALLER SCRIPT FOR KE TOAN CONG DOAN (v1.3.3)
 ; =========================================================================
 
 Unicode true
@@ -9,7 +9,7 @@ Unicode true
 
 ; General Settings
 Name "Ke Toan Tai Chinh Cong Doan"
-OutFile "release\KeToanCongDoan-Setup-v1.3.2.exe"
+OutFile "release\KeToanCongDoan-Setup-v1.3.3.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user
@@ -62,7 +62,7 @@ Section "KeToanCongDoan (required)" SecCore
 
   ; Write registry keys for install directory & Add/Remove Programs
   WriteRegStr HKCU "Software\KeToanCongDoan" "Install_Dir" "$INSTDIR"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayName" "Phan Mem Ke Toan Tai Chinh Cong Doan"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayName" "Ke Toan Tai Chinh"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayIcon" "$INSTDIR\KeToanCongDoan.exe,0"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.3.2"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "Publisher" "Cong Doan Co So"

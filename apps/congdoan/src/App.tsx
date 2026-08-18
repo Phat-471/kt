@@ -37,8 +37,7 @@ import {
   X,
   Compass
 } from 'lucide-react';
-import { DrawingsManagerView } from './components/drawings/DrawingsManagerView';
-import { PageHeader, StatCard, SubTabNav, BaseModal, TabItem, FeedbackModal, UpdateCheckerModal } from './components/common';
+import { PageHeader, StatCard, SubTabNav, BaseModal, TabItem } from './components/common';
 import { formatNumber } from './utils/formatters';
 import {
   calculateTradeUnionContribution,
@@ -56,13 +55,38 @@ import {
   computeSettlementReportB07
 } from './services/tradeUnionService';
 
-// Import 7 Phân Hệ
-import {
-  ContributionFeeTab,
-  VouchersTab,
-  ReportsAndBooksTab,
-  SettingsTab
-} from './components/union';
+// Tab Mặc Định (Thu / Chi) tải tức thì
+import { VouchersTab } from './components/union/VouchersTab';
+
+// Dynamic Lazy Load các Module nặng (Chỉ nạp vào RAM khi người dùng click tới)
+const DrawingsManagerView = React.lazy(() =>
+  import('./components/drawings/DrawingsManagerView').then(m => ({ default: m.DrawingsManagerView }))
+);
+const ContributionFeeTab = React.lazy(() =>
+  import('./components/union/ContributionFeeTab').then(m => ({ default: m.ContributionFeeTab }))
+);
+const ReportsAndBooksTab = React.lazy(() =>
+  import('./components/union/ReportsAndBooksTab').then(m => ({ default: m.ReportsAndBooksTab }))
+);
+const SettingsTab = React.lazy(() =>
+  import('./components/union/SettingsTab').then(m => ({ default: m.SettingsTab }))
+);
+const FeedbackModal = React.lazy(() =>
+  import('./components/common/FeedbackModal').then(m => ({ default: m.FeedbackModal }))
+);
+const UpdateCheckerModal = React.lazy(() =>
+  import('./components/common/UpdateCheckerModal').then(m => ({ default: m.UpdateCheckerModal }))
+);
+
+// Component Loading Fallback siêu nhẹ
+const LazyLoadingFallback = () => (
+  <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[300px]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs font-semibold text-slate-500 animate-pulse">Đang nạp phân hệ...</span>
+    </div>
+  </div>
+);
 
 export type TradeUnionFeatureTab =
   | 'VOUCHERS'
@@ -297,6 +321,21 @@ export default function App() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
   };
 
+  // Auto-Save Draft khi người dùng đang nhập form tạo mới
+  useEffect(() => {
+    if (isModalOpen && !editingItem && formData.personName) {
+      try {
+        localStorage.setItem('ACCODESK_UNION_VOUCHER_DRAFT', JSON.stringify({ modalType, formData }));
+      } catch (e) {}
+    }
+  }, [isModalOpen, editingItem, formData, modalType]);
+
+  const clearVoucherDraft = () => {
+    try {
+      localStorage.removeItem('ACCODESK_UNION_VOUCHER_DRAFT');
+    } catch (e) {}
+  };
+
   const handleOpenAddModal = (type: TradeUnionVoucherType) => {
     setEditingItem(null);
     setModalType(type);
@@ -310,19 +349,37 @@ export default function App() {
     const initialReason = type === 'UNION_RECEIPT' ? `Thu đoàn phí công đoàn tháng ${m}` : `Chi chăm lo, thăm hỏi đoàn viên`;
 
     setBaseReasonText(initialReason);
-    setFormData({
-      voucherType: type,
-      voucherNo: defaultVoucherNo,
-      date: dateStr,
-      category: type === 'UNION_RECEIPT' ? 'DOAN_PHI_1_PERCENT' : 'THAM_HOI_OM_DAU',
-      personName: '',
-      department: 'Ban Chấp Hành CĐCS',
-      reason: initialReason,
-      amount: type === 'UNION_RECEIPT' ? 943355 : 300000,
-      paymentMethod: 'CASH',
-      attachedDocs: '01',
-      notes: `Tháng ${m}/${selectedYear}`,
-    });
+
+    // Kiểm tra nếu có bản nháp đang nhập dở
+    let restoredDraft: any = null;
+    try {
+      const savedDraft = localStorage.getItem('ACCODESK_UNION_VOUCHER_DRAFT');
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.modalType === type && parsed.formData?.personName) {
+          restoredDraft = parsed.formData;
+        }
+      }
+    } catch (e) {}
+
+    if (restoredDraft) {
+      setFormData(restoredDraft);
+      setNotification({ message: 'Đã tự động khôi phục bản nháp đang nhập dở!', type: 'SUCCESS' });
+    } else {
+      setFormData({
+        voucherType: type,
+        voucherNo: defaultVoucherNo,
+        date: dateStr,
+        category: type === 'UNION_RECEIPT' ? 'DOAN_PHI_1_PERCENT' : 'THAM_HOI_OM_DAU',
+        personName: '',
+        department: 'Ban Chấp Hành CĐCS',
+        reason: initialReason,
+        amount: type === 'UNION_RECEIPT' ? 943355 : 300000,
+        paymentMethod: 'CASH',
+        attachedDocs: '01',
+        notes: `Tháng ${m}/${selectedYear}`,
+      });
+    }
     setIsModalOpen(true);
   };
 
@@ -390,6 +447,7 @@ export default function App() {
         setNotification({ message: `Đã tạo phiếu ${newItem.voucherNo}`, type: 'SUCCESS' });
       }
 
+      clearVoucherDraft();
       setIsModalOpen(false);
     } catch (err: any) {
       setNotification({ message: `Lỗi: ${err?.message}`, type: 'ERROR' });
@@ -702,7 +760,11 @@ export default function App() {
 
   // Nếu người dùng chọn chuyển sang Phân Hệ Quản Lý Bản Vẽ Công Trình (Demo)
   if (activeWorkspace === 'BLUEPRINT_MANAGER') {
-    return <DrawingsManagerView onBackToAccounting={() => setActiveWorkspace('UNION_ACCOUNTING')} />;
+    return (
+      <React.Suspense fallback={<LazyLoadingFallback />}>
+        <DrawingsManagerView onBackToAccounting={() => setActiveWorkspace('UNION_ACCOUNTING')} />
+      </React.Suspense>
+    );
   }
 
   return (
@@ -868,69 +930,71 @@ export default function App() {
         </div>
 
         {/* 4 Phân Hệ Tinh Gọn */}
-        {activeTab === 'VOUCHERS' && (
-          <VouchersTab
-            transactions={allTransactions}
-            selectedMonth={selectedMonth}
-            onSelectMonth={setSelectedMonth}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            voucherFilter={voucherFilter}
-            onVoucherFilterChange={setVoucherFilter}
-            selectedIds={selectedIds}
-            onToggleSelectAll={toggleSelectAll}
-            onToggleSelectOne={toggleSelectOne}
-            onOpenAddModal={handleOpenAddModal}
-            onPrintSingle={handlePrintSingleVoucher}
-            onPrintBatchSelected={handlePrintBatchSelected}
-            onPrintMonth={handlePrintMonth}
-            onDeleteSelected={handleDeleteSelected}
-            client={activeClient}
-            signerSettings={signerSettings}
-            selectedYear={selectedYear}
-          />
-        )}
+        <React.Suspense fallback={<LazyLoadingFallback />}>
+          {activeTab === 'VOUCHERS' && (
+            <VouchersTab
+              transactions={allTransactions}
+              selectedMonth={selectedMonth}
+              onSelectMonth={setSelectedMonth}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              voucherFilter={voucherFilter}
+              onVoucherFilterChange={setVoucherFilter}
+              selectedIds={selectedIds}
+              onToggleSelectAll={toggleSelectAll}
+              onToggleSelectOne={toggleSelectOne}
+              onOpenAddModal={handleOpenAddModal}
+              onPrintSingle={handlePrintSingleVoucher}
+              onPrintBatchSelected={handlePrintBatchSelected}
+              onPrintMonth={handlePrintMonth}
+              onDeleteSelected={handleDeleteSelected}
+              client={activeClient}
+              signerSettings={signerSettings}
+              selectedYear={selectedYear}
+            />
+          )}
 
-        {activeTab === 'CONTRIBUTIONS' && (
-          <ContributionFeeTab
-            periods={allPeriods}
-            selectedPeriodKey={selectedPeriodKey}
-            onSelectPeriodKey={setSelectedPeriodKey}
-            onSavePeriod={handleSavePeriod}
-            onSyncPeriod={handleSyncPeriodToCashBook}
-            onUploadClick={() => fileInputRef.current?.click()}
-            employees={employees}
-            signerSettings={signerSettings}
-            activeClient={activeClient}
-            selectedYear={selectedYear}
-          />
-        )}
+          {activeTab === 'CONTRIBUTIONS' && (
+            <ContributionFeeTab
+              periods={allPeriods}
+              selectedPeriodKey={selectedPeriodKey}
+              onSelectPeriodKey={setSelectedPeriodKey}
+              onSavePeriod={handleSavePeriod}
+              onSyncPeriod={handleSyncPeriodToCashBook}
+              onUploadClick={() => fileInputRef.current?.click()}
+              employees={employees}
+              signerSettings={signerSettings}
+              activeClient={activeClient}
+              selectedYear={selectedYear}
+            />
+          )}
 
-        {activeTab === 'REPORTS_BOOKS' && (
-          <ReportsAndBooksTab
-            transactions={allTransactions}
-            reportB07={reportB07}
-            onPrintCashBook={handlePrintCashBook}
-            onPrintBankBook={handlePrintBankBook}
-            onPrintReportB07={handlePrintB07Report}
-            client={activeClient}
-            signerSettings={signerSettings}
-            selectedYear={selectedYear}
-          />
-        )}
+          {activeTab === 'REPORTS_BOOKS' && (
+            <ReportsAndBooksTab
+              transactions={allTransactions}
+              reportB07={reportB07}
+              onPrintCashBook={handlePrintCashBook}
+              onPrintBankBook={handlePrintBankBook}
+              onPrintReportB07={handlePrintB07Report}
+              client={activeClient}
+              signerSettings={signerSettings}
+              selectedYear={selectedYear}
+            />
+          )}
 
-        {activeTab === 'SETTINGS' && (
-          <SettingsTab
-            signerSettings={signerSettings}
-            onSaveSignerSettings={handleSaveSigners}
-            employees={employees}
-            onAddEmployee={handleAddEmployee}
-            onUpdateEmployee={handleUpdateEmployee}
-            onDeleteEmployee={handleDeleteEmployee}
-            openingBalances={openingBalances}
-            onSaveOpeningBalance={handleSaveOpeningBalance}
-          />
-        )}
+          {activeTab === 'SETTINGS' && (
+            <SettingsTab
+              signerSettings={signerSettings}
+              onSaveSignerSettings={handleSaveSigners}
+              employees={employees}
+              onAddEmployee={handleAddEmployee}
+              onUpdateEmployee={handleUpdateEmployee}
+              onDeleteEmployee={handleDeleteEmployee}
+              openingBalances={openingBalances}
+              onSaveOpeningBalance={handleSaveOpeningBalance}
+            />
+          )}
+        </React.Suspense>
 
         {/* Modal Tùy Chọn Xuất Excel */}
         <BaseModal
@@ -1434,16 +1498,22 @@ export default function App() {
         </BaseModal>
 
         {/* Modal Báo Cáo Lỗi & Hỗ Trợ Kỹ Thuật */}
-        <FeedbackModal
-          isOpen={isFeedbackModalOpen}
-          onClose={() => setIsFeedbackModalOpen(false)}
-        />
+        <React.Suspense fallback={null}>
+          {isFeedbackModalOpen && (
+            <FeedbackModal
+              isOpen={isFeedbackModalOpen}
+              onClose={() => setIsFeedbackModalOpen(false)}
+            />
+          )}
 
-        {/* Modal Kiểm Tra Phiên Bản & Cập Nhật */}
-        <UpdateCheckerModal
-          isOpen={isUpdateModalOpen}
-          onClose={() => setIsUpdateModalOpen(false)}
-        />
+          {/* Modal Kiểm Tra Phiên Bản & Cập Nhật */}
+          {isUpdateModalOpen && (
+            <UpdateCheckerModal
+              isOpen={isUpdateModalOpen}
+              onClose={() => setIsUpdateModalOpen(false)}
+            />
+          )}
+        </React.Suspense>
       </main>
     </div>
   );

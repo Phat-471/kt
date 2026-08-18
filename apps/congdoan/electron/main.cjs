@@ -5,6 +5,11 @@ const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
 
+// Tối ưu hóa bộ nhớ RAM và V8 Engine cho Electron
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256 --expose-gc');
+app.commandLine.appendSwitch('disable-dev-shm-usage');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 let mainWindow;
 let downloadedInstallerPath = null;
@@ -22,6 +27,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
       webSecurity: true,
+      backgroundThrottling: true,
     },
     autoHideMenuBar: false,
   });

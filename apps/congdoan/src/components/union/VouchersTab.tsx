@@ -166,6 +166,10 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
   // Export Excel Modal State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  // Pagination States
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
   // Dynamic available years from transactions
   const availableYears = useMemo(() => {
     const yearsSet = new Set<number>([2026, 2025, 2024, 2023, selectedYear]);
@@ -303,6 +307,20 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
     sortField,
     sortOrder
   ]);
+
+  // Reset về trang 1 khi danh sách hoặc bộ lọc thay đổi
+  const totalPages = useMemo(() => {
+    if (pageSize === 'ALL' || sortedList.length === 0) return 1;
+    return Math.ceil(sortedList.length / pageSize);
+  }, [sortedList.length, pageSize]);
+
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedList = useMemo(() => {
+    if (pageSize === 'ALL') return sortedList;
+    const start = (safeCurrentPage - 1) * pageSize;
+    return sortedList.slice(start, start + pageSize);
+  }, [sortedList, safeCurrentPage, pageSize]);
 
   // Lấy số dư đầu kỳ từ LocalStorage
   const openingBalances = useMemo<{ [year: number]: { cash: number; bank: number } }>(() => {
@@ -969,20 +987,124 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                   </td>
                 </tr>
               ) : (
-                sortedList.map((tx, idx) => (
-                  <TransactionRow
-                    key={tx.id}
-                    tx={tx}
-                    idx={idx}
-                    isSelected={selectedIds.includes(tx.id)}
-                    onToggleSelect={onToggleSelectOne}
-                    onPrintSingle={onPrintSingle}
-                  />
-                ))
+                paginatedList.map((tx, idx) => {
+                  const globalIdx = pageSize === 'ALL' ? idx : (safeCurrentPage - 1) * pageSize + idx;
+                  return (
+                    <TransactionRow
+                      key={tx.id}
+                      tx={tx}
+                      idx={globalIdx}
+                      isSelected={selectedIds.includes(tx.id)}
+                      onToggleSelect={onToggleSelectOne}
+                      onPrintSingle={onPrintSingle}
+                    />
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Thanh Điều Khiển Phân Trang Siêu Nhẹ & Tinh Tế */}
+        {sortedList.length > 0 && (
+          <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            {/* Hiển thị số dòng hiện tại */}
+            <div className="text-slate-600 flex items-center gap-2">
+              <span>
+                Hiển thị{' '}
+                <strong className="text-slate-900 font-mono">
+                  {pageSize === 'ALL' ? `1 - ${sortedList.length}` : `${(safeCurrentPage - 1) * pageSize + 1} - ${Math.min(safeCurrentPage * pageSize, sortedList.length)}`}
+                </strong>{' '}
+                trong tổng số <strong className="text-slate-900 font-mono">{sortedList.length}</strong> phiếu
+              </span>
+
+              {/* Bộ chọn số dòng / trang */}
+              <div className="flex items-center gap-1 ml-2">
+                <span className="text-slate-400">|</span>
+                <span className="text-slate-500">Mỗi trang:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPageSize(val === 'ALL' ? 'ALL' : Number(val));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                  <option value="ALL">Tất cả</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Các Nút Điều Hướng Trang */}
+            {pageSize !== 'ALL' && totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safeCurrentPage === 1}
+                  className="px-2 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-all shadow-xs"
+                  title="Trang đầu"
+                >
+                  ««
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-all shadow-xs"
+                  title="Trang trước"
+                >
+                  ‹ Trước
+                </button>
+
+                {/* Các số trang xung quanh trang hiện tại */}
+                <div className="flex items-center gap-1 mx-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                    .map((p, idx, arr) => {
+                      const prevP = arr[idx - 1];
+                      const hasGap = prevP && p - prevP > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {hasGap && <span className="px-1 text-slate-400">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(p)}
+                            className={`min-w-[28px] h-7 px-2 rounded font-bold transition-all shadow-xs text-xs flex items-center justify-center ${
+                              safeCurrentPage === p
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-all shadow-xs"
+                  title="Trang tiếp theo"
+                >
+                  Tiếp ›
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safeCurrentPage === totalPages}
+                  className="px-2 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium transition-all shadow-xs"
+                  title="Trang cuối"
+                >
+                  »»
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modal Xuất Excel Đa Tùy Chọn */}

@@ -233,7 +233,12 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('ALL');
   const [selectedStage, setSelectedStage] = useState<DrawingStageType>('ALL');
   const [selectedNature, setSelectedNature] = useState<DrawingIssueNature>('ALL');
+  const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Phân Trang Bản Vẽ
+  const [drawingPageSize, setDrawingPageSize] = useState<number | 'ALL'>(25);
+  const [drawingCurrentPage, setDrawingCurrentPage] = useState<number>(1);
   
   // Modal State
   const [selectedDrawing, setSelectedDrawing] = useState<DrawingItem | null>(null);
@@ -313,12 +318,20 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const activeProject: DrawingProject = projects.find(p => p.id === selectedProjectId) || projects[0] || fallbackProject;
 
   // Lọc đa chiều danh sách bản vẽ Tab 1
-  const filteredDrawings = drawings.filter(d => {
-    if (d.projectId !== selectedProjectId) return false;
+  const allProjectDrawings = drawings.filter(d => d.projectId === selectedProjectId);
+
+  const availableAuthors = React.useMemo(() => {
+    const set = new Set<string>();
+    allProjectDrawings.forEach(d => { if (d.author) set.add(d.author); });
+    return Array.from(set).sort();
+  }, [allProjectDrawings]);
+
+  const filteredDrawings = allProjectDrawings.filter(d => {
     if (selectedDiscipline !== 'ALL' && d.discipline !== selectedDiscipline) return false;
     if (selectedCompanyId !== 'ALL' && d.companyId !== selectedCompanyId) return false;
     if (selectedStage !== 'ALL' && d.stageType !== selectedStage) return false;
     if (selectedNature !== 'ALL' && d.issueNature !== selectedNature) return false;
+    if (selectedAuthorFilter !== 'ALL' && d.author !== selectedAuthorFilter) return false;
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const matchNum = d.drawingNumber.toLowerCase().includes(q);
@@ -331,8 +344,13 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     return true;
   });
 
+  const drawingTotalPages = Math.max(1, Math.ceil(filteredDrawings.length / (typeof drawingPageSize === 'number' ? drawingPageSize : filteredDrawings.length)));
+  const safeDrawingCurrentPage = Math.min(Math.max(1, drawingCurrentPage), drawingTotalPages);
+  const paginatedDrawings = drawingPageSize === 'ALL'
+    ? filteredDrawings
+    : filteredDrawings.slice((safeDrawingCurrentPage - 1) * drawingPageSize, safeDrawingCurrentPage * drawingPageSize);
+
   // Thống kê nhanh
-  const allProjectDrawings = drawings.filter(d => d.projectId === selectedProjectId);
   const totalInProject = allProjectDrawings.length;
   const newIssuesCount = allProjectDrawings.filter(d => d.issueNature === 'NEW_ISSUE').length;
   const revisionCount = allProjectDrawings.filter(d => d.issueNature === 'REVISION_MODIFIED').length;
@@ -427,25 +445,56 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   // =========================================================================
   // XỬ LÝ THÊM - XÓA - SỬA BẢN VẼ (CRUD)
   // =========================================================================
+  // Auto-Save Draft khi người dùng nhập form bản vẽ mới
+  useEffect(() => {
+    if (isDrawingModalOpen && !editingDrawing && drawingForm.title) {
+      try {
+        localStorage.setItem('ACCODESK_DRAWING_DRAFT', JSON.stringify({ projectId: selectedProjectId, form: drawingForm }));
+      } catch (e) {}
+    }
+  }, [isDrawingModalOpen, editingDrawing, drawingForm, selectedProjectId]);
+
+  const clearDrawingDraft = () => {
+    try {
+      localStorage.removeItem('ACCODESK_DRAWING_DRAFT');
+    } catch (e) {}
+  };
+
   const openCreateDrawingModal = () => {
     setEditingDrawing(null);
     setIsAddingNewRevision(false);
     setRevisionNote('');
-    setDrawingForm({
-      drawingNumber: 'KT-01',
-      title: '',
-      companyId: companies[0]?.id || 'comp-hp',
-      discipline: 'ARCHITECTURE',
-      stageType: 'CONSTRUCTION',
-      issueNature: 'NEW_ISSUE',
-      scale: '1/100',
-      sheetSize: 'A2',
-      author: 'KTS. Lê Hoàng Sỹ',
-      approver: activeProject.investorName,
-      variationAmount: 0,
-      costingLinkId: '',
-      tags: [],
-    });
+
+    let restoredDraft: any = null;
+    try {
+      const saved = localStorage.getItem('ACCODESK_DRAWING_DRAFT');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.projectId === selectedProjectId && parsed.form?.title) {
+          restoredDraft = parsed.form;
+        }
+      }
+    } catch (e) {}
+
+    if (restoredDraft) {
+      setDrawingForm(restoredDraft);
+    } else {
+      setDrawingForm({
+        drawingNumber: 'KT-01',
+        title: '',
+        companyId: companies[0]?.id || 'comp-hp',
+        discipline: 'ARCHITECTURE',
+        stageType: 'CONSTRUCTION',
+        issueNature: 'NEW_ISSUE',
+        scale: '1/100',
+        sheetSize: 'A2',
+        author: 'KTS. Lê Hoàng Sỹ',
+        approver: activeProject.investorName,
+        variationAmount: 0,
+        costingLinkId: '',
+        tags: [],
+      });
+    }
     setIsDrawingModalOpen(true);
   };
 
@@ -575,6 +624,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         alert(`Đã thêm thành công bản vẽ [${newItem.drawingNumber}] vào dự án!`);
       }
 
+      clearDrawingDraft();
       setIsDrawingModalOpen(false);
     } catch (err: any) {
       alert(`Lỗi lưu bản vẽ: ${err?.message}`);
@@ -1082,24 +1132,46 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             {/* Thanh Bộ Lọc Đa Chiều & Chuyển Đổi Chế Độ Xem Bảng / Thẻ */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
               <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
-                {/* Lọc theo Đơn Vị */}
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span className="text-slate-600 font-bold flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                    Đơn Vị:
-                  </span>
-                  <select
-                    value={selectedCompanyId}
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className="bg-slate-50 text-slate-800 border border-slate-200 px-3 py-1.5 rounded-xl font-bold focus:outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    <option value="ALL">🏢 Tất Cả Đơn Vị Phát Hành</option>
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.shortName}
-                      </option>
-                    ))}
-                  </select>
+                {/* Lọc theo Đơn Vị & Kỹ Sư Phụ Trách */}
+                <div className="flex items-center gap-3 flex-wrap text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-600 font-bold flex items-center gap-1">
+                      <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                      Đơn Vị:
+                    </span>
+                    <select
+                      value={selectedCompanyId}
+                      onChange={(e) => setSelectedCompanyId(e.target.value)}
+                      className="bg-slate-50 text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="ALL">🏢 Tất Cả Đơn Vị</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.shortName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Lọc theo Tác Giả / Kỹ Sư */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-600 font-bold flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-indigo-600" />
+                      Kỹ Sư:
+                    </span>
+                    <select
+                      value={selectedAuthorFilter}
+                      onChange={(e) => setSelectedAuthorFilter(e.target.value)}
+                      className="bg-slate-50 text-slate-800 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      <option value="ALL">👤 Tất Cả Kỹ Sư ({availableAuthors.length})</option>
+                      {availableAuthors.map((author) => (
+                        <option key={author} value={author}>
+                          {author}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Lọc theo Tính Chất Bản Vẽ */}
@@ -1243,7 +1315,8 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                           </td>
                         </tr>
                       ) : (
-                        filteredDrawings.map((draw, idx) => {
+                        paginatedDrawings.map((draw, idx) => {
+                          const globalIdx = drawingPageSize === 'ALL' ? idx : (safeDrawingCurrentPage - 1) * drawingPageSize + idx;
                           const isSelected = selectedDrawingIds.includes(draw.id);
                           return (
                             <tr 
@@ -1262,7 +1335,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                                   className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600"
                                 />
                               </td>
-                              <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                              <td className="p-3 text-center font-mono text-slate-400">{globalIdx + 1}</td>
                               <td className="p-3">
                                 <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                                   {draw.drawingNumber}
@@ -1326,18 +1399,79 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   </table>
                 </div>
 
-                {/* Footer Bảng */}
-                <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700 px-6 flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <span>Tổng số: <strong className="text-blue-700">{filteredDrawings.length}</strong> bản vẽ</span>
-                    {selectedDrawingIds.length > 0 && (
-                      <span className="text-blue-600">
-                        • Đang chọn: <strong>{selectedDrawingIds.length}</strong> bản vẽ
-                      </span>
-                    )}
+                {/* Footer Bảng & Phân Trang Bản Vẽ */}
+                <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center text-xs font-bold text-slate-700 px-6 gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>
+                      Hiển thị{' '}
+                      <strong className="text-blue-700 font-mono">
+                        {drawingPageSize === 'ALL' ? `1 - ${filteredDrawings.length}` : `${(safeDrawingCurrentPage - 1) * drawingPageSize + 1} - ${Math.min(safeDrawingCurrentPage * drawingPageSize, filteredDrawings.length)}`}
+                      </strong>{' '}
+                      / Tổng số <strong className="text-slate-900 font-mono">{filteredDrawings.length}</strong> bản vẽ
+                    </span>
+
+                    <div className="flex items-center gap-1 ml-2 font-normal text-slate-500">
+                      <span>| Mỗi trang:</span>
+                      <select
+                        value={drawingPageSize}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDrawingPageSize(val === 'ALL' ? 'ALL' : Number(val));
+                          setDrawingCurrentPage(1);
+                        }}
+                        className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-semibold text-slate-800 focus:outline-none"
+                      >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value="ALL">Tất cả</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {/* Điều hướng trang */}
+                  {drawingPageSize !== 'ALL' && drawingTotalPages > 1 && (
+                    <div className="flex items-center gap-1 font-semibold">
+                      <button
+                        onClick={() => setDrawingCurrentPage(1)}
+                        disabled={safeDrawingCurrentPage === 1}
+                        className="px-2 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                      >
+                        ««
+                      </button>
+                      <button
+                        onClick={() => setDrawingCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={safeDrawingCurrentPage === 1}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                      >
+                        ‹ Trước
+                      </button>
+
+                      <span className="px-2 font-mono text-slate-800">
+                        {safeDrawingCurrentPage} / {drawingTotalPages}
+                      </span>
+
+                      <button
+                        onClick={() => setDrawingCurrentPage(p => Math.min(drawingTotalPages, p + 1))}
+                        disabled={safeDrawingCurrentPage === drawingTotalPages}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                      >
+                        Tiếp ›
+                      </button>
+                      <button
+                        onClick={() => setDrawingCurrentPage(drawingTotalPages)}
+                        disabled={safeDrawingCurrentPage === drawingTotalPages}
+                        className="px-2 py-1 bg-white border border-slate-200 rounded text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                      >
+                        »»
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-4">
-                    <span>Tổng phát sinh hiện trường: <strong className="text-rose-600 font-mono font-extrabold">{totalVariationValue.toLocaleString('vi-VN')} đ</strong></span>
+                    <span className="text-slate-600">
+                      Phát sinh hiện trường: <strong className="text-rose-600 font-mono font-extrabold">{totalVariationValue.toLocaleString('vi-VN')} đ</strong>
+                    </span>
                   </div>
                 </div>
               </div>
