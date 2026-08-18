@@ -54,7 +54,10 @@ import {
   SendHorizontal,
   Scale,
   Award,
-  AlertCircle
+  AlertCircle,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react';
 import { 
   DrawingProject, 
@@ -101,6 +104,9 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [companies, setCompanies] = useState<DrawingCompany[]>([]);
   const [drawings, setDrawings] = useState<DrawingItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Batch Selection State: Chọn nhiều bản vẽ cùng lúc
+  const [selectedDrawingIds, setSelectedDrawingIds] = useState<string[]>([]);
 
   // Bộ lọc cho Tab Nhật Ký & Đối Chiếu Khách Hàng
   const [reconAuthorFilter, setReconAuthorFilter] = useState<string>('ALL');
@@ -311,6 +317,63 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     .filter(d => d.isVariationOrder)
     .reduce((sum, d) => sum + (d.variationAmount || 0), 0);
 
+  // Xử lý Chọn Nhiều Checkbox
+  const isAllFilteredSelected = filteredDrawings.length > 0 && filteredDrawings.every(d => selectedDrawingIds.includes(d.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllFilteredSelected) {
+      // Bỏ chọn tất cả các bản vẽ đang lọc
+      const filteredIds = filteredDrawings.map(d => d.id);
+      setSelectedDrawingIds(selectedDrawingIds.filter(id => !filteredIds.includes(id)));
+    } else {
+      // Chọn tất cả các bản vẽ đang lọc
+      const newIds = Array.from(new Set([...selectedDrawingIds, ...filteredDrawings.map(d => d.id)]));
+      setSelectedDrawingIds(newIds);
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    if (selectedDrawingIds.includes(id)) {
+      setSelectedDrawingIds(selectedDrawingIds.filter(i => i !== id));
+    } else {
+      setSelectedDrawingIds([...selectedDrawingIds, id]);
+    }
+  };
+
+  // Xử lý Xóa Hàng Loạt Các Bản Vẽ Đã Chọn
+  const handleBatchDelete = async () => {
+    if (selectedDrawingIds.length === 0) return;
+
+    const count = selectedDrawingIds.length;
+    if (!window.confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA ${count} BẢN VẼ ĐÃ CHỌN?\n\nHành động này sẽ xóa vĩnh viễn các bản vẽ khỏi CSDL dự án và không thể hoàn tác.`)) {
+      return;
+    }
+
+    try {
+      await db.drawings.bulkDelete(selectedDrawingIds);
+      await loadDatabase();
+      setSelectedDrawingIds([]);
+      if (selectedDrawing && selectedDrawingIds.includes(selectedDrawing.id)) {
+        setSelectedDrawing(null);
+      }
+      alert(`✅ Đã xóa thành công ${count} bản vẽ khỏi dự án!`);
+    } catch (err: any) {
+      alert(`Lỗi khi xóa hàng loạt: ${err?.message}`);
+    }
+  };
+
+  // Xử lý Xuất Excel Các Bản Vẽ Đã Chọn
+  const handleExportSelectedExcel = () => {
+    if (selectedDrawingIds.length === 0) return;
+    const selectedDraws = drawings.filter(d => selectedDrawingIds.includes(d.id));
+    exportDrawingsToExcel({
+      project: activeProject,
+      drawings: selectedDraws,
+      filterDescription: `${selectedDraws.length} bản vẽ đã chọn`,
+      isAll: false
+    });
+  };
+
   // Dữ liệu Nhật Ký & Đối Chiếu Khách Hàng (Tab 2)
   const allTimelineLogs = extractTimelineLogs(allProjectDrawings);
   const employeeStats = calculateEmployeeStats(allTimelineLogs);
@@ -501,6 +564,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     try {
       await db.drawings.delete(drawId);
       await loadDatabase();
+      setSelectedDrawingIds(selectedDrawingIds.filter(id => id !== drawId));
       if (selectedDrawing?.id === drawId) {
         setSelectedDrawing(null);
       }
@@ -550,7 +614,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   };
 
   // =========================================================================
-  // XỬ LÝ TẠO BIÊN BẢN BÀN GIAO (TRANSMITTAL)
+  // XỬ LÝ TẠO BIÊN BẢN BÀN GIAO
   // =========================================================================
   const handleCreateTransmittal = () => {
     if (selectedDrawingsForTransmittal.length === 0) {
@@ -642,15 +706,15 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const getDisciplineBadge = (discipline: string) => {
     switch (discipline) {
       case 'ARCHITECTURE':
-        return <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-bold">🏛️ Kiến Trúc</span>;
+        return <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-bold whitespace-nowrap">🏛️ Kiến Trúc</span>;
       case 'STRUCTURE':
-        return <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded text-[10px] font-bold">🏗️ Kết Cấu</span>;
+        return <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded text-[10px] font-bold whitespace-nowrap">🏗️ Kết Cấu</span>;
       case 'MEP':
-        return <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">⚡ Điện Nước</span>;
+        return <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">⚡ Điện Nước</span>;
       case 'INTERIOR':
-        return <span className="px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 rounded text-[10px] font-bold">🛋️ Nội Thất</span>;
+        return <span className="px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 rounded text-[10px] font-bold whitespace-nowrap">🛋️ Nội Thất</span>;
       case 'AS_BUILT':
-        return <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">📋 Hoàn Công</span>;
+        return <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">📋 Hoàn Công</span>;
       default:
         return <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px]">Chung</span>;
     }
@@ -763,13 +827,13 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
-                Nhật Ký Dòng Thời Gian • Năng Suất Nhân Viên • Đối Chiếu Khách Hàng & Phân Định Sai Sót
+                Chọn Nhiều & Xóa Hàng Loạt • Nhật Ký Dòng Thời Gian • Đối Chiếu Khách Hàng & Năng Suất
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Chính (5 Tabs: Danh Mục / Nhật Ký Đối Chiếu / Dự Án / Báo Cáo Tháng / Cài Đặt) */}
+        {/* Tab Navigation Chính */}
         <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-bold flex-wrap">
           <button
             onClick={() => setActiveMainTab('DRAWINGS_LIST')}
@@ -836,7 +900,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       {/* Main Workspace Container */}
       <main className="flex-1 p-6 space-y-5 max-w-7xl mx-auto w-full">
         {/* ========================================================================= */}
-        {/* TAB 1: DANH MỤC BẢN VẼ (DẠNG BẢNG & DẠNG THẺ + XUẤT EXCEL)               */}
+        {/* TAB 1: DANH MỤC BẢN VẼ (DẠNG BẢNG & DẠNG THẺ + XUẤT EXCEL + CHỌN NHIỀU)    */}
         {/* ========================================================================= */}
         {activeMainTab === 'DRAWINGS_LIST' && (
           <div className="space-y-5">
@@ -949,6 +1013,47 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 <div className="text-[11px] text-slate-400">Hưng Phát, CĐT, Nhôm Kính, Cơ Điện</div>
               </div>
             </div>
+
+            {/* THANH THAO TÁC HÀNG LOẠT (BATCH ACTION BAR) KHI CHỌN NHIỀU */}
+            {selectedDrawingIds.length > 0 && (
+              <div className="bg-blue-600 text-white p-3 rounded-2xl shadow-md flex items-center justify-between flex-wrap gap-3 animate-in fade-in slide-in-from-top-2 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-blue-200" />
+                  <span>Đã chọn <strong className="text-amber-300 font-mono text-sm">{selectedDrawingIds.length}</strong> bản vẽ</span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Nút Xóa Hàng Loạt */}
+                  <button
+                    onClick={handleBatchDelete}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl shadow-xs transition-all active:scale-95"
+                    title="Xóa vĩnh viễn các bản vẽ đã chọn"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Xóa {selectedDrawingIds.length} Bản Vẽ Đã Chọn</span>
+                  </button>
+
+                  {/* Nút Xuất Excel Các Bản Đã Chọn */}
+                  <button
+                    onClick={handleExportSelectedExcel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-xs transition-all"
+                    title="Xuất file Excel cho các bản vẽ đã chọn"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Xuất Excel ({selectedDrawingIds.length})</span>
+                  </button>
+
+                  {/* Nút Bỏ Chọn */}
+                  <button
+                    onClick={() => setSelectedDrawingIds([])}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Bỏ chọn</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Thanh Bộ Lọc Đa Chiều & Chuyển Đổi Chế Độ Xem Bảng / Thẻ */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
@@ -1073,7 +1178,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             </div>
 
             {/* =================================================================== */}
-            {/* CHẾ ĐỘ 1: DẠNG BẢNG (TABLE VIEW)                                   */}
+            {/* CHẾ ĐỘ 1: DẠNG BẢNG (TABLE VIEW CÓ CHECKBOX CHỌN NHIỀU)            */}
             {/* =================================================================== */}
             {displayMode === 'TABLE' && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1081,6 +1186,16 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   <table className="w-full text-xs text-left border-collapse">
                     <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 select-none">
                       <tr>
+                        {/* Cột Checkbox Chọn Tất Cả */}
+                        <th className="p-3 text-center w-10">
+                          <input
+                            type="checkbox"
+                            checked={isAllFilteredSelected}
+                            onChange={handleToggleSelectAll}
+                            className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600"
+                            title="Chọn tất cả bản vẽ đang hiển thị"
+                          />
+                        </th>
                         <th className="p-3 text-center w-10">STT</th>
                         <th className="p-3 w-24">Số Hiệu</th>
                         <th className="p-3 min-w-[220px]">Tên / Tiêu Đề Bản Vẽ</th>
@@ -1098,84 +1213,105 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                     <tbody className="divide-y divide-slate-100">
                       {filteredDrawings.length === 0 ? (
                         <tr>
-                          <td colSpan={12} className="p-10 text-center text-slate-400">
+                          <td colSpan={13} className="p-10 text-center text-slate-400">
                             <FolderOpen className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                             <div className="font-bold text-slate-600">Không tìm thấy bản vẽ nào phù hợp</div>
                           </td>
                         </tr>
                       ) : (
-                        filteredDrawings.map((draw, idx) => (
-                          <tr 
-                            key={draw.id} 
-                            onClick={() => setSelectedDrawing(draw)}
-                            className="hover:bg-blue-50/50 cursor-pointer transition-colors"
-                          >
-                            <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                            <td className="p-3">
-                              <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                {draw.drawingNumber}
-                              </span>
-                            </td>
-                            <td className="p-3 font-semibold text-slate-900">
-                              <div className="line-clamp-2">{draw.title}</div>
-                              {draw.costingLinkId && (
-                                <span className="text-[10px] text-indigo-600 font-mono bg-indigo-50 px-1 py-0.2 rounded mt-0.5 inline-block">
-                                  BOM: {draw.costingLinkId}
+                        filteredDrawings.map((draw, idx) => {
+                          const isSelected = selectedDrawingIds.includes(draw.id);
+                          return (
+                            <tr 
+                              key={draw.id} 
+                              onClick={() => setSelectedDrawing(draw)}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected ? 'bg-blue-50/80' : 'hover:bg-blue-50/40'
+                              }`}
+                            >
+                              {/* Checkbox từng dòng */}
+                              <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectOne(draw.id)}
+                                  className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600"
+                                />
+                              </td>
+                              <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                              <td className="p-3">
+                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                  {draw.drawingNumber}
                                 </span>
-                              )}
-                            </td>
-                            <td className="p-3 text-slate-600 font-medium">{draw.companyName}</td>
-                            <td className="p-3">{getDisciplineBadge(draw.discipline)}</td>
-                            <td className="p-3">{getStageBadge(draw.stageType)}</td>
-                            <td className="p-3">{getNatureBadge(draw.issueNature, draw.currentRevision, draw.variationAmount)}</td>
-                            <td className="p-3 text-center font-mono text-slate-700">
-                              <strong>{draw.sheetSize}</strong>
-                              <div className="text-[10px] text-slate-400">1:{draw.scale.replace('1/', '')}</div>
-                            </td>
-                            <td className="p-3 text-slate-700">{draw.author}</td>
-                            <td className="p-3 text-slate-600">{draw.approver || 'Chờ duyệt'}</td>
-                            <td className="p-3 text-right font-mono font-bold">
-                              {draw.variationAmount ? (
-                                <span className="text-rose-600">+{draw.variationAmount.toLocaleString('vi-VN')} đ</span>
-                              ) : (
-                                <span className="text-slate-300">-</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={() => setSelectedDrawing(draw)}
-                                  className="p-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg transition-colors border border-blue-200"
-                                  title="Xem bản vẽ & Lịch sử sửa"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => openEditDrawingModal(draw)}
-                                  className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-lg transition-colors border border-amber-200"
-                                  title="Sửa bản vẽ / Thêm đợt hiệu chỉnh"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteDrawing(draw.id, draw.drawingNumber)}
-                                  className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-lg transition-colors border border-rose-200"
-                                  title="Xóa bản vẽ"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                              <td className="p-3 font-semibold text-slate-900">
+                                <div className="line-clamp-2">{draw.title}</div>
+                                {draw.costingLinkId && (
+                                  <span className="text-[10px] text-indigo-600 font-mono bg-indigo-50 px-1 py-0.2 rounded mt-0.5 inline-block">
+                                    BOM: {draw.costingLinkId}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-slate-600 font-medium">{draw.companyName}</td>
+                              <td className="p-3">{getDisciplineBadge(draw.discipline)}</td>
+                              <td className="p-3">{getStageBadge(draw.stageType)}</td>
+                              <td className="p-3">{getNatureBadge(draw.issueNature, draw.currentRevision, draw.variationAmount)}</td>
+                              <td className="p-3 text-center font-mono text-slate-700">
+                                <strong>{draw.sheetSize}</strong>
+                                <div className="text-[10px] text-slate-400">1:{draw.scale.replace('1/', '')}</div>
+                              </td>
+                              <td className="p-3 text-slate-700">{draw.author}</td>
+                              <td className="p-3 text-slate-600">{draw.approver || 'Chờ duyệt'}</td>
+                              <td className="p-3 text-right font-mono font-bold">
+                                {draw.variationAmount ? (
+                                  <span className="text-rose-600">+{draw.variationAmount.toLocaleString('vi-VN')} đ</span>
+                                ) : (
+                                  <span className="text-slate-300">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => setSelectedDrawing(draw)}
+                                    className="p-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg transition-colors border border-blue-200"
+                                    title="Xem bản vẽ & Lịch sử sửa"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => openEditDrawingModal(draw)}
+                                    className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-lg transition-colors border border-amber-200"
+                                    title="Sửa bản vẽ / Thêm đợt hiệu chỉnh"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDrawing(draw.id, draw.drawingNumber)}
+                                    className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-lg transition-colors border border-rose-200"
+                                    title="Xóa bản vẽ"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Footer Bảng */}
-                <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700 px-6">
-                  <span>Tổng số: <strong className="text-blue-700">{filteredDrawings.length}</strong> bản vẽ</span>
+                <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700 px-6 flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <span>Tổng số: <strong className="text-blue-700">{filteredDrawings.length}</strong> bản vẽ</span>
+                    {selectedDrawingIds.length > 0 && (
+                      <span className="text-blue-600">
+                        • Đang chọn: <strong>{selectedDrawingIds.length}</strong> bản vẽ
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4">
                     <span>Tổng phát sinh hiện trường: <strong className="text-rose-600 font-mono font-extrabold">{totalVariationValue.toLocaleString('vi-VN')} đ</strong></span>
                   </div>
@@ -1188,95 +1324,106 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             {/* =================================================================== */}
             {displayMode === 'GRID' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredDrawings.map((draw) => (
-                  <div
-                    key={draw.id}
-                    className="bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all p-4 flex flex-col justify-between space-y-3 group"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-sm font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                            {draw.drawingNumber}
+                {filteredDrawings.map((draw) => {
+                  const isSelected = selectedDrawingIds.includes(draw.id);
+                  return (
+                    <div
+                      key={draw.id}
+                      className={`bg-white rounded-2xl border transition-all p-4 flex flex-col justify-between space-y-3 group ${
+                        isSelected ? 'border-blue-500 shadow-md ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectOne(draw.id)}
+                              className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600"
+                            />
+                            <span className="font-mono text-sm font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              {draw.drawingNumber}
+                            </span>
+                            {getStageBadge(draw.stageType)}
+                          </div>
+                          {getNatureBadge(draw.issueNature, draw.currentRevision, draw.variationAmount)}
+                        </div>
+
+                        <h3 className="font-bold text-slate-900 text-sm line-clamp-2 group-hover:text-blue-600 transition-colors">
+                          {draw.title}
+                        </h3>
+
+                        <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-slate-400" />
+                          <span>Đơn vị: <strong className="text-slate-700">{draw.companyName}</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[11px] space-y-1.5 text-slate-600">
+                        <div className="flex items-center justify-between">
+                          <span>Bộ môn & Khổ:</span>
+                          <div className="flex items-center gap-1.5">
+                            {getDisciplineBadge(draw.discipline)}
+                            <strong className="text-slate-800 font-mono">{draw.sheetSize} (1:{draw.scale.replace('1/', '')})</strong>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Số lần sửa đổi:</span>
+                          <strong className="text-amber-700 font-mono font-bold">
+                            {draw.revisions.length > 1 ? `${draw.revisions.length - 1} lần hiệu chỉnh` : 'Bản gốc (Chưa sửa)'}
+                          </strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Chủ trì / Tác giả:</span>
+                          <strong className="text-slate-800">{draw.author}</strong>
+                        </div>
+                        {draw.costingLinkId && (
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-indigo-700 font-medium">
+                            <span>Dự toán BOM (TK 154):</span>
+                            <span className="font-mono font-bold bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                              {draw.costingLinkId}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {draw.tags.map((t, idx) => (
+                          <span key={idx} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                            #{t}
                           </span>
-                          {getStageBadge(draw.stageType)}
-                        </div>
-                        {getNatureBadge(draw.issueNature, draw.currentRevision, draw.variationAmount)}
+                        ))}
                       </div>
 
-                      <h3 className="font-bold text-slate-900 text-sm line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {draw.title}
-                      </h3>
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setSelectedDrawing(draw)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl text-xs font-bold transition-all border border-blue-200 hover:border-blue-600"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Xem Chi Tiết</span>
+                        </button>
 
-                      <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                        <Building2 className="w-3 h-3 text-slate-400" />
-                        <span>Đơn vị: <strong className="text-slate-700">{draw.companyName}</strong></span>
+                        <button
+                          onClick={() => openEditDrawingModal(draw)}
+                          className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-xl border border-amber-200 transition-all"
+                          title="Sửa bản vẽ"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteDrawing(draw.id, draw.drawingNumber)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-xl border border-rose-200 transition-all"
+                          title="Xóa bản vẽ"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[11px] space-y-1.5 text-slate-600">
-                      <div className="flex items-center justify-between">
-                        <span>Bộ môn & Khổ:</span>
-                        <div className="flex items-center gap-1.5">
-                          {getDisciplineBadge(draw.discipline)}
-                          <strong className="text-slate-800 font-mono">{draw.sheetSize} (1:{draw.scale.replace('1/', '')})</strong>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Số lần sửa đổi:</span>
-                        <strong className="text-amber-700 font-mono font-bold">
-                          {draw.revisions.length > 1 ? `${draw.revisions.length - 1} lần hiệu chỉnh` : 'Bản gốc (Chưa sửa)'}
-                        </strong>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Chủ trì / Tác giả:</span>
-                        <strong className="text-slate-800">{draw.author}</strong>
-                      </div>
-                      {draw.costingLinkId && (
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-indigo-700 font-medium">
-                          <span>Dự toán BOM (TK 154):</span>
-                          <span className="font-mono font-bold bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
-                            {draw.costingLinkId}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {draw.tags.map((t, idx) => (
-                        <span key={idx} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => setSelectedDrawing(draw)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl text-xs font-bold transition-all border border-blue-200 hover:border-blue-600"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Xem Chi Tiết</span>
-                      </button>
-
-                      <button
-                        onClick={() => openEditDrawingModal(draw)}
-                        className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-xl border border-amber-200 transition-all"
-                        title="Sửa bản vẽ"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteDrawing(draw.id, draw.drawingNumber)}
-                        className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white rounded-xl border border-rose-200 transition-all"
-                        title="Xóa bản vẽ"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1287,7 +1434,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         {/* ========================================================================= */}
         {activeMainTab === 'RECONCILIATION_TIMELINE' && (
           <div className="space-y-6">
-            {/* Header & Các nút Xuất Excel / In Biên Bản Đối Chiếu */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-50 text-amber-700 rounded-xl border border-amber-200">
@@ -1395,9 +1541,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   <h3 className="font-bold text-slate-900 text-sm">2. Nhật Ký Dòng Thời Gian Phát Hành & Sửa Đổi Bản Vẽ</h3>
                 </div>
 
-                {/* Bộ lọc tinh gọn */}
                 <div className="flex items-center gap-3 flex-wrap text-xs">
-                  {/* Lọc theo Nhân Viên */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-bold">Nhân Viên:</span>
                     <select
@@ -1412,7 +1556,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                     </select>
                   </div>
 
-                  {/* Lọc theo Phân Loại Trách Nhiệm */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-bold">Phân Định:</span>
                     <select
@@ -1428,7 +1571,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                     </select>
                   </div>
 
-                  {/* Ô tìm kiếm nhanh */}
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -1442,7 +1584,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Bảng Dòng Thời Gian Tinh Gọn */}
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 select-none">
@@ -1849,9 +1990,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
       </main>
 
-      {/* ========================================================================= */}
-      {/* MODAL LẬP BIÊN BẢN BÀN GIAO HỒ SƠ                                         */}
-      {/* ========================================================================= */}
+      {/* MODAL LẬP BIÊN BẢN BÀN GIAO */}
       {isTransmittalModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-5 max-w-2xl w-full space-y-4 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
@@ -1931,7 +2070,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                               setSelectedDrawingsForTransmittal(selectedDrawingsForTransmittal.filter(id => id !== draw.id));
                             }
                           }}
-                          className="w-4 h-4 rounded text-blue-600"
+                          className="w-4 h-4 rounded text-blue-600 cursor-pointer accent-blue-600"
                         />
                         <div className="flex-1 flex items-center justify-between">
                           <div>
@@ -2291,7 +2430,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
-              {/* Tùy chọn Thêm Lần Hiệu Chỉnh Mới Kèm Phân Loại Nguyên Nhân */}
               {editingDrawing && (
                 <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 space-y-2.5">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900">
