@@ -51,7 +51,10 @@ import {
   Printer,
   ClipboardCheck,
   BarChart3,
-  SendHorizontal
+  SendHorizontal,
+  Scale,
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { 
   DrawingProject, 
@@ -72,12 +75,20 @@ import {
   exportMonthlyReportToExcel, 
   printTransmittalForm 
 } from '../../services/monthlyDrawingsReportService';
+import { 
+  extractTimelineLogs, 
+  calculateEmployeeStats, 
+  exportReconciliationExcel, 
+  printReconciliationDoc,
+  TimelineLogItem,
+  EmployeeProductivityStats
+} from '../../services/reconciliationService';
 
 interface DrawingsManagerViewProps {
   onBackToAccounting: () => void;
 }
 
-type BlueprintMainTab = 'DRAWINGS_LIST' | 'PROJECTS_LIST' | 'MONTHLY_REPORT' | 'SETTINGS';
+type BlueprintMainTab = 'DRAWINGS_LIST' | 'RECONCILIATION_TIMELINE' | 'PROJECTS_LIST' | 'MONTHLY_REPORT' | 'SETTINGS';
 type DisplayMode = 'TABLE' | 'GRID';
 
 export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBackToAccounting }) => {
@@ -90,6 +101,11 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [companies, setCompanies] = useState<DrawingCompany[]>([]);
   const [drawings, setDrawings] = useState<DrawingItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Bộ lọc cho Tab Nhật Ký & Đối Chiếu Khách Hàng
+  const [reconAuthorFilter, setReconAuthorFilter] = useState<string>('ALL');
+  const [reconFaultFilter, setReconFaultFilter] = useState<string>('ALL');
+  const [reconSearchTerm, setReconSearchTerm] = useState<string>('');
 
   // Báo Cáo Tháng & Bàn Giao State
   const [reportYear, setReportYear] = useState<number>(2026);
@@ -164,7 +180,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     loadDatabase();
   }, []);
 
-  // Settings State: Danh mục tiền tố mã bản vẽ
+  // Settings State: Tiền tố & Lý do sửa
   const [drawingCodePrefixes] = useState([
     { code: 'KT-', name: 'Kiến Trúc Tổng Thể', discipline: 'ARCHITECTURE', sheet: 'A2' },
     { code: 'KC-', name: 'Kết Cấu Bê Tông Cốt Thép', discipline: 'STRUCTURE', sheet: 'A1' },
@@ -174,7 +190,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     { code: 'HC-', name: 'Hồ Sơ Bản Vẽ Hoàn Công', discipline: 'AS_BUILT', sheet: 'A1' },
   ]);
 
-  // Settings State: Lý do sửa đổi
   const [changeReasons] = useState([
     { id: 'INVESTOR_REQUEST', name: 'Chủ Đầu Tư yêu cầu thay đổi thiết kế / công năng' },
     { id: 'SITE_CONFLICT', name: 'Xung đột hiện trường (Vướng kết cấu, địa chất khác biệt)' },
@@ -183,7 +198,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     { id: 'ERROR_CORRECTION', name: 'Chỉnh sửa lỗi sai sót kích thước kỹ thuật' },
   ]);
 
-  // Bộ lọc đa chiều
+  // Bộ lọc đa chiều Tab 1
   const [selectedDiscipline, setSelectedDiscipline] = useState<DrawingDiscipline>('ALL');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('ALL');
   const [selectedStage, setSelectedStage] = useState<DrawingStageType>('ALL');
@@ -200,6 +215,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [editingDrawing, setEditingDrawing] = useState<DrawingItem | null>(null);
   const [isAddingNewRevision, setIsAddingNewRevision] = useState(false);
   const [revisionNote, setRevisionNote] = useState('');
+  const [revisionReasonType, setRevisionReasonType] = useState<'INVESTOR_REQUEST' | 'ERROR_CORRECTION' | 'SITE_CONFLICT'>('INVESTOR_REQUEST');
   const [drawingForm, setDrawingForm] = useState<Partial<DrawingItem>>({
     drawingNumber: '',
     title: '',
@@ -228,7 +244,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     leadEngineer: 'KS. Võ Huy Phong',
   });
 
-  // Modal Tạo Biên Bản Bàn Giao Mới (Transmittal Modal)
+  // Modal Tạo Biên Bản Bàn Giao
   const [isTransmittalModalOpen, setIsTransmittalModalOpen] = useState(false);
   const [selectedDrawingsForTransmittal, setSelectedDrawingsForTransmittal] = useState<string[]>([]);
   const [transmittalRecipient, setTransmittalRecipient] = useState('TƯ VẤN GIÁM SÁT & CHỦ ĐẦU TƯ');
@@ -266,7 +282,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
 
   const activeProject: DrawingProject = projects.find(p => p.id === selectedProjectId) || projects[0] || fallbackProject;
 
-  // Lọc đa chiều danh sách bản vẽ
+  // Lọc đa chiều danh sách bản vẽ Tab 1
   const filteredDrawings = drawings.filter(d => {
     if (d.projectId !== selectedProjectId) return false;
     if (selectedDiscipline !== 'ALL' && d.discipline !== selectedDiscipline) return false;
@@ -294,6 +310,24 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const totalVariationValue = allProjectDrawings
     .filter(d => d.isVariationOrder)
     .reduce((sum, d) => sum + (d.variationAmount || 0), 0);
+
+  // Dữ liệu Nhật Ký & Đối Chiếu Khách Hàng (Tab 2)
+  const allTimelineLogs = extractTimelineLogs(allProjectDrawings);
+  const employeeStats = calculateEmployeeStats(allTimelineLogs);
+
+  // Lọc dữ liệu Nhật Ký
+  const filteredTimelineLogs = allTimelineLogs.filter(log => {
+    if (reconAuthorFilter !== 'ALL' && log.author !== reconAuthorFilter) return false;
+    if (reconFaultFilter !== 'ALL' && log.faultParty !== reconFaultFilter) return false;
+    if (reconSearchTerm) {
+      const q = reconSearchTerm.toLowerCase();
+      return log.drawingNumber.toLowerCase().includes(q) || 
+             log.drawingTitle.toLowerCase().includes(q) || 
+             log.changeDescription.toLowerCase().includes(q) ||
+             log.date.includes(q);
+    }
+    return true;
+  });
 
   // Số liệu tổng hợp báo cáo tháng
   const monthlySummary = calculateMonthlySummary(allProjectDrawings, transmittals, reportYear, reportMonth);
@@ -332,6 +366,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
     setEditingDrawing(draw);
     setIsAddingNewRevision(false);
     setRevisionNote('');
+    setRevisionReasonType('INVESTOR_REQUEST');
     setDrawingForm({
       ...draw,
     });
@@ -348,7 +383,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
 
     try {
       if (editingDrawing) {
-        // CẬP NHẬT BẢN VẼ CŨ
         let updatedRevisions = [...editingDrawing.revisions];
         let currentRevText = editingDrawing.currentRevision;
         let nature = drawingForm.issueNature || editingDrawing.issueNature;
@@ -369,7 +403,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             changeDate: new Date().toISOString().slice(0, 10),
             changedBy: drawingForm.author || 'KTS. Lê Hoàng Sỹ',
             issuingCompany: targetComp.shortName,
-            changeReasonCategory: 'INVESTOR_REQUEST',
+            changeReasonCategory: revisionReasonType,
             changeDescription: revisionNote.trim(),
             approvedBy: drawingForm.approver,
             approvedDate: new Date().toISOString().slice(0, 10),
@@ -407,7 +441,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         }
         alert(`Đã cập nhật thành công bản vẽ [${updatedItem.drawingNumber}]!`);
       } else {
-        // THÊM MỚI BẢN VẼ
         const newId = `draw-${Date.now()}`;
         const initRev: DrawingRevision = {
           id: `rev-${newId}-0`,
@@ -561,7 +594,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   };
 
   // =========================================================================
-  // XỬ LÝ XUẤT EXCEL
+  // XỬ LÝ XUẤT EXCEL & IN ẤN
   // =========================================================================
   const handleExportFilteredExcel = () => {
     if (filteredDrawings.length === 0) {
@@ -595,6 +628,14 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       return;
     }
     exportMonthlyReportToExcel(activeProject, monthlySummary, drawingsInMonth, transmittalsInMonth);
+  };
+
+  const handleExportReconciliation = () => {
+    if (filteredTimelineLogs.length === 0) {
+      alert('Không có dữ liệu nhật ký nào để xuất Excel đối chiếu!');
+      return;
+    }
+    exportReconciliationExcel(activeProject, filteredTimelineLogs, employeeStats);
   };
 
   // Badge Bộ Môn
@@ -722,13 +763,13 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
-                Thêm • Sửa • Xóa Bản Vẽ • Báo Cáo Tháng & Bàn Giao Hồ Sơ • Xuất Excel & In PDF
+                Nhật Ký Dòng Thời Gian • Năng Suất Nhân Viên • Đối Chiếu Khách Hàng & Phân Định Sai Sót
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation Chính (4 Tabs: Bản Vẽ / Công Trình / Báo Cáo Tháng / Cài Đặt) */}
+        {/* Tab Navigation Chính (5 Tabs: Danh Mục / Nhật Ký Đối Chiếu / Dự Án / Báo Cáo Tháng / Cài Đặt) */}
         <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-bold flex-wrap">
           <button
             onClick={() => setActiveMainTab('DRAWINGS_LIST')}
@@ -743,6 +784,18 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
           </button>
 
           <button
+            onClick={() => setActiveMainTab('RECONCILIATION_TIMELINE')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              activeMainTab === 'RECONCILIATION_TIMELINE'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5 text-amber-600" />
+            <span>2. Nhật Ký & Đối Chiếu Khách Hàng</span>
+          </button>
+
+          <button
             onClick={() => setActiveMainTab('PROJECTS_LIST')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
               activeMainTab === 'PROJECTS_LIST'
@@ -751,7 +804,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <FolderKanban className="w-3.5 h-3.5" />
-            <span>2. Công Trình / Dự Án ({projects.length})</span>
+            <span>3. Công Trình / Dự Án ({projects.length})</span>
           </button>
 
           <button
@@ -763,7 +816,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>3. Báo Cáo Tháng & Bàn Giao</span>
+            <span>4. Báo Cáo Tháng & Bàn Giao</span>
           </button>
 
           <button
@@ -775,7 +828,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <Settings className="w-3.5 h-3.5" />
-            <span>4. Cài Đặt Hệ Thống</span>
+            <span>5. Cài Đặt Hệ Thống</span>
           </button>
         </div>
       </header>
@@ -1230,7 +1283,236 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: QUẢN LÝ DANH SÁCH CÔNG TRÌNH / DỰ ÁN                                */}
+        {/* TAB 2: NHẬT KÝ DÒNG THỜI GIAN & ĐỐI CHIẾU KHÁCH HÀNG (CORE FEATURE)       */}
+        {/* ========================================================================= */}
+        {activeMainTab === 'RECONCILIATION_TIMELINE' && (
+          <div className="space-y-6">
+            {/* Header & Các nút Xuất Excel / In Biên Bản Đối Chiếu */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 text-amber-700 rounded-xl border border-amber-200">
+                  <Scale className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900">Nhật Ký Bản Vẽ & Đối Chiếu Khách Hàng (Audit Trail)</h2>
+                  <p className="text-xs text-slate-500">
+                    Theo dõi lịch trình từng ngày ({filteredTimelineLogs.length} lượt) • Truy xét nguyên nhân sửa đổi (Khách đổi ý hay Mình sai kỹ thuật)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  onClick={handleExportReconciliation}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  title="Xuất bảng đối chiếu khối lượng & trách nhiệm ra file Excel"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Xuất Excel Đối Chiếu</span>
+                </button>
+
+                <button
+                  onClick={() => printReconciliationDoc(activeProject, filteredTimelineLogs)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  title="In Biên bản đối soát A4 có sẵn chữ ký để làm việc với Chủ đầu tư"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>In Biên Bản Đối Soát (A4)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Khung 1: Bảng Đánh Giá Năng Suất & Chất Lượng Từng Nhân Viên */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-indigo-600" />
+                  <span>1. Năng Suất & Chất Lượng Bản Vẽ Từng Nhân Viên (KTS / Kỹ Sư):</span>
+                </h3>
+                <span className="text-xs text-slate-500">Đánh giá dựa trên số lần sửa & nguyên nhân sai sót</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {employeeStats.map((stat, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`bg-white p-4 rounded-2xl border transition-all shadow-xs space-y-3 ${
+                      stat.internalErrorCount > 0 ? 'border-amber-200' : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 font-bold flex items-center justify-center text-xs border border-blue-200">
+                          {stat.authorName.charAt(stat.authorName.lastIndexOf(' ') + 1) || 'NV'}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 text-xs">{stat.authorName}</div>
+                          <div className="text-[10px] text-slate-400">KTS / Kỹ sư thiết kế</div>
+                        </div>
+                      </div>
+
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        stat.qualityScore >= 90 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : stat.qualityScore >= 70 
+                          ? 'bg-amber-100 text-amber-800' 
+                          : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        Chất lượng: {stat.qualityScore}%
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[11px] text-slate-500 block">Tổng bản vẽ:</span>
+                        <strong className="text-blue-700 font-mono text-sm">{stat.totalDrawings} bản</strong>
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 block">Chuẩn lần đầu:</span>
+                        <strong className="text-emerald-700 font-mono text-sm">{stat.firstTimePassCount} bản</strong>
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 block">Sửa theo CĐT:</span>
+                        <strong className="text-slate-800 font-mono">{stat.clientRevisionCount} đợt</strong>
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-slate-500 block">Lỗi kỹ thuật (Sai):</span>
+                        <strong className={`font-mono font-bold ${stat.internalErrorCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {stat.internalErrorCount > 0 ? `${stat.internalErrorCount} lỗi` : '0 lỗi'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Khung 2: Bảng Nhật Ký Dòng Thời Gian Chi Tiết & Bộ Lọc Tinh Gọn */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-bold text-slate-900 text-sm">2. Nhật Ký Dòng Thời Gian Phát Hành & Sửa Đổi Bản Vẽ</h3>
+                </div>
+
+                {/* Bộ lọc tinh gọn */}
+                <div className="flex items-center gap-3 flex-wrap text-xs">
+                  {/* Lọc theo Nhân Viên */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-bold">Nhân Viên:</span>
+                    <select
+                      value={reconAuthorFilter}
+                      onChange={(e) => setReconAuthorFilter(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg font-bold text-slate-800"
+                    >
+                      <option value="ALL">Tất Cả Nhân Viên</option>
+                      {employeeStats.map((e, idx) => (
+                        <option key={idx} value={e.authorName}>{e.authorName}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Lọc theo Phân Loại Trách Nhiệm */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-bold">Phân Định:</span>
+                    <select
+                      value={reconFaultFilter}
+                      onChange={(e) => setReconFaultFilter(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg font-bold text-slate-800"
+                    >
+                      <option value="ALL">Tất Cả Phân Loại</option>
+                      <option value="CLIENT_REQUEST">🟢 Khách Yêu Cầu Đổi Ý</option>
+                      <option value="INTERNAL_ERROR">🔴 Lỗi Kỹ Thuật (Mình Sai)</option>
+                      <option value="SITE_CONDITION">🟡 Xung Đột Hiện Trường</option>
+                      <option value="NORMAL_NEW">🆕 Bản Gốc Phát Hành</option>
+                    </select>
+                  </div>
+
+                  {/* Ô tìm kiếm nhanh */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={reconSearchTerm}
+                      onChange={(e) => setReconSearchTerm(e.target.value)}
+                      placeholder="Tìm ngày, số hiệu, nội dung..."
+                      className="bg-slate-50 border border-slate-200 pl-8 pr-2.5 py-1 rounded-lg text-xs w-48 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bảng Dòng Thời Gian Tinh Gọn */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 select-none">
+                    <tr>
+                      <th className="p-3 text-center w-10">STT</th>
+                      <th className="p-3 w-28">Ngày Tháng</th>
+                      <th className="p-3 w-24">Số Hiệu</th>
+                      <th className="p-3 min-w-[200px]">Tên / Tiêu Đề Bản Vẽ</th>
+                      <th className="p-3 w-32">Người Vẽ</th>
+                      <th className="p-3 text-center w-24">Phiên Bản</th>
+                      <th className="p-3 min-w-[240px]">Nội Dung / Lý Do Sửa Đổi</th>
+                      <th className="p-3 min-w-[180px]">Phân Định (Khách hay Mình)</th>
+                      <th className="p-3 text-center w-36">Tình Trạng Bàn Giao</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTimelineLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">
+                          Không tìm thấy bản ghi nhật ký nào phù hợp bộ lọc
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTimelineLogs.map((log, idx) => (
+                        <tr key={log.id} className="hover:bg-blue-50/40 transition-colors">
+                          <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                          <td className="p-3 font-mono font-bold text-slate-700">{log.date}</td>
+                          <td className="p-3">
+                            <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              {log.drawingNumber}
+                            </span>
+                          </td>
+                          <td className="p-3 font-semibold text-slate-900">{log.drawingTitle}</td>
+                          <td className="p-3 text-slate-700 font-medium">{log.author}</td>
+                          <td className="p-3 text-center font-mono font-bold text-slate-800">{log.revisionNumber}</td>
+                          <td className="p-3 text-slate-700">
+                            <div className="line-clamp-2">{log.changeDescription}</div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold inline-block ${
+                              log.faultParty === 'INTERNAL_ERROR'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : log.faultParty === 'CLIENT_REQUEST'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : log.faultParty === 'SITE_CONDITION'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                            }`}>
+                              {log.faultPartyLabel}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center text-[11px]">
+                            <span className={`font-semibold ${
+                              log.handoverStatus === 'HANDED_OVER' ? 'text-emerald-700' : 'text-amber-700'
+                            }`}>
+                              {log.handoverStatusLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: QUẢN LÝ DANH SÁCH CÔNG TRÌNH / DỰ ÁN                                */}
         {/* ========================================================================= */}
         {activeMainTab === 'PROJECTS_LIST' && (
           <div className="space-y-4">
@@ -1290,11 +1572,10 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: BÁO CÁO THÁNG & BÀN GIAO HỒ SƠ BẢN VẼ (NEW FEATURE)               */}
+        {/* TAB 4: BÁO CÁO THÁNG & BÀN GIAO HỒ SƠ BẢN VẼ                             */}
         {/* ========================================================================= */}
         {activeMainTab === 'MONTHLY_REPORT' && (
           <div className="space-y-6">
-            {/* Bộ Lọc Tháng / Năm & Nút Xuất Báo Cáo Excel */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
@@ -1307,7 +1588,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
 
               <div className="flex items-center gap-3 flex-wrap text-xs">
-                {/* Chọn Tháng */}
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
                   <Calendar className="w-4 h-4 text-indigo-600" />
                   <span className="text-slate-500 font-bold">Kỳ Báo Cáo:</span>
@@ -1330,7 +1610,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   </select>
                 </div>
 
-                {/* Nút Xuất Báo Cáo Tháng Ra Excel */}
                 <button
                   onClick={handleExportMonthlyExcel}
                   className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition-all"
@@ -1339,7 +1618,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   <span>Xuất Báo Cáo Tháng (Excel)</span>
                 </button>
 
-                {/* Nút Tạo Biên Bản Bàn Giao */}
                 <button
                   onClick={() => setIsTransmittalModalOpen(true)}
                   className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all"
@@ -1350,7 +1628,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
             </div>
 
-            {/* 4 Thẻ KPI Tháng */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
               <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1 shadow-xs">
                 <div className="text-slate-500 font-bold flex items-center justify-between">
@@ -1391,7 +1668,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
             </div>
 
-            {/* Danh Sách Các Đợt Bàn Giao Hồ Sơ (Transmittals) */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -1452,7 +1728,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 4: CÀI ĐẶT HỆ THỐNG BẢN VẼ (SETTINGS TAB)                              */}
+        {/* TAB 5: CÀI ĐẶT HỆ THỐNG BẢN VẼ (SETTINGS TAB)                              */}
         {/* ========================================================================= */}
         {activeMainTab === 'SETTINGS' && (
           <div className="space-y-6">
@@ -1468,7 +1744,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
             </div>
 
-            {/* Khung 1: Quản Lý Danh Sách Công Ty & Đơn Vị Phát Hành */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -1526,7 +1801,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
             </div>
 
-            {/* Khung 2: Quy Ước Tiền Tố Đánh Mã Bản Vẽ */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
                 <FileCode className="w-4 h-4 text-indigo-600" />
@@ -1549,7 +1823,6 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
               </div>
             </div>
 
-            {/* Khung 3: Danh Mục Lý Do Hiệu Chỉnh */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
                 <History className="w-4 h-4 text-amber-600" />
@@ -1577,7 +1850,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       </main>
 
       {/* ========================================================================= */}
-      {/* MODAL LẬP BIÊN BẢN BÀN GIAO HỒ SƠ (CREATE TRANSMITTAL MODAL)              */}
+      {/* MODAL LẬP BIÊN BẢN BÀN GIAO HỒ SƠ                                         */}
       {/* ========================================================================= */}
       {isTransmittalModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2018,8 +2291,9 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                 </div>
               </div>
 
+              {/* Tùy chọn Thêm Lần Hiệu Chỉnh Mới Kèm Phân Loại Nguyên Nhân */}
               {editingDrawing && (
-                <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+                <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 space-y-2.5">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900">
                     <input
                       type="checkbox"
@@ -2031,15 +2305,30 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
                   </label>
 
                   {isAddingNewRevision && (
-                    <div>
-                      <label className="text-amber-800 font-semibold block mb-1">Lý do & Nội dung sửa đổi:</label>
-                      <textarea
-                        value={revisionNote}
-                        onChange={(e) => setRevisionNote(e.target.value)}
-                        placeholder="Nhập lý do thay đổi thiết kế (theo yêu cầu CĐT, hiện trường vướng dầm...)"
-                        rows={2}
-                        className="w-full bg-white border border-amber-300 text-slate-900 p-2 rounded-lg text-xs focus:outline-none"
-                      />
+                    <div className="space-y-2 pt-1 border-t border-amber-200">
+                      <div>
+                        <label className="text-amber-900 font-bold block mb-1">Phân Định Trách Nhiệm / Nguyên Nhân Sửa (*):</label>
+                        <select
+                          value={revisionReasonType}
+                          onChange={(e) => setRevisionReasonType(e.target.value as any)}
+                          className="w-full bg-white border border-amber-300 text-slate-900 px-3 py-1.5 rounded-lg font-bold"
+                        >
+                          <option value="INVESTOR_REQUEST">🟢 Khách Hàng (CĐT) yêu cầu đổi ý / thay đổi công năng (Tính phát sinh)</option>
+                          <option value="ERROR_CORRECTION">🔴 Lỗi Kỹ Thuật Nội Bộ (KTS vẽ sai sót kích thước / nhầm thép - Mình sai)</option>
+                          <option value="SITE_CONFLICT">🟡 Xung Đột Hiện Trường (Vướng địa chất / đường cống cũ)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-amber-800 font-semibold block mb-1">Nội dung chi tiết sửa đổi:</label>
+                        <textarea
+                          value={revisionNote}
+                          onChange={(e) => setRevisionNote(e.target.value)}
+                          placeholder="Mô tả cụ thể: Dời vách ngăn phòng ngủ, chỉnh thép dầm từ D18 lên D20..."
+                          rows={2}
+                          className="w-full bg-white border border-amber-300 text-slate-900 p-2 rounded-lg text-xs focus:outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
