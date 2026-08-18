@@ -45,7 +45,7 @@ export const TrialBalancePivotView: React.FC<TrialBalancePivotViewProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 border border-rose-400/30 text-rose-200 rounded-xl text-xs font-bold">
-              <AlertTriangle className="w-4 h-4 text-rose-400" /> LỖI CHÊNH LỆCH
+              <AlertTriangle className="w-4 h-4 text-rose-400" /> LỖI Còn
             </div>
           )
         }
@@ -108,9 +108,8 @@ export const TrialBalancePivotView: React.FC<TrialBalancePivotViewProps> = ({
                 return (
                   <tr
                     key={r.accountCode}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${
-                      isLevel1 ? 'font-bold bg-slate-50/50 dark:bg-slate-800/20' : 'pl-4'
-                    }`}
+                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${isLevel1 ? 'font-bold bg-slate-50/50 dark:bg-slate-800/20' : 'pl-4'
+                      }`}
                   >
                     <td className="p-2.5 font-mono text-emerald-700 dark:text-emerald-400 border-r border-slate-100 dark:border-slate-800 font-bold">{r.accountCode}</td>
                     <td className="p-2.5 border-r border-slate-100 dark:border-slate-800">{r.accountName}</td>

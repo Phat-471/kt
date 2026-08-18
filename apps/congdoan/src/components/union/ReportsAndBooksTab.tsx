@@ -88,9 +88,42 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
     return filterTransactions(rawBank);
   }, [transactions, selectedYear, periodFilter]);
 
+  // Quản lý số dư đầu kỳ theo từng năm (lưu trong localStorage để nhớ giữa các phiên làm việc)
+  const [openingBalances, setOpeningBalances] = useState<{ [year: number]: { cash: number; bank: number } }>(() => {
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      2023: { cash: 15594300, bank: 26460 },
+      2024: { cash: 11149200, bank: 26510 },
+      2025: { cash: 2309760, bank: 4041874 },
+      2026: { cash: 438010, bank: 123430 },
+    };
+  });
+
+  const effectiveYear = typeof selectedYear === 'number' ? selectedYear : initialYear;
+  const currentOpeningCash = (typeof selectedYear === 'number' && openingBalances[selectedYear]) ? openingBalances[selectedYear].cash : (selectedYear === 'ALL' ? (openingBalances[2023]?.cash || 0) : (openingBalances[effectiveYear]?.cash || 0));
+  const currentOpeningBank = (typeof selectedYear === 'number' && openingBalances[selectedYear]) ? openingBalances[selectedYear].bank : (selectedYear === 'ALL' ? (openingBalances[2023]?.bank || 0) : (openingBalances[effectiveYear]?.bank || 0));
+
+  const handleUpdateOpeningBalance = (field: 'cash' | 'bank', val: number) => {
+    const y = effectiveYear;
+    const updated = {
+      ...openingBalances,
+      [y]: {
+        cash: field === 'cash' ? val : (openingBalances[y]?.cash || 0),
+        bank: field === 'bank' ? val : (openingBalances[y]?.bank || 0),
+      }
+    };
+    setOpeningBalances(updated);
+    try {
+      localStorage.setItem('ACCODESK_UNION_OPENING_BALANCES', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
   // Running balance for Cash
   const cashRowsWithBalance = useMemo(() => {
-    let running = 0;
+    let running = currentOpeningCash;
     let totalThu = 0;
     let totalChi = 0;
 
@@ -112,12 +145,12 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
       };
     });
 
-    return { rows, totalThu, totalChi, closingBalance: running };
-  }, [cashTransactions]);
+    return { rows, totalThu, totalChi, closingBalance: running, openingBalance: currentOpeningCash };
+  }, [cashTransactions, currentOpeningCash]);
 
   // Running balance for Bank
   const bankRowsWithBalance = useMemo(() => {
-    let running = 0;
+    let running = currentOpeningBank;
     let totalThu = 0;
     let totalChi = 0;
 
@@ -139,10 +172,8 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
       };
     });
 
-    return { rows, totalThu, totalChi, closingBalance: running };
-  }, [bankTransactions]);
-
-  const effectiveYear = typeof selectedYear === 'number' ? selectedYear : initialYear;
+    return { rows, totalThu, totalChi, closingBalance: running, openingBalance: currentOpeningBank };
+  }, [bankTransactions, currentOpeningBank]);
 
   // Export handlers
   const handleExportCashBookExcel = () => {
@@ -334,6 +365,32 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
+                {/* DÒNG SỐ DƯ ĐẦU KỲ */}
+                <tr className="bg-amber-50/70 font-semibold border-b-2 border-amber-200">
+                  <td className="p-2.5 text-center text-slate-400 font-mono border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-center font-mono border-r border-slate-200 whitespace-nowrap text-slate-500">Đầu kỳ</td>
+                  <td className="p-2.5 text-center text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 border-r border-slate-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-amber-900 uppercase text-[11px] tracking-wide">Số Dư Đầu Kỳ {typeof selectedYear === 'number' ? `Năm ${selectedYear}` : ''}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">Sửa:</span>
+                        <input
+                          type="number"
+                          value={currentOpeningCash}
+                          onChange={(e) => handleUpdateOpeningBalance('cash', Number(e.target.value) || 0)}
+                          className="w-28 bg-white border border-amber-300 rounded px-1.5 py-0.5 text-right font-mono font-bold text-amber-950 text-xs focus:outline-none focus:border-amber-600"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-2.5 text-right font-mono text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-right font-mono text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-amber-950 bg-amber-100/70 whitespace-nowrap">
+                    {formatNumber(currentOpeningCash)}
+                  </td>
+                </tr>
+
                 {cashRowsWithBalance.rows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 text-xs">
@@ -421,6 +478,32 @@ export const ReportsAndBooksTab: React.FC<ReportsAndBooksTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
+                {/* DÒNG SỐ DƯ ĐẦU KỲ */}
+                <tr className="bg-blue-50/70 font-semibold border-b-2 border-blue-200">
+                  <td className="p-2.5 text-center text-slate-400 font-mono border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-center font-mono border-r border-slate-200 whitespace-nowrap text-slate-500">Đầu kỳ</td>
+                  <td className="p-2.5 text-center text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 border-r border-slate-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-blue-900 uppercase text-[11px] tracking-wide">Số Dư Đầu Kỳ {typeof selectedYear === 'number' ? `Năm ${selectedYear}` : ''}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">Sửa:</span>
+                        <input
+                          type="number"
+                          value={currentOpeningBank}
+                          onChange={(e) => handleUpdateOpeningBalance('bank', Number(e.target.value) || 0)}
+                          className="w-28 bg-white border border-blue-300 rounded px-1.5 py-0.5 text-right font-mono font-bold text-blue-950 text-xs focus:outline-none focus:border-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-2.5 text-right font-mono text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-right font-mono text-slate-400 border-r border-slate-200">-</td>
+                  <td className="p-2.5 text-right font-mono font-bold text-blue-950 bg-blue-100/70 whitespace-nowrap">
+                    {formatNumber(currentOpeningBank)}
+                  </td>
+                </tr>
+
                 {bankRowsWithBalance.rows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-slate-400 text-xs">

@@ -15,9 +15,12 @@ import {
   Pencil,
   Check,
   X,
-  Search
+  Search,
+  Coins,
+  Landmark
 } from 'lucide-react';
-import { exportUnionBackupJSON, importUnionBackupJSON } from '../../services/storage';
+import { exportUnionBackupJSON, importUnionBackupJSON, UnionOpeningBalance } from '../../services/storage';
+import { formatNumber } from '../../utils/formatters';
 
 interface SettingsTabProps {
   signerSettings: UnionSignerSettings;
@@ -26,7 +29,227 @@ interface SettingsTabProps {
   onAddEmployee: (emp: Omit<UnionEmployee, 'id'>) => Promise<void>;
   onUpdateEmployee?: (emp: UnionEmployee) => Promise<void>;
   onDeleteEmployee: (id: string) => Promise<void>;
+  openingBalances?: { [year: number]: { cash: number; bank: number } };
+  onSaveOpeningBalance?: (year: number, cash: number, bank: number) => Promise<void>;
 }
+
+interface OpeningBalancesTableProps {
+  openingBalances?: { [year: number]: { cash: number; bank: number } };
+  onSaveOpeningBalance?: (year: number, cash: number, bank: number) => Promise<void>;
+}
+
+const OpeningBalancesTable: React.FC<OpeningBalancesTableProps> = ({
+  openingBalances = {},
+  onSaveOpeningBalance
+}) => {
+  const years = useMemo(() => {
+    const list = Object.keys(openingBalances).map(Number).sort((a, b) => a - b);
+    if (!list.includes(2023)) list.unshift(2023);
+    if (!list.includes(2024)) list.push(2024);
+    if (!list.includes(2025)) list.push(2025);
+    if (!list.includes(2026)) list.push(2026);
+    return Array.from(new Set(list)).sort((a, b) => a - b);
+  }, [openingBalances]);
+
+  const [editingYear, setEditingYear] = useState<number | null>(null);
+  const [cashVal, setCashVal] = useState<number>(0);
+  const [bankVal, setBankVal] = useState<number>(0);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // Thêm năm mới
+  const [newYear, setNewYear] = useState<number>(2027);
+  const [newCash, setNewCash] = useState<number>(0);
+  const [newBank, setNewBank] = useState<number>(0);
+  const [isAddingYear, setIsAddingYear] = useState<boolean>(false);
+
+  const handleStartEdit = (y: number) => {
+    setEditingYear(y);
+    setCashVal(openingBalances[y]?.cash || 0);
+    setBankVal(openingBalances[y]?.bank || 0);
+  };
+
+  const handleSave = async (y: number) => {
+    if (onSaveOpeningBalance) {
+      await onSaveOpeningBalance(y, cashVal, bankVal);
+      setSaveSuccess(`Đã lưu số dư đầu kỳ năm ${y}!`);
+      setTimeout(() => setSaveSuccess(null), 2500);
+    }
+    setEditingYear(null);
+  };
+
+  const handleAddYearSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newYear || newYear < 2000) return;
+    if (onSaveOpeningBalance) {
+      await onSaveOpeningBalance(newYear, newCash, newBank);
+      setSaveSuccess(`Đã thêm số dư đầu kỳ năm ${newYear}!`);
+      setTimeout(() => setSaveSuccess(null), 2500);
+    }
+    setIsAddingYear(false);
+    setNewYear(prev => prev + 1);
+    setNewCash(0);
+    setNewBank(0);
+  };
+
+  return (
+    <div className="space-y-4">
+      {saveSuccess && (
+        <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>{saveSuccess}</span>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
+              <th className="p-2.5 font-bold text-center w-24">Niên Độ (Năm)</th>
+              <th className="p-2.5 font-bold text-right">Tồn Tiền Mặt Đầu Kỳ (S11-H)</th>
+              <th className="p-2.5 font-bold text-right">Tồn Ngân Hàng Đầu Kỳ (S12-H)</th>
+              <th className="p-2.5 font-bold text-right">Tổng Quỹ Đầu Kỳ</th>
+              <th className="p-2.5 font-bold text-center w-28">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {years.map(y => {
+              const current = openingBalances[y] || { cash: 0, bank: 0 };
+              const isEditing = editingYear === y;
+
+              if (isEditing) {
+                return (
+                  <tr key={y} className="bg-amber-50/50">
+                    <td className="p-2.5 text-center font-bold font-mono text-slate-800">{y}</td>
+                    <td className="p-2">
+                      <input
+                        type="number"
+                        value={cashVal}
+                        onChange={(e) => setCashVal(Number(e.target.value) || 0)}
+                        className="w-full p-1.5 border border-amber-300 rounded font-mono font-bold text-right text-xs bg-white focus:ring-1 focus:ring-amber-500"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="number"
+                        value={bankVal}
+                        onChange={(e) => setBankVal(Number(e.target.value) || 0)}
+                        className="w-full p-1.5 border border-amber-300 rounded font-mono font-bold text-right text-xs bg-white focus:ring-1 focus:ring-amber-500"
+                      />
+                    </td>
+                    <td className="p-2 text-right font-mono font-bold text-slate-700">
+                      {formatNumber(cashVal + bankVal)} đ
+                    </td>
+                    <td className="p-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleSave(y)}
+                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-[11px] shadow-sm flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Lưu</span>
+                        </button>
+                        <button
+                          onClick={() => setEditingYear(null)}
+                          className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+
+              return (
+                <tr key={y} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-2.5 text-center font-bold font-mono text-blue-700 bg-blue-50/30">{y}</td>
+                  <td className="p-2.5 text-right font-mono font-semibold text-amber-800">
+                    {formatNumber(current.cash)} đ
+                  </td>
+                  <td className="p-2.5 text-right font-mono font-semibold text-sky-800">
+                    {formatNumber(current.bank)} đ
+                  </td>
+                  <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                    {formatNumber((current.cash || 0) + (current.bank || 0))} đ
+                  </td>
+                  <td className="p-2.5 text-center">
+                    <button
+                      onClick={() => handleStartEdit(y)}
+                      className="px-2.5 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 text-[11px] font-semibold flex items-center gap-1 mx-auto transition-all"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Sửa</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Thêm niên độ mới */}
+      {!isAddingYear ? (
+        <button
+          onClick={() => setIsAddingYear(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all shadow-xs"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Thêm Số Dư Cho Năm Mới</span>
+        </button>
+      ) : (
+        <form onSubmit={handleAddYearSubmit} className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2 text-xs">
+          <div className="font-bold text-amber-900">Thêm Số Dư Đầu Kỳ Cho Năm Mới:</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Năm:</label>
+              <input
+                type="number"
+                value={newYear}
+                onChange={(e) => setNewYear(Number(e.target.value) || 2027)}
+                className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tồn Tiền Mặt Đầu Kỳ (đ):</label>
+              <input
+                type="number"
+                value={newCash}
+                onChange={(e) => setNewCash(Number(e.target.value) || 0)}
+                className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tồn Ngân Hàng Đầu Kỳ (đ):</label>
+              <input
+                type="number"
+                value={newBank}
+                onChange={(e) => setNewBank(Number(e.target.value) || 0)}
+                className="w-full p-1.5 border border-slate-300 rounded font-mono font-bold bg-white"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="submit"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold shadow-sm"
+            >
+              Lưu Năm {newYear}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAddingYear(false)}
+              className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-semibold"
+            >
+              Hủy
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   signerSettings,
@@ -35,6 +258,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onAddEmployee,
   onUpdateEmployee,
   onDeleteEmployee,
+  openingBalances,
+  onSaveOpeningBalance,
 }) => {
   const [formData, setFormData] = useState<UnionSignerSettings>(signerSettings);
   const [isSaved, setIsSaved] = useState(false);
@@ -435,7 +660,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
       </div>
 
-      {/* 3. SAO LƯU & DI CHUYỂN DỮ LIỆU SANG MÁY KHÁC */}
+      {/* 3. CÀI ĐẶT SỐ DƯ ĐẦU KỲ TỪNG NĂM */}
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Cài Đặt Số Dư Quỹ Đầu Kỳ Từng Năm</h3>
+              <p className="text-xs text-slate-500">Quản lý số dư tồn Tiền mặt (S11-H) và Tiền gửi Ngân hàng (S12-H) chuyển từ năm trước sang</p>
+            </div>
+          </div>
+        </div>
+
+        <OpeningBalancesTable
+          openingBalances={openingBalances}
+          onSaveOpeningBalance={onSaveOpeningBalance}
+        />
+      </div>
+
+      {/* 4. SAO LƯU & DI CHUYỂN DỮ LIỆU SANG MÁY KHÁC */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
           <div className="flex items-center gap-3">

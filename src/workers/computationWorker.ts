@@ -57,7 +57,7 @@ export async function runBackgroundFuzzyReconcile(
         for (let j = 0; j < statements.length; j++) {
           const s = statements[j];
 
-          // So sánh số tiền (bắt buộc khớp hoặc chênh lệch rất nhỏ)
+          // So sánh số tiền (bắt buộc khớp hoặc Còn rất nhỏ)
           if (Math.abs(v.amount - s.amount) < 1) {
             const dateScore = v.date === s.date ? 30 : Math.abs(new Date(v.date).getTime() - new Date(s.date).getTime()) <= 86400000 * 3 ? 15 : 0;
             const textSim = jaccardSimilarity(v.description || '', s.description || '');

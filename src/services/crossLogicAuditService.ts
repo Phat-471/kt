@@ -37,12 +37,12 @@ export const auditCrossLogicConsistency = (
   if (revDiff > 1000) {
     issues.push({
       id: 'cross_1_revenue',
-      title: 'Chênh lệch Doanh Thu P&L (TK 511) so với Tổng Doanh Thu Bảng Kê Thuế GTGT',
+      title: 'Còn Doanh Thu P&L (TK 511) so với Tổng Doanh Thu Bảng Kê Thuế GTGT',
       moduleA: `Doanh thu B02-DN: ${incomeStmt.grossRevenue.toLocaleString()} VNĐ`,
       moduleB: `Doanh thu Bảng Kê Thuế: ${vatRevenue.toLocaleString()} VNĐ`,
       varianceAmount: revDiff,
       severity: 'CRITICAL',
-      description: `Phát hiện chênh lệch ${revDiff.toLocaleString()} VNĐ giữa Doanh thu hạch toán P&L và Doanh thu trên bảng kê hóa đơn bán ra.`,
+      description: `Phát hiện Còn ${revDiff.toLocaleString()} VNĐ giữa Doanh thu hạch toán P&L và Doanh thu trên bảng kê hóa đơn bán ra.`,
       recommendation: 'Kiểm tra các hóa đơn bán ra chưa hạch toán vào tài khoản 511 hoặc các khoản giảm trừ doanh thu (521).',
     });
   }
@@ -56,12 +56,12 @@ export const auditCrossLogicConsistency = (
   if (cogsDiff > 1000) {
     issues.push({
       id: 'cross_2_cogs',
-      title: 'Chênh lệch Giá Vốn Hàng Bán (TK 632) so với Tổng Giá Trị Xuất Kho',
+      title: 'Còn Giá Vốn Hàng Bán (TK 632) so với Tổng Giá Trị Xuất Kho',
       moduleA: `Giá vốn Sổ Cái 632: ${cogsLedger.toLocaleString()} VNĐ`,
       moduleB: `Tổng xuất Bảng Nhập Xuất Tồn: ${cogsInventory.toLocaleString()} VNĐ`,
       varianceAmount: cogsDiff,
       severity: 'CRITICAL',
-      description: `Phát hiện chênh lệch ${cogsDiff.toLocaleString()} VNĐ giữa Nợ TK 632 trên Sổ Cái và Giá trị xuất kho trên Thẻ Kho.`,
+      description: `Phát hiện Còn ${cogsDiff.toLocaleString()} VNĐ giữa Nợ TK 632 trên Sổ Cái và Giá trị xuất kho trên Thẻ Kho.`,
       recommendation: 'Rà soát các phiếu xuất kho chưa hạch toán bút toán Nợ 632 / Có 156, 155.',
     });
   }
@@ -77,13 +77,13 @@ export const auditCrossLogicConsistency = (
   if (depDiff > 1000 && expectedMonthlyDep > 0) {
     issues.push({
       id: 'cross_3_depreciation',
-      title: 'Chênh lệch Chi Phí Khấu Hao (214/242) hạch toán so với Bảng Tính Khấu Hao TSCĐ',
+      title: 'Còn Chi Phí Khấu Hao (214/242) hạch toán so với Bảng Tính Khấu Hao TSCĐ',
       moduleA: `Khấu hao Bảng Tính: ${expectedMonthlyDep.toLocaleString()} VNĐ`,
       moduleB: `Khấu hao Đã Hạch Toán: ${actualDepTx.toLocaleString()} VNĐ`,
       varianceAmount: depDiff,
       severity: 'WARNING',
       description: `Chi phí trích khấu hao thực tế trong kỳ lệch ${depDiff.toLocaleString()} VNĐ so với mức tính toán trên Bảng Khấu hao TSCĐ.`,
-      recommendation: 'Chạy lại tính năng tự động trích khấu hao hàng tháng để bù bút toán chênh lệch.',
+      recommendation: 'Chạy lại tính năng tự động trích khấu hao hàng tháng để bù bút toán Còn.',
     });
   }
 
@@ -94,7 +94,7 @@ export const auditCrossLogicConsistency = (
   if (pendingReconciliationCount > 0) {
     issues.push({
       id: 'cross_4_bank',
-      title: 'Chênh lệch Tiền Gửi Ngân Hàng (TK 112) giữa Sổ Tiền Gửi và Sổ Phụ Ngân Hàng',
+      title: 'Còn Tiền Gửi Ngân Hàng (TK 112) giữa Sổ Tiền Gửi và Sổ Phụ Ngân Hàng',
       moduleA: `Dư Sổ Tiền Gửi 112: ${cashBank.bankBalance.toLocaleString()} VNĐ`,
       moduleB: `Số giao dịch chưa duyệt đối chiếu: ${pendingReconciliationCount} dòng`,
       varianceAmount: pendingReconciliationCount,
@@ -115,7 +115,7 @@ export const auditCrossLogicConsistency = (
   if (debtDiff > 1000 && tbDebt131 > 0) {
     issues.push({
       id: 'cross_5_debt',
-      title: 'Chênh lệch Công Nợ (TK 131) giữa Sổ Cái và Bảng Tổng Hợp Công Nợ Theo Đối Tác',
+      title: 'Còn Công Nợ (TK 131) giữa Sổ Cái và Bảng Tổng Hợp Công Nợ Theo Đối Tác',
       moduleA: `Dư TK 131 Bảng Cân Đối: ${tbDebt131.toLocaleString()} VNĐ`,
       moduleB: `Tổng Nợ Bảng Đối Tác: ${totalPartnerDebt.toLocaleString()} VNĐ`,
       varianceAmount: debtDiff,

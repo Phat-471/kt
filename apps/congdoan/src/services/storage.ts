@@ -9,22 +9,32 @@ export interface AuditLog {
   clientId?: string;
 }
 
+export interface UnionOpeningBalance {
+  year: number;
+  cash: number;
+  bank: number;
+  notes?: string;
+  updatedAt?: string;
+}
+
 export class UnionDatabase extends Dexie {
   unionTransactions!: Table<TradeUnionTransaction, string>;
   clients!: Table<Client, string>;
   unionSignerSettings!: Table<UnionSignerSettings, string>;
   unionEmployees!: Table<UnionEmployee, string>;
   unionContributionPeriods!: Table<TradeUnionContributionPeriod, string>;
+  unionOpeningBalances!: Table<UnionOpeningBalance, number>;
   auditLogs!: Table<AuditLog, string>;
 
   constructor() {
     super('AccoDesk_Union_DB');
-    this.version(3).stores({
+    this.version(4).stores({
       unionTransactions: 'id, clientId, voucherType, voucherNo, date, category, paymentMethod',
       clients: 'id, name, taxCode',
       unionSignerSettings: 'id',
       unionEmployees: 'id, code, fullName, department',
       unionContributionPeriods: 'periodKey, year, periodType',
+      unionOpeningBalances: 'year',
       auditLogs: 'id, timestamp, action, clientId',
     });
   }
@@ -57,6 +67,7 @@ export interface UnionBackupPackage {
   employees: UnionEmployee[];
   signerSettings: UnionSignerSettings[];
   contributionPeriods: TradeUnionContributionPeriod[];
+  openingBalances?: UnionOpeningBalance[];
 }
 
 export async function exportUnionBackupJSON(): Promise<void> {
@@ -64,14 +75,16 @@ export async function exportUnionBackupJSON(): Promise<void> {
   const employees = await db.unionEmployees.toArray();
   const signerSettings = await db.unionSignerSettings.toArray();
   const contributionPeriods = await db.unionContributionPeriods.toArray();
+  const openingBalances = await db.unionOpeningBalances.toArray();
 
   const backupPkg: UnionBackupPackage = {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     transactions,
     employees,
     signerSettings,
     contributionPeriods,
+    openingBalances,
   };
 
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPkg, null, 2));
@@ -93,7 +106,7 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
       throw new Error('Định dạng file sao lưu không hợp lệ.');
     }
 
-    await db.transaction('rw', [db.unionTransactions, db.unionEmployees, db.unionSignerSettings, db.unionContributionPeriods], async () => {
+    await db.transaction('rw', [db.unionTransactions, db.unionEmployees, db.unionSignerSettings, db.unionContributionPeriods, db.unionOpeningBalances], async () => {
       if (pkg.transactions.length > 0) {
         await db.unionTransactions.clear();
         await db.unionTransactions.bulkPut(pkg.transactions);
@@ -110,16 +123,27 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
         await db.unionContributionPeriods.clear();
         await db.unionContributionPeriods.bulkPut(pkg.contributionPeriods);
       }
+      if (pkg.openingBalances && pkg.openingBalances.length > 0) {
+        await db.unionOpeningBalances.clear();
+        await db.unionOpeningBalances.bulkPut(pkg.openingBalances);
+      }
     });
 
     return { 
       success: true, 
-      message: `Khôi phục thành công: ${pkg.transactions.length} phiếu thu/chi, ${pkg.employees?.length || 0} nhân viên, ${pkg.contributionPeriods?.length || 0} bảng trích nộp tháng!` 
+      message: `Khôi phục thành công: ${pkg.transactions.length} phiếu thu/chi, ${pkg.employees?.length || 0} nhân viên, ${pkg.contributionPeriods?.length || 0} bảng trích nộp tháng, ${pkg.openingBalances?.length || 0} số dư đầu kỳ!` 
     };
   } catch (err: any) {
     return { success: false, message: `Lỗi khôi phục: ${err?.message || 'File lỗi'}` };
   }
 }
+
+export const DEFAULT_OPENING_BALANCES: UnionOpeningBalance[] = [
+  { year: 2023, cash: 15594300, bank: 26460, notes: 'Số dư đầu kỳ gốc năm 2023', updatedAt: new Date().toISOString() },
+  { year: 2024, cash: 11149200, bank: 26510, notes: 'Số dư đầu kỳ năm 2024', updatedAt: new Date().toISOString() },
+  { year: 2025, cash: 2309760, bank: 4041874, notes: 'Số dư đầu kỳ năm 2025', updatedAt: new Date().toISOString() },
+  { year: 2026, cash: 438010, bank: 123430, notes: 'Số dư đầu kỳ năm 2026', updatedAt: new Date().toISOString() },
+];
 
 export const DEFAULT_SIGNER_SETTINGS: UnionSignerSettings = {
   id: 'default-signer-settings',
@@ -191,6 +215,11 @@ export async function seedInitialUnionData(): Promise<void> {
   const empCount = await db.unionEmployees.count();
   if (empCount === 0) {
     await db.unionEmployees.bulkAdd(DEFAULT_EMPLOYEES);
+  }
+
+  const obCount = await db.unionOpeningBalances.count();
+  if (obCount === 0) {
+    await db.unionOpeningBalances.bulkAdd(DEFAULT_OPENING_BALANCES);
   }
 }
 

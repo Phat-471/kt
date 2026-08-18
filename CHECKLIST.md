@@ -40,7 +40,7 @@ Cập nhật: **2026-08-14** | Phiên làm việc cuối: Tờ Khai Thuế TNDN 
 
 ### 🆕 Version 2.0: Engine Xử Lý Dữ Liệu Sai & Quản Lý Version Dữ Liệu Cũ (`adjustmentEntryService.ts`, `dataVersioningService.ts`, `aiAnomalyDetector.ts`, `DataVersionHistoryView.tsx`)
 - [x] **✏️ Engine Lập Bút Toán Điều Chỉnh (`adjustmentEntryService.ts`)**: Tự động sinh chứng từ điều chỉnh theo chuẩn kế toán (Ghi đỏ số âm `DC-`, Ghi bổ sung, và Chứng từ thay thế), bảo vệ toàn vẹn lịch sử chứng từ kỳ đã khóa sổ.
-- [x] **⏳ Snapshot & Time Machine Dữ Liệu Cũ (`dataVersioningService.ts`)**: Tự động lưu Snapshot phiên bản dữ liệu tại mỗi kỳ khóa sổ và So sánh Diff chênh lệch `Old vs Current` trực quan.
+- [x] **⏳ Snapshot & Time Machine Dữ Liệu Cũ (`dataVersioningService.ts`)**: Tự động lưu Snapshot phiên bản dữ liệu tại mỗi kỳ khóa sổ và So sánh Diff Còn `Old vs Current` trực quan.
 - [x] **🤖 AI Quét Phát Hiện Dữ Liệu Sai Lệch (`aiAnomalyDetector.ts`)**: Tự động phát hiện lỗi gõ thừa/thiếu số 0 (nhập 10M thành 100M), ngược chiều Nợ/Có, ngày chứng từ bất hợp lý.
 - [x] **✨ Giao Diện Mới DataVersionHistoryView (`DataVersionHistoryView.tsx`)**: Màn hình quản lý phiên bản tích hợp menu **GitBranch 🌿 Lịch Sử Version & Điều Chỉnh Dữ Liệu** trên Sidebar.
 - [x] **57/57 Test Cases PASSED 100% ✅**: Thực thi kiểm thử tự động toàn diện bao phủ toàn bộ 23 phần nghiệp vụ.

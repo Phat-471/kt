@@ -11,7 +11,9 @@ import {
   Zap,
   CheckCircle,
   Loader2,
-  HardDrive
+  RotateCcw,
+  History,
+  ShieldCheck
 } from 'lucide-react';
 
 interface UpdateCheckerModalProps {
@@ -31,7 +33,7 @@ interface ReleaseInfo {
   sizeBytes?: number;
 }
 
-export const CURRENT_APP_VERSION = 'v1.2.0';
+export const CURRENT_APP_VERSION = 'v1.2.7';
 const GITHUB_REPO = 'Phat-471/kt';
 
 declare global {
@@ -41,6 +43,7 @@ declare global {
       startDownloadUpdate?: (url: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       onDownloadProgress?: (callback: (data: { percent: number; receivedBytes: number; totalBytes: number }) => void) => () => void;
       installUpdate?: (options?: { silent?: boolean }) => Promise<{ success: boolean; error?: string }>;
+      rollbackVersion?: (targetVersion: string) => Promise<{ success: boolean; error?: string }>;
       onNavigate?: (callback: (tab: string) => void) => void;
       onOpenModal?: (callback: (modal: string) => void) => void;
     };
@@ -52,11 +55,13 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
   onClose,
   currentVersion: propVersion
 }) => {
+  const [activeTab, setActiveTab] = useState<'UPDATE' | 'ROLLBACK'>('UPDATE');
   const [activeVersion, setActiveVersion] = useState<string>(propVersion || CURRENT_APP_VERSION);
   const [isChecking, setIsChecking] = useState(false);
   const [checked, setChecked] = useState(false);
   const [hasNewVersion, setHasNewVersion] = useState(false);
   const [latestRelease, setLatestRelease] = useState<ReleaseInfo | null>(null);
+  const [allReleases, setAllReleases] = useState<ReleaseInfo[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Download & Install State
@@ -69,6 +74,10 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
   const [isReadyToInstall, setIsReadyToInstall] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Rollback Action State
+  const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
+  const [isRollingBack, setIsRollingBack] = useState(false);
 
   // Lấy phiên bản từ electron nếu có
   useEffect(() => {
@@ -88,46 +97,46 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
     setCountdown(null);
 
     try {
-      const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-        headers: {
-          'Accept': 'application/vnd.github.v3+json'
-        }
+      // 1. Tải danh sách tất cả các releases để phục vụ rollback
+      const resList = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
       });
 
-      if (!res.ok) {
-        throw new Error(`Không thể kết nối máy chủ GitHub (HTTP ${res.status})`);
+      if (!resList.ok) {
+        throw new Error(`Không thể kết nối máy chủ GitHub (HTTP ${resList.status})`);
       }
 
-      const data = await res.json();
-      const tagName: string = data.tag_name || '';
-      
-      // Tìm file cài đặt .exe trong danh sách assets
-      const exeAsset = data.assets?.find((a: any) => a.name?.endsWith('.exe'));
-      const zipAsset = data.assets?.find((a: any) => a.name?.endsWith('.zip'));
-      const targetAsset = exeAsset || zipAsset;
+      const listData = await resList.json();
+      if (Array.isArray(listData) && listData.length > 0) {
+        const formattedList: ReleaseInfo[] = listData.map((data: any) => {
+          const exeAsset = data.assets?.find((a: any) => a.name?.endsWith('.exe'));
+          return {
+            tagName: data.tag_name || '',
+            name: data.name || data.tag_name || '',
+            body: data.body || '',
+            publishedAt: data.published_at ? new Date(data.published_at).toLocaleDateString('vi-VN') : 'Đã phát hành',
+            htmlUrl: data.html_url || `https://github.com/${GITHUB_REPO}/releases`,
+            downloadUrl: exeAsset ? exeAsset.browser_download_url : data.html_url,
+            downloadName: exeAsset ? exeAsset.name : 'KeToanCongDoan-Setup.exe',
+            sizeBytes: exeAsset ? exeAsset.size : 0
+          };
+        });
 
-      const info: ReleaseInfo = {
-        tagName,
-        name: data.name || tagName,
-        body: data.body || '',
-        publishedAt: data.published_at ? new Date(data.published_at).toLocaleDateString('vi-VN') : 'Mới nhất',
-        htmlUrl: data.html_url || `https://github.com/${GITHUB_REPO}/releases`,
-        downloadUrl: targetAsset ? targetAsset.browser_download_url : data.html_url,
-        downloadName: targetAsset ? targetAsset.name : 'KeToanCongDoan-Setup.exe',
-        sizeBytes: targetAsset ? targetAsset.size : 0
-      };
+        setAllReleases(formattedList);
 
-      setLatestRelease(info);
-      setChecked(true);
+        // Bản mới nhất là phần tử đầu tiên
+        const latest = formattedList[0];
+        setLatestRelease(latest);
+        setChecked(true);
 
-      // So sánh phiên bản: nếu tag trên mạng khác với tag hiện tại
-      const cleanLatest = tagName.replace(/^v/, '').trim();
-      const cleanCurrent = activeVersion.replace(/^v/, '').trim();
+        const cleanLatest = latest.tagName.replace(/^v/, '').trim();
+        const cleanCurrent = activeVersion.replace(/^v/, '').trim();
 
-      if (cleanLatest && cleanCurrent && cleanLatest !== cleanCurrent) {
-        setHasNewVersion(true);
-      } else {
-        setHasNewVersion(false);
+        if (cleanLatest && cleanCurrent && cleanLatest !== cleanCurrent) {
+          setHasNewVersion(true);
+        } else {
+          setHasNewVersion(false);
+        }
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Lỗi khi kiểm tra cập nhật');
@@ -158,240 +167,336 @@ export const UpdateCheckerModal: React.FC<UpdateCheckerModalProps> = ({
     });
 
     return () => {
-      cleanup();
+      if (cleanup) cleanup();
     };
   }, []);
 
-  // Xử lý tự động tải ngầm và hiển thị thanh tiến trình
   const handleStartAutoUpdate = async () => {
     if (!latestRelease?.downloadUrl) return;
 
-    // Nếu chạy trong môi trường Electron Desktop App
-    if (window.electronAPI?.startDownloadUpdate) {
-      setIsDownloading(true);
-      setErrorMessage(null);
+    if (!window.electronAPI?.startDownloadUpdate) {
+      window.open(latestRelease.htmlUrl, '_blank');
+      return;
+    }
 
-      const result = await window.electronAPI.startDownloadUpdate(latestRelease.downloadUrl);
-      
-      if (result.success) {
+    setIsDownloading(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await window.electronAPI.startDownloadUpdate(latestRelease.downloadUrl);
+      if (res.success) {
         setIsDownloading(false);
         setIsReadyToInstall(true);
-        setDownloadProgress({ percent: 100, receivedMB: 'Xong', totalMB: 'Xong' });
-
-        // Đếm ngược 3 giây rồi tự động cài đặt
-        let timer = 3;
-        setCountdown(timer);
-        const interval = setInterval(() => {
-          timer -= 1;
-          if (timer <= 0) {
-            clearInterval(interval);
-            handleExecuteInstall();
-          } else {
-            setCountdown(timer);
-          }
-        }, 1000);
+        startAutoInstallCountdown();
       } else {
-        setIsDownloading(false);
-        setErrorMessage(result.error || 'Tải bản cập nhật thất bại.');
+        throw new Error(res.error || 'Tải bộ cài thất bại');
       }
-    } else {
-      // Fallback: Mở link tải trực tiếp trên trình duyệt
-      window.open(latestRelease.downloadUrl, '_blank');
+    } catch (err: any) {
+      setIsDownloading(false);
+      setErrorMessage(`Lỗi tải cập nhật: ${err?.message || 'Không xác định'}. Bạn có thể tải thủ công hoặc bấm Khôi Phục.`);
     }
   };
 
+  const startAutoInstallCountdown = () => {
+    let timeLeft = 3;
+    setCountdown(timeLeft);
+    const timer = setInterval(() => {
+      timeLeft -= 1;
+      setCountdown(timeLeft);
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        handleExecuteInstall();
+      }
+    }, 1000);
+  };
+
   const handleExecuteInstall = async () => {
+    if (!window.electronAPI?.installUpdate) return;
     setIsInstalling(true);
-    if (window.electronAPI?.installUpdate) {
-      await window.electronAPI.installUpdate({ silent: true });
+    try {
+      const res = await window.electronAPI.installUpdate({ silent: true });
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+    } catch (err: any) {
+      setIsInstalling(false);
+      setErrorMessage(`Lỗi thực thi cài đặt: ${err?.message}`);
+    }
+  };
+
+  // Xử lý Rollback về phiên bản cũ
+  const handleExecuteRollback = async (targetTag: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn quay về (Rollback) phiên bản ${targetTag} không? Ứng dụng sẽ tự động cài đè phiên bản này.`)) {
+      return;
+    }
+
+    setRollbackTarget(targetTag);
+    setIsRollingBack(true);
+    setErrorMessage(null);
+
+    try {
+      if (window.electronAPI?.rollbackVersion) {
+        const res = await window.electronAPI.rollbackVersion(targetTag);
+        if (!res.success) {
+          throw new Error(res.error);
+        }
+      } else {
+        window.open(`https://github.com/${GITHUB_REPO}/releases/tag/${targetTag}`, '_blank');
+        setIsRollingBack(false);
+      }
+    } catch (err: any) {
+      setIsRollingBack(false);
+      setErrorMessage(`Lỗi khi khôi phục bản ${targetTag}: ${err?.message}`);
     }
   };
 
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} title="Cập Nhật & Nâng Cấp Phần Mềm Tự Động" size="md">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Trung Tâm Cập Nhật & Khôi Phục Hệ Thống (Safe Update & Rollback)"
+      size="md"
+    >
       <div className="space-y-4 text-xs">
-        {/* Banner Phiên Bản Hiện Tại */}
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 flex items-center justify-between flex-wrap gap-3">
-          <div className="space-y-1">
-            <div className="text-[11px] text-blue-700 font-semibold uppercase tracking-wider">Phiên bản đang dùng</div>
-            <div className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+        {/* Tab chuyển đổi: Cập Nhật Mới vs Lịch Sử Khôi Phục Rollback */}
+        <div className="flex border-b border-slate-200 gap-2 pb-1">
+          <button
+            onClick={() => setActiveTab('UPDATE')}
+            className={`flex items-center gap-1.5 px-3 py-2 font-bold rounded-lg transition-all ${
+              activeTab === 'UPDATE'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-blue-600" />
+            <span>Nâng Cấp Phiên Bản</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('ROLLBACK')}
+            className={`flex items-center gap-1.5 px-3 py-2 font-bold rounded-lg transition-all ${
+              activeTab === 'ROLLBACK'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <RotateCcw className="w-4 h-4 text-amber-600" />
+            <span>Quay Về Bản Cũ (Rollback)</span>
+          </button>
+        </div>
+
+        {/* Khung Thông Tin Phiên Bản Hiện Tại */}
+        <div className="p-3.5 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 rounded-xl border border-blue-100 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Phiên Bản Đang Dùng</div>
+            <div className="text-base font-extrabold text-blue-900 flex items-center gap-2 mt-0.5">
               <span>{activeVersion}</span>
-              <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold border ${
-                hasNewVersion 
-                  ? 'bg-amber-100 text-amber-800 border-amber-300' 
-                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-              }`}>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-bold">
                 {hasNewVersion ? 'Có Bản Mới' : 'Mới Nhất'}
               </span>
             </div>
-            <div className="text-slate-500 text-[11px]">Hệ thống: Kế Toán Tài Chính Công Đoàn Cơ Sở</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Hệ thống: Kế Toán Tài Chính Công Đoàn Cơ Sở</div>
           </div>
 
           <button
             onClick={checkOnlineRelease}
-            disabled={isChecking || isDownloading || isInstalling}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-bold shadow-sm transition-all flex-shrink-0"
+            disabled={isChecking || isDownloading || isRollingBack}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm transition-all text-xs disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
             <span>{isChecking ? 'Đang kiểm tra...' : 'Kiểm Tra Bản Mới'}</span>
           </button>
         </div>
 
-        {/* Khung Thông Báo Có Bản Cập Nhật Mới */}
-        {hasNewVersion && latestRelease && (
-          <div className="p-4 bg-emerald-50 border-2 border-emerald-500 rounded-xl space-y-3.5 shadow-md animate-in fade-in">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-sm">
-                  <Rocket className="w-5 h-5" />
+        {/* TAB 1: CẬP NHẬT PHIÊN BẢN */}
+        {activeTab === 'UPDATE' && (
+          <div className="space-y-4">
+            {/* Khi có bản mới */}
+            {checked && hasNewVersion && latestRelease && (
+              <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-3">
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-600 text-white rounded-lg shadow-sm">
+                      <Rocket className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-emerald-900 text-sm flex items-center gap-2">
+                        <span>Đã có phiên bản mới: {latestRelease.tagName}</span>
+                        <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">Khuyên Dùng</span>
+                      </div>
+                      <div className="text-[11px] text-emerald-700 mt-0.5">
+                        Phát hành ngày: {latestRelease.publishedAt}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {latestRelease.body && (
+                  <div className="p-3 bg-white/90 rounded-lg border border-emerald-200/80 text-slate-700 space-y-1 text-xs whitespace-pre-line max-h-36 overflow-y-auto">
+                    <div className="font-bold text-slate-800 text-[11px]">Nội dung cập nhật:</div>
+                    {latestRelease.body}
+                  </div>
+                )}
+
+                {/* Thanh Tiến Trình Tải */}
+                {isDownloading && (
+                  <div className="space-y-1.5 p-3 bg-white rounded-lg border border-emerald-200">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                        Đang tải bản cập nhật...
+                      </span>
+                      <span>{downloadProgress.percent}% ({downloadProgress.receivedMB} MB / {downloadProgress.totalMB} MB)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-600 h-2 rounded-full transition-all duration-200"
+                        style={{ width: `${downloadProgress.percent}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Đếm ngược cài đặt */}
+                {isReadyToInstall && (
+                  <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-300 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-700 flex-shrink-0" />
+                    <div className="text-xs text-emerald-800">
+                      Ứng dụng sẽ tự đóng, nâng cấp âm thầm và mở lại phiên bản <strong>{latestRelease.tagName}</strong> trong <strong>{countdown ?? 1}s</strong>.
+                    </div>
+                  </div>
+                )}
+
+                {/* Các Nút Thao Tác Cập Nhật */}
+                {!isDownloading && !isReadyToInstall && (
+                  <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+                    <button
+                      onClick={handleStartAutoUpdate}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-sm transition-all text-xs"
+                    >
+                      <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                      <span>Tự Động Cập Nhật Ngay ({latestRelease.tagName})</span>
+                    </button>
+                    <a
+                      href={latestRelease.htmlUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 px-3 py-2 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-xl font-semibold text-xs"
+                    >
+                      <span>Xem Chi Tiết</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Thông báo Đã Ở Bản Mới Nhất */}
+            {checked && !hasNewVersion && !errorMessage && (
+              <div className="p-3.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl flex items-center gap-2.5 font-semibold">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                 <div>
-                  <div className="font-extrabold text-emerald-950 text-sm flex items-center gap-2">
-                    <span>ĐÃ CÓ BẢN CẬP NHẬT MỚI: {latestRelease.tagName}!</span>
-                  </div>
-                  <div className="text-xs text-emerald-800 font-medium mt-0.5">
-                    {latestRelease.name} • Ngày phát hành: {latestRelease.publishedAt}
-                  </div>
+                  <div>Phần mềm của bạn đang ở phiên bản mới nhất ({activeVersion})!</div>
+                  <div className="text-[11px] text-emerald-600 font-normal mt-0.5">Hệ thống đã đồng bộ với kho phát hành GitHub trực tuyến.</div>
                 </div>
-              </div>
-            </div>
-
-            {/* Nội dung điểm mới (Changelog) */}
-            <div className="bg-white/90 p-3.5 rounded-xl border border-emerald-200 text-xs space-y-1.5 text-slate-800 whitespace-pre-line max-h-36 overflow-y-auto leading-relaxed shadow-inner">
-              {latestRelease.body || 'Bản nâng cấp tối ưu hóa hiệu năng, cập nhật tính năng mới và các biểu mẫu chuẩn.'}
-            </div>
-
-            {/* Trạng thái Đang Tải (Progress Bar) */}
-            {isDownloading && (
-              <div className="bg-white p-3.5 rounded-xl border border-emerald-300 space-y-2.5 shadow-sm">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                  <div className="flex items-center gap-2 text-emerald-700">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Đang tự động tải bản cập nhật {latestRelease.tagName}...</span>
-                  </div>
-                  <div className="font-mono text-emerald-800 text-sm">
-                    {downloadProgress.percent}%
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
-                  <div 
-                    className="bg-gradient-to-r from-emerald-500 to-teal-600 h-full rounded-full transition-all duration-300 shadow-sm relative overflow-hidden"
-                    style={{ width: `${Math.max(downloadProgress.percent, 3)}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>Dung lượng đã tải: <strong className="text-slate-800">{downloadProgress.receivedMB} MB</strong> / {downloadProgress.totalMB} MB</span>
-                  <span className="text-emerald-700 font-semibold">Tự động cài đặt sau khi hoàn tất</span>
-                </div>
-              </div>
-            )}
-
-            {/* Trạng thái Đã Tải Xong & Đang Tiến Hành Cài Đặt */}
-            {isReadyToInstall && (
-              <div className="bg-emerald-100/80 p-3.5 rounded-xl border border-emerald-400 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
-                  <CheckCircle className="w-4 h-4 text-emerald-600" />
-                  <span>Tải thành công! Đang tự động cập nhật ngầm...</span>
-                </div>
-                <div className="text-xs text-emerald-800">
-                  Ứng dụng sẽ tự đóng, nâng cấp âm thầm và mở lại phiên bản <strong>{latestRelease.tagName}</strong> trong <strong>{countdown ?? 1}s</strong>.
-                </div>
-              </div>
-            )}
-
-            {/* Các Nút Thao Tác Cập Nhật */}
-            {!isDownloading && !isReadyToInstall && (
-              <div className="flex items-center gap-2.5 pt-1 flex-wrap">
-                <button
-                  onClick={handleStartAutoUpdate}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all text-xs active:scale-95"
-                >
-                  <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                  <span>Tự Động Cập Nhật Ngay ({latestRelease.tagName})</span>
-                </button>
-
-                <a
-                  href={latestRelease.htmlUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-xl font-semibold text-xs transition-all shadow-xs"
-                >
-                  <span>Xem Chi Tiết</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            )}
-
-            {isReadyToInstall && (
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={handleExecuteInstall}
-                  disabled={isInstalling}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-md transition-all text-xs"
-                >
-                  <HardDrive className="w-4 h-4" />
-                  <span>{isInstalling ? 'Đang cập nhật ngầm & mở lại app...' : 'Cài Đặt Ngay'}</span>
-                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Thông báo Đã Ở Bản Mới Nhất */}
-        {checked && !hasNewVersion && !errorMessage && (
-          <div className="p-3.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl flex items-center gap-2.5 font-semibold shadow-xs">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <div>
-              <div>Phần mềm của bạn đang ở phiên bản mới nhất ({activeVersion})!</div>
-              <div className="text-[11px] text-emerald-600 font-normal mt-0.5">Hệ thống đã đồng bộ với kho phát hành GitHub trực tuyến.</div>
+        {/* TAB 2: KHÔI PHỤC & ROLLBACK PHIÊN BẢN CŨ */}
+        {activeTab === 'ROLLBACK' && (
+          <div className="space-y-3">
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div className="text-amber-900">
+                <div className="font-bold">Tính Năng Khôi Phục An Toàn (Safe Rollback)</div>
+                <div className="text-[11px] text-amber-800 mt-0.5">
+                  Nếu bản cập nhật mới nhất phát sinh lỗi không mong muốn, bạn có thể bấm <strong>"Khôi Phục Bản Này"</strong> để hạ cấp về phiên bản ổn định trước đó. Dữ liệu kế toán trong máy bạn được bảo toàn 100%.
+                </div>
+              </div>
+            </div>
+
+            {/* Tiến trình rollback */}
+            {isRollingBack && (
+              <div className="p-3.5 bg-white rounded-xl border border-amber-300 space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold text-amber-900">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                    Đang hạ cấp về phiên bản {rollbackTarget}...
+                  </span>
+                  <span>{downloadProgress.percent}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-amber-600 h-2 rounded-full transition-all duration-200"
+                    style={{ width: `${downloadProgress.percent}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500">Ứng dụng sẽ tự động khởi động lại sau khi nạp bản cũ.</p>
+              </div>
+            )}
+
+            {/* Danh sách các bản phát hành có thể Rollback */}
+            <div className="rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
+              {allReleases.length === 0 ? (
+                <div className="p-6 text-center text-slate-400">
+                  <History className="w-8 h-8 mx-auto mb-1 text-slate-300" />
+                  <p>Đang tải danh sách các bản phát hành từ máy chủ...</p>
+                </div>
+              ) : (
+                allReleases.map(rel => {
+                  const isCurrent = rel.tagName === activeVersion;
+                  return (
+                    <div key={rel.tagName} className="p-3 bg-white hover:bg-slate-50 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                          <span>{rel.tagName}</span>
+                          {isCurrent && (
+                            <span className="px-2 py-0.2 bg-blue-100 text-blue-800 text-[10px] rounded-full font-bold">
+                              Đang dùng
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400 font-normal">({rel.publishedAt})</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{rel.name}</div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {!isCurrent && (
+                          <button
+                            disabled={isRollingBack}
+                            onClick={() => handleExecuteRollback(rel.tagName)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs transition-all disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Khôi Phục Bản Này</span>
+                          </button>
+                        )}
+                        <a
+                          href={rel.htmlUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-200"
+                          title="Xem trên GitHub"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
 
-        {/* Thông báo Lỗi Kết Nối */}
+        {/* Thông báo Lỗi */}
         {errorMessage && (
-          <div className="p-3.5 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl flex items-center gap-2.5 font-semibold">
-            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-            <div>
-              <div>{errorMessage}</div>
-              <div className="text-[11px] text-rose-600 font-normal mt-0.5">Vui lòng kiểm tra kết nối mạng Internet của máy tính.</div>
-            </div>
+          <div className="p-3 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl flex items-center gap-2 font-semibold">
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <div className="text-xs">{errorMessage}</div>
           </div>
         )}
-
-        {/* Tính Năng Nổi Bật */}
-        <div className="space-y-2">
-          <div className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Tính Năng Trọng Tâm:</span>
-          </div>
-
-          <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-slate-700">
-            <div className="flex items-start gap-2">
-              <span className="font-bold text-emerald-600">✓</span>
-              <div>
-                <strong className="text-slate-900">Tự Động Nâng Cấp 1 Chạm:</strong> Tự tải ngầm và cài đặt phiên bản mới nhất ngay trong ứng dụng, có thanh tiến trình % trực quan.
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="font-bold text-emerald-600">✓</span>
-              <div>
-                <strong className="text-slate-900">Tìm Kiếm Nhanh Mã NV:</strong> Tự động lọc và điền nhanh thông tin đoàn viên khi lập Phiếu Thu / Chi.
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="font-bold text-emerald-600">✓</span>
-              <div>
-                <strong className="text-slate-900">Chỉnh Sửa Đoàn Viên & Xuất Excel Đẹp:</strong> Hỗ trợ sửa nhân viên và xuất Excel chuyên nghiệp đa tùy chọn.
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="pt-2 flex justify-end">
           <button

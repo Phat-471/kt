@@ -34,7 +34,7 @@ export const detectDataAnomalies = (transactions: NormalizedTransaction[]): Data
   const { mean, stdev } = calculateZScore(amounts);
 
   transactions.forEach(t => {
-    // 1. Z-Score Outlier Detection (Z > 2.5 nghĩa là chênh lệch cực lớn so với phân phối chuẩn)
+    // 1. Z-Score Outlier Detection (Z > 2.5 nghĩa là Còn cực lớn so với phân phối chuẩn)
     if (stdev > 0) {
       const zScore = (t.amount - mean) / stdev;
       if (zScore > 2.5 && t.amount > 50000000) {

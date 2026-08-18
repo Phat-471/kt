@@ -1,7 +1,7 @@
-import { 
-  TradeUnionTransaction, 
-  TradeUnionCategory, 
-  TradeUnionVoucherType, 
+import {
+  TradeUnionTransaction,
+  TradeUnionCategory,
+  TradeUnionVoucherType,
   Client,
   TradeUnionMemberContribution,
   TradeUnionContributionPeriod,
@@ -138,11 +138,15 @@ export function calculateTradeUnionContribution(
   };
 }
 
-export function calculateTradeUnionSummary(transactions: TradeUnionTransaction[]) {
+export function calculateTradeUnionSummary(
+  transactions: TradeUnionTransaction[],
+  openingCash: number = 0,
+  openingBank: number = 0
+) {
   let totalReceipts = 0;
   let totalPayments = 0;
-  let cashBalance = 0;
-  let bankBalance = 0;
+  let cashBalance = openingCash;
+  let bankBalance = openingBank;
 
   const receiptsByCategory: Partial<Record<TradeUnionCategory, number>> = {};
   const paymentsByCategory: Partial<Record<TradeUnionCategory, number>> = {};
@@ -169,6 +173,8 @@ export function calculateTradeUnionSummary(transactions: TradeUnionTransaction[]
     netBalance,
     cashBalance,
     bankBalance,
+    openingCash,
+    openingBank,
     receiptCount: transactions.filter(t => t.voucherType === 'UNION_RECEIPT').length,
     paymentCount: transactions.filter(t => t.voucherType === 'UNION_PAYMENT').length,
     receiptsByCategory,
@@ -493,50 +499,114 @@ export function parseBaoCaoQuyetToanWorkbook(
     const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
     const sNameNorm = sheetName.toUpperCase().trim();
 
+    // -------------------------------------------------------------
+    // 1. XỬ LÝ SỔ QUỸ TIỀN MẶT (S11-H)
+    // -------------------------------------------------------------
     if (sNameNorm.includes('SỔ TM') || sNameNorm.includes('SO TM') || sNameNorm.includes('TIỀN MẶT')) {
-      let headerRowIndex = -1;
+      let soDuDauKyRow = -1;
+      let reasonCol = 4;
+      let dateCol = 0;
+      let vThuCol = 2;
+      let vChiCol = 3;
+      let thuAmountCol = 5;
+      let chiAmountCol = 6;
+
+      // Quét tìm dòng "Số dư đầu kỳ" & xác định cấu trúc cột
       for (let r = 0; r < Math.min(15, rawRows.length); r++) {
         const row = rawRows[r];
-        if (row && row.some(cell => String(cell).toUpperCase().includes('DIỄN GIẢI') || String(cell).toUpperCase().includes('SỐ HIỆU'))) {
-          headerRowIndex = r;
+        if (!row) continue;
+        for (let c = 0; c < row.length; c++) {
+          const val = String(row[c] || '').toUpperCase().trim();
+          if (val === 'DIỄN GIẢI' || val === 'NỘI DUNG') {
+            reasonCol = c;
+            if (reasonCol === 4) {
+              vThuCol = 2;
+              vChiCol = 3;
+              thuAmountCol = 5;
+              chiAmountCol = 6;
+            } else if (reasonCol === 3) {
+              vThuCol = 1;
+              vChiCol = 2;
+              thuAmountCol = 4;
+              chiAmountCol = 5;
+            }
+          }
+        }
+        if (row.some(c => String(c).includes('Số dư đầu kỳ'))) {
+          soDuDauKyRow = r;
           break;
         }
       }
 
-      const startIdx = headerRowIndex !== -1 ? headerRowIndex + 2 : 10;
+      const startIdx = soDuDauKyRow !== -1 ? soDuDauKyRow + 1 : 10;
+      let countThu = 0;
+      let countChi = 0;
 
       for (let r = startIdx; r < rawRows.length; r++) {
         const row = rawRows[r];
         if (!row || row.length === 0) continue;
 
-        const dateRaw = row[0] || row[1];
-        const voucherNoThu = String(row[2] || '').trim();
-        const voucherNoChi = String(row[3] || '').trim();
-        const reason = String(row[4] || row[3] || '').trim();
-        const thuAmount = Number(String(row[5] || 0).replace(/[^0-9.-]+/g, '')) || 0;
-        const chiAmount = Number(String(row[6] || row[5] || 0).replace(/[^0-9.-]+/g, '')) || 0;
-
-        if (!reason || reason.toUpperCase().includes('SỐ DƯ ĐẦU KỲ') || reason.toUpperCase().includes('CỘNG PHÁT SINH') || reason.toUpperCase().includes('SỐ DƯ CUỐI KỲ')) {
+        const reason = String(row[reasonCol] || '').trim();
+        const rUp = reason.toUpperCase();
+        if (
+          !reason ||
+          rUp.includes('SỐ DƯ ĐẦU KỲ') ||
+          rUp.includes('CỘNG PHÁT SINH') ||
+          rUp.includes('SỐ DƯ CUỐI KỲ') ||
+          rUp.includes('CỘNG :') ||
+          rUp.includes('TỔNG CỘNG') ||
+          rUp.includes('NGƯỜI GHI SỔ') ||
+          rUp.includes('TM. BAN CHẤP HÀNH') ||
+          rUp.includes('PHỤ TRÁCH KẾ TOÁN') ||
+          rUp.includes('CHỦ TỊCH')
+        ) {
           continue;
         }
 
+        const dateRaw = row[dateCol] || row[dateCol + 1];
         const date = excelSerialDateToYYYYMMDD(dateRaw);
+        const year = date.slice(0, 4);
 
+        const vThu = String(row[vThuCol] || '').trim();
+        const vChi = String(row[vChiCol] || '').trim();
+
+        const rawThu = row[thuAmountCol];
+        const rawChi = row[chiAmountCol];
+
+        const thuAmount = (rawThu !== undefined && rawThu !== null && String(rawThu).trim() !== '')
+          ? Number(String(rawThu).replace(/[^0-9.-]+/g, '')) || 0
+          : 0;
+        const chiAmount = (rawChi !== undefined && rawChi !== null && String(rawChi).trim() !== '')
+          ? Number(String(rawChi).replace(/[^0-9.-]+/g, '')) || 0
+          : 0;
+
+        // Nghiệp vụ THU TIỀN MẶT
         if (thuAmount > 0) {
-          const voucherNo = voucherNoThu || `PT-TM-${date.slice(0, 4)}-${String(transactions.length + 1).padStart(3, '0')}`;
+          countThu++;
+          const voucherNo = vThu && (vThu.toUpperCase().startsWith('PT') || vThu.toUpperCase().startsWith('P-'))
+            ? vThu
+            : `PT${year}/${String(countThu).padStart(2, '0')}`;
+
           let category: TradeUnionCategory = 'DOAN_PHI_1_PERCENT';
-          if (reason.toUpperCase().includes('KPCĐ') || reason.toUpperCase().includes('2%')) category = 'KPCĐ_2_PERCENT';
-          else if (reason.toUpperCase().includes('CẤP TRÊN') || reason.toUpperCase().includes('KINH PHÍ CẤP')) category = 'KINH_PHI_CAP_TREN';
-          else if (reason.toUpperCase().includes('HỖ TRỢ') || reason.toUpperCase().includes('TÀI TRỢ')) category = 'HO_TRO_KHAC';
+          if (rUp.includes('KPCĐ') || rUp.includes('2%')) category = 'KPCĐ_2_PERCENT';
+          else if (rUp.includes('CẤP TRÊN') || rUp.includes('KINH PHÍ CẤP') || rUp.includes('RÚT TIỀN')) category = 'KINH_PHI_CAP_TREN';
+          else if (rUp.includes('HỖ TRỢ') || rUp.includes('TÀI TRỢ') || rUp.includes('KHEN THƯỞNG')) category = 'HO_TRO_KHAC';
+
+          let personName = 'Đoàn viên công đoàn';
+          if (rUp.includes('RÚT TIỀN')) personName = 'Thủ quỹ rút từ NH';
+          else if (reason.includes('đoàn viên')) {
+            const splitted = reason.split(/đoàn viên/i)[1]?.split(/[\(\,\.]/)[0]?.trim();
+            if (splitted) personName = splitted;
+          }
 
           transactions.push({
-            id: `tm-thu-${date}-${transactions.length}-${Math.random().toString(36).substring(2, 6)}`,
+            id: `tm-thu-${year}-${voucherNo.replace(/[^a-zA-Z0-9]/g, '_')}-${countThu}`,
             clientId,
             voucherType: 'UNION_RECEIPT',
             voucherNo,
             date,
             category,
-            personName: 'Người nộp tiền',
+            personName: nfc(personName),
             department: 'CĐCS',
             reason: nfc(reason),
             amount: thuAmount,
@@ -548,26 +618,36 @@ export function parseBaoCaoQuyetToanWorkbook(
           });
         }
 
+        // Nghiệp vụ CHI TIỀN MẶT
         if (chiAmount > 0) {
-          const voucherNo = voucherNoChi || `PC-TM-${date.slice(0, 4)}-${String(transactions.length + 1).padStart(3, '0')}`;
+          countChi++;
+          const voucherNo = vChi && (vChi.toUpperCase().startsWith('PC') || vChi.toUpperCase().startsWith('P-'))
+            ? vChi
+            : `PC${year}/${String(countChi).padStart(2, '0')}`;
+
           let category: TradeUnionCategory = 'THAM_HOI_OM_DAU';
-          const rUp = reason.toUpperCase();
-          if (rUp.includes('SINH NHẬT') || rUp.includes('ỐM ĐAU') || rUp.includes('HIẾU HỈ') || rUp.includes('THAI SẢN') || rUp.includes('THĂM HỎI')) category = 'THAM_HOI_OM_DAU';
-          else if (rUp.includes('TẾT') || rUp.includes('8/3') || rUp.includes('20/10') || rUp.includes('TRUNG THU') || rUp.includes('2/9') || rUp.includes('30/4') || rUp.includes('QUÀ')) category = 'QUA_LE_TET';
+          if (rUp.includes('SINH NHẬT') || rUp.includes('ỐM ĐAU') || rUp.includes('HIẾU HỈ') || rUp.includes('THAI SẢN') || rUp.includes('THĂM HỎI') || rUp.includes('SINH CON')) category = 'THAM_HOI_OM_DAU';
+          else if (rUp.includes('TẾT') || rUp.includes('8/3') || rUp.includes('08/03') || rUp.includes('20/10') || rUp.includes('TRUNG THU') || rUp.includes('2/9') || rUp.includes('02/09') || rUp.includes('30/4') || rUp.includes('01/05') || rUp.includes('QUÀ')) category = 'QUA_LE_TET';
           else if (rUp.includes('VĂN NGHỆ') || rUp.includes('THỂ THAO') || rUp.includes('PHONG TRÀO') || rUp.includes('DU LỊCH')) category = 'HOAT_DONG_PHONG_TRAO';
           else if (rUp.includes('KHEN THƯỞNG')) category = 'KHEN_THUONG';
           else if (rUp.includes('PHỤ CẤP') || rUp.includes('CÁN BỘ')) category = 'PHU_CAP_CAN_BO_CD';
           else if (rUp.includes('NỘP') || rUp.includes('25%') || rUp.includes('CẤP TRÊN')) category = 'NOP_CAP_TREN_25';
           else category = 'CHI_KHAC';
 
+          let personName = 'Người nhận tiền';
+          if (reason.includes('đoàn viên')) {
+            const splitted = reason.split(/đoàn viên/i)[1]?.split(/[\(\,\.]/)[0]?.trim();
+            if (splitted) personName = splitted;
+          }
+
           transactions.push({
-            id: `tm-chi-${date}-${transactions.length}-${Math.random().toString(36).substring(2, 6)}`,
+            id: `tm-chi-${year}-${voucherNo.replace(/[^a-zA-Z0-9]/g, '_')}-${countChi}`,
             clientId,
             voucherType: 'UNION_PAYMENT',
             voucherNo,
             date,
             category,
-            personName: reason.includes('đoàn viên') ? reason.split('đoàn viên')[1].split('(')[0].trim() : 'Người nhận tiền',
+            personName: nfc(personName),
             department: 'CĐCS',
             reason: nfc(reason),
             amount: chiAmount,
@@ -579,33 +659,85 @@ export function parseBaoCaoQuyetToanWorkbook(
           });
         }
       }
-    } else if (sNameNorm.includes('SỔ NH') || sNameNorm.includes('SO NH') || sNameNorm.includes('NGÂN HÀNG')) {
-      let startIdx = 12;
+    }
+
+    // -------------------------------------------------------------
+    // 2. XỬ LÝ SỔ TIỀN GỬI NGÂN HÀNG (S12-H)
+    // -------------------------------------------------------------
+    else if (sNameNorm.includes('SỔ NH') || sNameNorm.includes('SO NH') || sNameNorm.includes('NGÂN HÀNG')) {
+      let soDuDauKyRow = -1;
+      const vNoCol = 1;
+      const dateCol = 2;
+      const reasonCol = 3;
+      const thuAmountCol = 6;
+      const chiAmountCol = 7;
+
+      for (let r = 0; r < Math.min(15, rawRows.length); r++) {
+        const row = rawRows[r];
+        if (row && row.some(c => String(c).includes('Số dư đầu kỳ'))) {
+          soDuDauKyRow = r;
+          break;
+        }
+      }
+
+      const startIdx = soDuDauKyRow !== -1 ? soDuDauKyRow + 1 : 13;
+      let countThu = 0;
+      let countChi = 0;
+
       for (let r = startIdx; r < rawRows.length; r++) {
         const row = rawRows[r];
         if (!row || row.length === 0) continue;
 
-        const voucherNo = String(row[1] || '').trim();
-        const dateRaw = row[2] || row[0];
-        const reason = String(row[3] || '').trim();
-        const thuAmount = Number(String(row[4] || 0).replace(/[^0-9.-]+/g, '')) || 0;
-        const chiAmount = Number(String(row[5] || 0).replace(/[^0-9.-]+/g, '')) || 0;
-
-        if (!reason || reason.toUpperCase().includes('SỐ DƯ ĐẦU KỲ') || reason.toUpperCase().includes('CỘNG PHÁT SINH') || reason.toUpperCase().includes('SỐ DƯ CUỐI KỲ')) {
+        const reason = String(row[reasonCol] || '').trim();
+        const rUp = reason.toUpperCase();
+        if (
+          !reason ||
+          rUp.includes('SỐ DƯ ĐẦU KỲ') ||
+          rUp.includes('CỘNG PHÁT SINH') ||
+          rUp.includes('SỐ DƯ CUỐI KỲ') ||
+          rUp.includes('CỘNG :') ||
+          rUp.includes('TỔNG CỘNG') ||
+          rUp.includes('NGƯỜI LẬP') ||
+          rUp.includes('PHỤ TRÁCH KẾ TOÁN') ||
+          rUp.includes('CHỦ TÀI KHOẢN') ||
+          rUp.includes('SỔ NÀY CÓ') ||
+          rUp.includes('NGÀY MỞ SỔ')
+        ) {
           continue;
         }
 
+        const dateRaw = row[dateCol] || row[0];
         const date = excelSerialDateToYYYYMMDD(dateRaw);
+        const year = date.slice(0, 4);
+        const vNo = String(row[vNoCol] || '').trim();
 
+        const rawThu = row[thuAmountCol];
+        const rawChi = row[chiAmountCol];
+
+        const thuAmount = (rawThu !== undefined && rawThu !== null && String(rawThu).trim() !== '')
+          ? Number(String(rawThu).replace(/[^0-9.-]+/g, '')) || 0
+          : 0;
+        const chiAmount = (rawChi !== undefined && rawChi !== null && String(rawChi).trim() !== '')
+          ? Number(String(rawChi).replace(/[^0-9.-]+/g, '')) || 0
+          : 0;
+
+        // Nghiệp vụ THU / TIỀN VÀO NGÂN HÀNG (Giấy Báo Có)
         if (thuAmount > 0) {
+          countThu++;
+          const voucherNo = vNo || `BC${year}/${String(countThu).padStart(2, '0')}`;
+          let category: TradeUnionCategory = 'KINH_PHI_CAP_TREN';
+          if (rUp.includes('LÃI') || rUp.includes('TIỀN GỬI')) category = 'HO_TRO_KHAC';
+          else if (rUp.includes('KPCĐ') || rUp.includes('75%')) category = 'KINH_PHI_CAP_TREN';
+          else if (rUp.includes('NỘP TIỀN MẶT')) category = 'HO_TRO_KHAC';
+
           transactions.push({
-            id: `nh-thu-${date}-${transactions.length}-${Math.random().toString(36).substring(2, 6)}`,
+            id: `nh-thu-${year}-${voucherNo.replace(/[^a-zA-Z0-9]/g, '_')}-${countThu}`,
             clientId,
             voucherType: 'UNION_RECEIPT',
-            voucherNo: voucherNo || `PT-NH-${date.slice(0, 4)}-${String(transactions.length + 1).padStart(3, '0')}`,
+            voucherNo,
             date,
-            category: reason.toUpperCase().includes('KPCĐ') ? 'KPCĐ_2_PERCENT' : 'KINH_PHI_CAP_TREN',
-            personName: 'Ngân hàng / Cấp trên chuyển',
+            category,
+            personName: 'Ngân hàng TMCP / Cấp trên cấp',
             department: 'Ngân hàng',
             reason: nfc(reason),
             amount: thuAmount,
@@ -617,15 +749,27 @@ export function parseBaoCaoQuyetToanWorkbook(
           });
         }
 
+        // Nghiệp vụ CHI / TIỀN RA TỪ NGÂN HÀNG (Ủy Nhiệm Chi / Rút tiền)
         if (chiAmount > 0) {
+          countChi++;
+          const voucherNo = vNo || `UNC${year}/${String(countChi).padStart(2, '0')}`;
+          let category: TradeUnionCategory = 'CHI_KHAC';
+          if (rUp.includes('NỘP') && (rUp.includes('ĐPCĐ') || rUp.includes('KPCĐ') || rUp.includes('CẤP TRÊN'))) {
+            category = 'NOP_CAP_TREN_25';
+          } else if (rUp.includes('RÚT TIỀN')) {
+            category = 'CHI_KHAC';
+          } else if (rUp.includes('PHÍ DỊCH VỤ') || rUp.includes('VAT')) {
+            category = 'CHI_KHAC';
+          }
+
           transactions.push({
-            id: `nh-chi-${date}-${transactions.length}-${Math.random().toString(36).substring(2, 6)}`,
+            id: `nh-chi-${year}-${voucherNo.replace(/[^a-zA-Z0-9]/g, '_')}-${countChi}`,
             clientId,
             voucherType: 'UNION_PAYMENT',
-            voucherNo: voucherNo || `UNC-${date.slice(0, 4)}-${String(transactions.length + 1).padStart(3, '0')}`,
+            voucherNo,
             date,
-            category: reason.toUpperCase().includes('NỘP') ? 'NOP_CAP_TREN_25' : 'CHI_KHAC',
-            personName: 'Người thụ hưởng',
+            category,
+            personName: rUp.includes('RÚT TIỀN') ? 'Thủ quỹ rút nhập quỹ TM' : 'Ngân hàng / Liên đoàn',
             department: 'Ngân hàng',
             reason: nfc(reason),
             amount: chiAmount,
@@ -637,7 +781,12 @@ export function parseBaoCaoQuyetToanWorkbook(
           });
         }
       }
-    } else if (sNameNorm.includes('BCQT') || sNameNorm.includes('QUYẾT TOÁN')) {
+    }
+
+    // -------------------------------------------------------------
+    // 3. XỬ LÝ BÁO CÁO QUYẾT TOÁN THU CHI (B07-TLĐ)
+    // -------------------------------------------------------------
+    else if (sNameNorm.includes('BCQT') || sNameNorm.includes('QUYẾT TOÁN')) {
       const items: TradeUnionSettlementItemB07[] = [];
       let totalEmployeesKpcd = 0;
       let salaryFundKpcd = 0;
@@ -682,46 +831,59 @@ export function parseBaoCaoQuyetToanWorkbook(
       settlementReports.push({
         title: 'BÁO CÁO QUYẾT TOÁN THU, CHI TÀI CHÍNH CÔNG ĐOÀN',
         periodText: sheetName,
-        clientName: 'CÔNG ĐOÀN CƠ SỞ',
-        clientAddress: '',
+        clientName: 'CÔNG ĐOÀN CƠ SỞ CTY TNHH TKXD & TM HƯNG PHÁT',
+        clientAddress: '153G Lũy Bán Bích, Phường Phú Thạnh, TP. HCM',
         basicIndicators: {
-          totalEmployeesKpcd: totalEmployeesKpcd || 10,
-          salaryFundKpcd: salaryFundKpcd || 60090000,
-          totalMembers: totalMembers || 10,
-          salaryFundDoanPhi: salaryFundDoanPhi || 60090000,
+          totalEmployeesKpcd: totalEmployeesKpcd || 48,
+          salaryFundKpcd: salaryFundKpcd || 264220000,
+          totalMembers: totalMembers || 48,
+          salaryFundDoanPhi: salaryFundDoanPhi || 264220000,
         },
         items,
         closingCash: 0,
         closingBank: 0,
       });
-    } else if (sNameNorm.includes('KIEM KE') || sNameNorm.includes('KIỂM KÊ')) {
+    }
+
+    // -------------------------------------------------------------
+    // 4. XỬ LÝ BIÊN BẢN KIỂM KÊ TIỀN MẶT (C34-HD)
+    // -------------------------------------------------------------
+    else if (sNameNorm.includes('KIEM KE') || sNameNorm.includes('KIỂM KÊ')) {
       const denominations: Array<{ faceValue: number; count: number; total: number }> = [];
       let totalActual = 0;
+      let bookBalance = 0;
 
       for (let r = 8; r < rawRows.length; r++) {
         const row = rawRows[r];
         if (!row || row.length === 0) continue;
-        const faceVal = Number(String(row[1] || 0).replace(/[^0-9.-]+/g, ''));
+        const text = String(row[1] || '');
+
+        if (String(row[0] || '').includes('I') && text.includes('theo')) {
+          bookBalance = Number(String(row[3] || 0).replace(/[^0-9.-]+/g, '')) || 0;
+        }
+
+        const faceValMatch = text.match(/([\d\.]+)\s*đ/);
+        const faceVal = faceValMatch ? Number(faceValMatch[1].replace(/\./g, '')) : Number(String(row[1] || 0).replace(/[^0-9.-]+/g, ''));
         const count = Number(String(row[2] || 0).replace(/[^0-9.-]+/g, ''));
         const total = Number(String(row[3] || (faceVal * count)).replace(/[^0-9.-]+/g, ''));
 
-        if (faceVal > 0 && count >= 0) {
+        if (faceVal > 0 && count > 0) {
           denominations.push({ faceValue: faceVal, count, total: total || (faceVal * count) });
           totalActual += (total || (faceVal * count));
         }
       }
 
       cashCountSheets.push({
-        year: 2025,
-        countDate: new Date().toISOString().slice(0, 10),
+        year: sNameNorm.includes('2026') ? 2026 : 2025,
+        countDate: sNameNorm.includes('2026') ? '2026-06-30' : '2025-12-31',
         boardMembers: [
-          { name: 'Chủ tịch CĐCS', position: 'Trưởng ban kiểm kê' },
-          { name: 'Kế toán CĐCS', position: 'Ủy viên' },
-          { name: 'Thủ quỹ CĐCS', position: 'Ủy viên' },
+          { name: 'Ngô Thị Bích Ngọc', position: 'Chủ tịch CĐCS Trưởng Ban' },
+          { name: 'Nguyễn Thị Cẩm Ly', position: 'Kế toán Ủy viên' },
+          { name: 'Võ Thị Mộng Thúy', position: 'Thủ quỹ' },
         ],
-        bookBalance: totalActual,
+        bookBalance: bookBalance || totalActual,
         actualBalance: totalActual,
-        difference: 0,
+        difference: (bookBalance || totalActual) - totalActual,
         denominations,
       });
     }
@@ -939,7 +1101,7 @@ export function computeSettlementReportB07(
 // =========================================================================
 
 export function generateUnionVoucherHTML(
-  tx: TradeUnionTransaction, 
+  tx: TradeUnionTransaction,
   client: Client | null,
   signers?: UnionSignerSettings | null
 ): string {
@@ -1723,7 +1885,7 @@ export function generateBankBookHTML(transactions: TradeUnionTransaction[], clie
 // Bảng màu & Style chuẩn Doanh nghiệp / Kế toán
 const EXCEL_STYLES = {
   fontName: 'Segoe UI',
-  
+
   // Tiêu đề đơn vị
   companyTitle: {
     font: { name: 'Segoe UI', sz: 11, bold: true, color: { rgb: '1E3A8A' } },
@@ -1791,10 +1953,10 @@ const EXCEL_STYLES = {
     fill: { fgColor: { rgb: isOdd ? 'F8FAFC' : 'FFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1803,10 +1965,10 @@ const EXCEL_STYLES = {
     fill: { fgColor: { rgb: isOdd ? 'F8FAFC' : 'FFFFFF' } },
     alignment: { horizontal: 'left', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1815,10 +1977,10 @@ const EXCEL_STYLES = {
     fill: { fgColor: { rgb: isOdd ? 'F8FAFC' : 'FFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1828,10 +1990,10 @@ const EXCEL_STYLES = {
     numFmt: '#,##0',
     alignment: { horizontal: 'right', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1841,10 +2003,10 @@ const EXCEL_STYLES = {
     numFmt: '#,##0',
     alignment: { horizontal: 'right', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1854,10 +2016,10 @@ const EXCEL_STYLES = {
     numFmt: '#,##0',
     alignment: { horizontal: 'right', vertical: 'center' },
     border: {
-      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
-      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     }
   }),
 
@@ -1960,10 +2122,10 @@ const EXCEL_STYLES = {
     font: { name: 'Segoe UI', sz: 10.5, bold: true, color: { rgb: '0F172A' } },
     fill: { fgColor: { rgb: 'F1F5F9' } },
     border: {
-      top: { style: 'thin', color: { rgb: 'CBD5E1' } },
-      bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
-      left: { style: 'thin', color: { rgb: 'CBD5E1' } },
-      right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+      top: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      bottom: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      left: { style: 'thin', color: { rgb: 'A0AEC0' } },
+      right: { style: 'thin', color: { rgb: 'A0AEC0' } }
     },
     alignment: { vertical: 'center' }
   }
@@ -2541,7 +2703,7 @@ export function exportSingleExcelSheet(
       { s: { r: 3, c: 0 }, e: { r: 3, c: 10 } }
     ];
     ws['!cols'] = [
-      { wch: 6 },  { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 32 },
+      { wch: 6 }, { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 32 },
       { wch: 24 }, { wch: 42 }, { wch: 13 }, { wch: 20 }, { wch: 20 }, { wch: 12 }
     ];
 
@@ -2601,16 +2763,26 @@ export function exportSingleExcelSheet(
     XLSX.writeFile(wb, `Danh_Sach_Thu_Chi_${safeName}_${year}${filterMonth && filterMonth !== 'ALL' ? `_T${filterMonth}` : ''}.xlsx`);
   } else if (type === 'CASH_BOOK') {
     const cashTxs = transactions.filter(t => t.paymentMethod === 'CASH');
+    let openingCash = 0;
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed[year]) openingCash = parsed[year].cash || 0;
+      }
+    } catch (e) {}
+
     const wsData: any[] = [
       [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', '', 'Mẫu số: S11H'],
       [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
       ['', '', '', '', '', '', '', ''],
       [`SỔ QUỸ TIỀN MẶT CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', '', ''],
       ['Tài khoản tiền mặt: TK 1111', '', '', '', '', '', '', ''],
-      ['STT', 'Ngày Tháng', 'Số Phiếu Thu', 'Số Phiếu Chi', 'Họ Tên & Diễn Giải Nghiệp Vụ', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Tồn Quỹ (VNĐ)']
+      ['STT', 'Ngày Tháng', 'Số Phiếu Thu', 'Số Phiếu Chi', 'Họ Tên & Diễn Giải Nghiệp Vụ', 'Số Tiền Thu (VNĐ)', 'Số Tiền Chi (VNĐ)', 'Tồn Quỹ (VNĐ)'],
+      ['', '', '', '', 'Số dư đầu kỳ', '', '', openingCash]
     ];
 
-    let runningCash = 0;
+    let runningCash = openingCash;
     let totalCashThu = 0;
     let totalCashChi = 0;
 
@@ -2636,7 +2808,9 @@ export function exportSingleExcelSheet(
     });
 
     const totalRowIdx = wsData.length;
-    wsData.push(['', '', '', '', 'TỔNG CỘNG SỐ PHÁT SINH:', totalCashThu, totalCashChi, runningCash]);
+    wsData.push(['', '', '', '', 'CỘNG PHÁT SINH:', totalCashThu, totalCashChi, '']);
+    const balanceRowIdx = wsData.length;
+    wsData.push(['', '', '', '', 'SỐ DƯ CUỐI KỲ:', '', '', runningCash]);
     wsData.push(['', '', '', '', '', '', '', '']);
 
     const signRowStart = wsData.length;
@@ -2669,8 +2843,16 @@ export function exportSingleExcelSheet(
       if (ws[ref]) ws[ref].s = EXCEL_STYLES.tableHeaderTeal;
     }
 
+    // Dòng số dư đầu kỳ
+    for (let c = 0; c <= 7; c++) {
+      const ref = getCellAddress(6, c);
+      if (c === 4) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowLabel; }
+      else if (c === 7) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowAmount; }
+      else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowEmpty; }
+    }
+
     for (let i = 0; i < cashTxs.length; i++) {
-      const r = 6 + i;
+      const r = 7 + i;
       const isOdd = i % 2 === 1;
       if (ws[getCellAddress(r, 0)]) ws[getCellAddress(r, 0)].s = EXCEL_STYLES.dataCellCenter(isOdd);
       if (ws[getCellAddress(r, 1)]) ws[getCellAddress(r, 1)].s = EXCEL_STYLES.dataCellCenter(isOdd);
@@ -2687,8 +2869,12 @@ export function exportSingleExcelSheet(
       if (c === 4) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowLabel; }
       else if (c === 5) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountThu; }
       else if (c === 6) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowAmountChi; }
-      else if (c === 7) { if (ws[ref]) ws[ref].s = EXCEL_STYLES.balanceRowAmount; }
       else { if (ws[ref]) ws[ref].s = EXCEL_STYLES.totalRowEmpty; }
+
+      const refB = getCellAddress(balanceRowIdx, c);
+      if (c === 4) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowLabel; }
+      else if (c === 7) { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowAmount; }
+      else { if (ws[refB]) ws[refB].s = EXCEL_STYLES.balanceRowEmpty; }
     }
 
     // Chữ ký
@@ -2708,16 +2894,26 @@ export function exportSingleExcelSheet(
     XLSX.writeFile(wb, `So_Quy_Tien_Mat_S11H_${safeName}_${year}.xlsx`);
   } else if (type === 'BANK_BOOK') {
     const bankTxs = transactions.filter(t => t.paymentMethod === 'BANK');
+    let openingBank = 0;
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed[year]) openingBank = parsed[year].bank || 0;
+      }
+    } catch (e) {}
+
     const wsData: any[] = [
       [`${unitTitle}: ${clientName.toUpperCase()}`, '', '', '', '', '', 'Mẫu số: S12-H'],
       [`Địa chỉ: ${clientAddress}`, '', '', '', '', '', '(Ban hành theo TT 107/2017/TT-BTC)'],
       ['', '', '', '', '', '', ''],
       [`SỔ TIỀN GỬI NGÂN HÀNG CÔNG ĐOÀN NĂM ${year}`, '', '', '', '', '', ''],
       ['Tài khoản tiền gửi: TK 1121', '', '', '', '', '', ''],
-      ['STT', 'Ngày Tháng', 'Số Chứng Từ / UNC', 'Nội Dung Giao Dịch', 'Gửi Vào / Thu (VNĐ)', 'Rút Ra / Chi (VNĐ)', 'Số Dư Cuối (VNĐ)']
+      ['STT', 'Ngày Tháng', 'Số Chứng Từ / UNC', 'Nội Dung Giao Dịch', 'Gửi Vào / Thu (VNĐ)', 'Rút Ra / Chi (VNĐ)', 'Số Dư Cuối (VNĐ)'],
+      ['', '', '', 'Số dư đầu kỳ', '', '', openingBank]
     ];
 
-    let runningBank = 0;
+    let runningBank = openingBank;
     let totalBankThu = 0;
     let totalBankChi = 0;
 
@@ -2742,7 +2938,9 @@ export function exportSingleExcelSheet(
     });
 
     const totalRowIdx = wsData.length;
-    wsData.push(['', '', '', 'TỔNG CỘNG PHÁT SINH:', totalBankThu, totalBankChi, runningBank]);
+    wsData.push(['', '', '', 'CỘNG PHÁT SINH:', totalBankThu, totalBankChi, '']);
+    const balanceRowIdx = wsData.length;
+    wsData.push(['', '', '', 'SỐ DƯ CUỐI KỲ:', '', '', runningBank]);
     wsData.push(['', '', '', '', '', '', '']);
 
     const signRowStart = wsData.length;
@@ -2968,7 +3166,7 @@ export function exportCustomVouchersToExcel(params: {
   const totalRowIdx = wsData.length;
   wsData.push(['', '', '', '', '', '', 'TỔNG CỘNG PHÁT SINH:', '', totalThu, totalChi, '']);
   const balanceRowIdx = wsData.length;
-  wsData.push(['', '', '', '', '', '', 'CHÊNH LỆCH DÒNG TIỀN (THU - CHI):', '', totalThu - totalChi, '', '']);
+  wsData.push(['', '', '', '', '', '', 'Còn DÒNG TIỀN (THU - CHI):', '', totalThu - totalChi, '', '']);
   wsData.push(['', '', '', '', '', '', '', '', '', '', '']);
 
   const signRowStart = wsData.length;
@@ -2986,7 +3184,7 @@ export function exportCustomVouchersToExcel(params: {
     { s: { r: 4, c: 0 }, e: { r: 4, c: 10 } }
   ];
   ws['!cols'] = [
-    { wch: 6 },  { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 32 },
+    { wch: 6 }, { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 32 },
     { wch: 25 }, { wch: 45 }, { wch: 13 }, { wch: 20 }, { wch: 20 }, { wch: 12 }
   ];
 
@@ -3065,7 +3263,7 @@ export function recalculateMemberContribution(
   const fullName = (m.fullName || '').trim();
   const employeeId = m.employeeId;
   const employeeCode = m.employeeCode;
-  
+
   if (status === 'MATERNITY') {
     return {
       stt,
@@ -3202,7 +3400,7 @@ export function generateQuarterlyContributionPeriod(
 ): TradeUnionContributionPeriod {
   const startMonth = (quarter - 1) * 3 + 1;
   const targetMonths = [startMonth, startMonth + 1, startMonth + 2];
-  
+
   // Tìm 3 tháng trong danh sách
   const matchingMonths = targetMonths.map(m => {
     const key = `${String(m).padStart(2, '0')}${year}`;
@@ -3256,7 +3454,7 @@ export function generateYearSummaryTC(
 
   for (let m = 1; m <= 12; m++) {
     const key = `${String(m).padStart(2, '0')}${year}`;
-    const period = monthlyPeriods.find(p => p.periodKey === key || p.month === m);
+    const period = monthlyPeriods.find(p => p.periodKey === key || (p.month === m && p.year === year));
 
     if (period) {
       monthlyRows.push({
@@ -3288,7 +3486,7 @@ export function generateYearSummaryTC(
   }
 
   const validMonths = monthlyRows.filter(r => r.employeeCount > 0);
-  const totalEmployeeAverage = validMonths.length > 0 
+  const totalEmployeeAverage = validMonths.length > 0
     ? Math.round(validMonths.reduce((sum, r) => sum + r.employeeCount, 0) / validMonths.length)
     : 0;
 
@@ -3328,7 +3526,7 @@ export function generateContributionReportHTML(
   const companyName = signerSettings?.companyName || client?.name || 'CÔNG TY TNHH THIẾT KẾ XÂY DỰNG VÀ THƯƠNG MẠI HƯNG PHÁT';
   const preparer = signerSettings?.preparerName || period.preparerName || 'Nguyễn Thị Cẩm Ly';
   const isQuarter = period.periodType === 'QUARTER';
-  const title = isQuarter 
+  const title = isQuarter
     ? `DANH SÁCH TRÍCH NỘP PHÍ CÔNG ĐOÀN ${period.periodLabel.toUpperCase()}`
     : `DANH SÁCH TRÍCH NỘP PHÍ CÔNG ĐOÀN ${period.periodLabel.toUpperCase()}`;
 
@@ -3552,7 +3750,7 @@ export function exportContributionPeriodToExcel(
   const companyAddress = signerSettings?.companyAddress || client?.address || '153G Lũy Bán Bích, P. Tân Thới Hòa, Q. Tân Phú, TP. HCM';
   const preparerName = signerSettings?.preparerName || period.preparerName || 'Nguyễn Thị Cẩm Ly';
   const isQuarter = period.periodType === 'QUARTER';
-  const sheetTitle = isQuarter 
+  const sheetTitle = isQuarter
     ? `DANH SÁCH TRÍCH NỘP PHÍ CÔNG ĐOÀN ${period.periodLabel.toUpperCase()}`
     : `DANH SÁCH TRÍCH NỘP PHÍ CÔNG ĐOÀN ${period.periodLabel.toUpperCase()}`;
 
@@ -3622,7 +3820,7 @@ export function exportContributionPeriodToExcel(
   ];
 
   ws['!cols'] = [
-    { wch: 6 },  { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+    { wch: 6 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
     { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 22 }
   ];
 

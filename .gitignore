@@ -35,3 +35,10 @@ pnpm-debug.log*
 # OS temp files
 .DS_Store
 Thumbs.db
+
+# Executables & large binaries (use GitHub Releases instead)
+*.exe
+*.zip
+*.asar
+~$*
+*.tmp

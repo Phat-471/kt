@@ -24,8 +24,8 @@ export function levenshteinSimilarity(s1: string, s2: string): number {
 
   const len1 = str1.length;
   const len2 = str2.length;
-  
-  // Nếu chênh lệch độ dài quá lớn, similarity chắc chắn < 0.5 -> bỏ qua tính toán ma trận
+
+  // Nếu Còn độ dài quá lớn, similarity chắc chắn < 0.5 -> bỏ qua tính toán ma trận
   if (Math.abs(len1 - len2) / Math.max(len1, len2) > 0.5) {
     levCache.set(cacheKey, 0);
     return 0;
@@ -65,7 +65,7 @@ export function jaccardSimilarity(s1: string, s2: string): number {
   if (!s1 || !s2) return 0;
   const words1 = new Set(s1.toLowerCase().split(/\s+/).filter(w => w.length > 1));
   const words2 = new Set(s2.toLowerCase().split(/\s+/).filter(w => w.length > 1));
-  
+
   if (words1.size === 0 || words2.size === 0) return 0;
 
   let intersection = 0;
@@ -104,7 +104,7 @@ export function findMatchingSuggestions(
 
   for (const v of availableVouchers) {
     let bestMatch: SuggestionResult | null = null;
-    
+
     // Lấy các statement trong dải số tiền gần kề (+/- 1 bucket)
     const vBucket = Math.floor(v.amount / 100000);
     const candidateStatements: NormalizedTransaction[] = [

@@ -75,7 +75,7 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
             <Download className="w-4 h-4" />
             <span>Xuất Excel</span>
           </button>
-          
+
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-slate-900/20 transition-all active:scale-95 shrink-0"
@@ -91,7 +91,7 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
           <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">TỔNG SỐ CHỨNG TỪ</div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">{totalTxs}</div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">ĐÃ KHỚP ĐỐI CHIẾU</div>
           <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">{matchedTxs}</div>
@@ -123,7 +123,7 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
               <span className="text-rose-600 dark:text-rose-400 font-extrabold">{totalExpense.toLocaleString('vi-VN')} đ</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-dotted border-slate-200 dark:border-slate-700">
-              <span className="text-slate-900 dark:text-slate-200 font-bold text-sm">Chênh lệch Thu - Chi</span>
+              <span className="text-slate-900 dark:text-slate-200 font-bold text-sm">Còn Thu - Chi</span>
               <span className="text-brand-600 dark:text-brand-400 font-extrabold">{(totalIncome - totalExpense).toLocaleString('vi-VN')} đ</span>
             </div>
           </div>
@@ -159,7 +159,7 @@ export const ReportGeneratorView: React.FC<ReportGeneratorViewProps> = ({
           )}
         </div>
       </div>
-      
+
       <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-200 dark:border-amber-500/20">
         <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed font-medium">
           <strong>Lưu ý in ấn:</strong> Khi nhấn "In Báo Cáo", trình duyệt sẽ mở hộp thoại in. Bạn có thể chọn máy in thực tế hoặc chọn "Save as PDF" để xuất ra file PDF. Vui lòng bật "Background graphics" (In hình nền) để giữ màu sắc của báo cáo.

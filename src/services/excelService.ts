@@ -12,9 +12,9 @@ export interface ExcelSheetParseResult {
 export function parseExcelFile(fileBuffer: ArrayBuffer, selectedSheetName?: string): ExcelSheetParseResult {
   const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true });
   const sheetNames = workbook.SheetNames;
-  
-  const targetSheetName = (selectedSheetName && sheetNames.includes(selectedSheetName)) 
-    ? selectedSheetName 
+
+  const targetSheetName = (selectedSheetName && sheetNames.includes(selectedSheetName))
+    ? selectedSheetName
     : sheetNames[0];
 
   const worksheet = workbook.Sheets[targetSheetName];
@@ -23,7 +23,7 @@ export function parseExcelFile(fileBuffer: ArrayBuffer, selectedSheetName?: stri
   }
 
   const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '' });
-  
+
   let headers: string[] = [];
   if (jsonData.length > 0) {
     headers = Object.keys(jsonData[0]);
@@ -168,7 +168,7 @@ export function exportReconciliationReportToExcel(
       'Số CT / Nôi dung Sao kê': s?.description || '',
       'Ngày Sao kê': s?.date || '',
       'Số tiền Sao kê (VND)': s?.amount || 0,
-      'Chênh lệch (VND)': (v?.amount || 0) - (s?.amount || 0),
+      'Còn (VND)': (v?.amount || 0) - (s?.amount || 0),
       'Điểm tin cậy (% Khớp)': rec.matchScore,
       'Lý do ghép khớp': rec.matchReasons.join('; '),
       'Thời gian duyệt': new Date(rec.matchedAt).toLocaleString('vi-VN'),

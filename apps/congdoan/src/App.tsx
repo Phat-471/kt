@@ -159,6 +159,31 @@ export default function App() {
         if (modal === 'FEEDBACK') setIsFeedbackModalOpen(true);
       });
     }
+
+    // Bộ phím tắt tiện ích toàn hệ thống
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Bấm ESC: Đóng modal
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setIsExportModalOpen(false);
+        setIsImportModalOpen(false);
+        setIsUpdateModalOpen(false);
+        setIsFeedbackModalOpen(false);
+      }
+      // F2 hoặc Ctrl + N: Lập Phiếu Thu
+      if (e.key === 'F2' || (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'n')) {
+        e.preventDefault();
+        handleOpenAddModal('UNION_RECEIPT');
+      }
+      // F3 hoặc Ctrl + Shift + N: Lập Phiếu Chi
+      if (e.key === 'F3' || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n')) {
+        e.preventDefault();
+        handleOpenAddModal('UNION_PAYMENT');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const [importResult, setImportResult] = useState<{
@@ -200,8 +225,46 @@ export default function App() {
 
   const [notification, setNotification] = useState<{ message: string; type: 'SUCCESS' | 'ERROR' } | null>(null);
 
+  // Lấy danh sách số dư đầu kỳ từ Dexie DB
+  const liveOpeningBalances = useLiveQuery(() => db.unionOpeningBalances.toArray(), []);
+
+  // Tổng hợp số dư đầu kỳ (Ưu tiên Dexie DB -> LocalStorage -> Giá trị mặc định)
+  const openingBalances = useMemo<{ [year: number]: { cash: number; bank: number } }>(() => {
+    const result: { [year: number]: { cash: number; bank: number } } = {
+      2023: { cash: 15594300, bank: 26460 },
+      2024: { cash: 11149200, bank: 26510 },
+      2025: { cash: 2309760, bank: 4041874 },
+      2026: { cash: 438010, bank: 123430 },
+    };
+    if (liveOpeningBalances && liveOpeningBalances.length > 0) {
+      liveOpeningBalances.forEach(item => {
+        result[item.year] = { cash: item.cash, bank: item.bank };
+      });
+      return result;
+    }
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      if (saved) return { ...result, ...JSON.parse(saved) };
+    } catch (e) {}
+    return result;
+  }, [liveOpeningBalances]);
+
+  const currentOpeningCash = openingBalances[selectedYear]?.cash ?? 438010;
+  const currentOpeningBank = openingBalances[selectedYear]?.bank ?? 123430;
+
+  // Lọc chứng từ theo năm đang chọn cho 4 thẻ thống kê đầu trang
+  const currentYearTransactions = useMemo(() => {
+    const list = allTransactions.filter(t => {
+      const y = new Date(t.date).getFullYear();
+      return y === selectedYear;
+    });
+    return list.length > 0 ? list : allTransactions;
+  }, [allTransactions, selectedYear]);
+
   // Summaries
-  const summary = useMemo(() => calculateTradeUnionSummary(allTransactions), [allTransactions]);
+  const summary = useMemo(() => {
+    return calculateTradeUnionSummary(currentYearTransactions, currentOpeningCash, currentOpeningBank);
+  }, [currentYearTransactions, currentOpeningCash, currentOpeningBank]);
   const reportB07 = useMemo(() => computeSettlementReportB07(allTransactions, activeClient, selectedYear), [allTransactions, activeClient, selectedYear]);
   const budgetCalc = useMemo(() => {
     return calculateTradeUnionContribution(grossPayroll, memberCount, avgSalary, doanPhiRate, kpcdRetainedRate, doanPhiRetainedRate);
@@ -318,13 +381,14 @@ export default function App() {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedIds.length === 0) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} chứng từ đã chọn?`)) return;
+  const handleDeleteSelected = async (targetIds?: string[]) => {
+    const idsToDelete = targetIds && targetIds.length > 0 ? targetIds : selectedIds;
+    if (idsToDelete.length === 0) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${idsToDelete.length} chứng từ đã chọn?`)) return;
     try {
-      await db.unionTransactions.bulkDelete(selectedIds);
-      setSelectedIds([]);
-      setNotification({ message: `Đã xóa ${selectedIds.length} chứng từ!`, type: 'SUCCESS' });
+      await db.unionTransactions.bulkDelete(idsToDelete);
+      setSelectedIds(prev => prev.filter(id => !idsToDelete.includes(id)));
+      setNotification({ message: `Đã xóa ${idsToDelete.length} chứng từ thành công!`, type: 'SUCCESS' });
     } catch (err: any) {
       setNotification({ message: `Lỗi khi xóa: ${err?.message}`, type: 'ERROR' });
     }
@@ -439,6 +503,22 @@ export default function App() {
     setNotification({ message: `Đã cập nhật thông tin nhân viên ${emp.fullName} (Mã: ${emp.code})!`, type: 'SUCCESS' });
   };
 
+  const handleSaveOpeningBalance = async (year: number, cash: number, bank: number) => {
+    await db.unionOpeningBalances.put({
+      year,
+      cash,
+      bank,
+      updatedAt: new Date().toISOString(),
+    });
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      const current = saved ? JSON.parse(saved) : {};
+      current[year] = { cash, bank };
+      localStorage.setItem('ACCODESK_UNION_OPENING_BALANCES', JSON.stringify(current));
+    } catch (e) {}
+    setNotification({ message: `Đã lưu số dư đầu kỳ năm ${year} (TM: ${formatNumber(cash)} đ, NH: ${formatNumber(bank)} đ)!`, type: 'SUCCESS' });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -492,10 +572,30 @@ export default function App() {
     try {
       const summaryParts: string[] = [];
 
-      // 1. Lưu chứng từ
+      // 1. Lưu chứng từ (Dọn dẹp các chứng từ thuộc các năm trong file import để loại bỏ triệt để chứng từ rác cũ)
       if (importResult.transactions && importResult.transactions.length > 0) {
+        const importedYears = Array.from(new Set(
+          importResult.transactions.map(t => {
+            const y = new Date(t.date).getFullYear();
+            return !isNaN(y) ? y : null;
+          }).filter((y): y is number => y !== null)
+        ));
+
+        // Lấy tất cả giao dịch hiện có để lọc bỏ các giao dịch cũ thuộc những năm được import lại
+        const allExisting = await db.unionTransactions.toArray();
+        const idsToDelete = allExisting
+          .filter(t => {
+            const y = new Date(t.date).getFullYear();
+            return importedYears.includes(y);
+          })
+          .map(t => t.id);
+
+        if (idsToDelete.length > 0) {
+          await db.unionTransactions.bulkDelete(idsToDelete);
+        }
+
         await db.unionTransactions.bulkPut(importResult.transactions);
-        summaryParts.push(`${importResult.transactions.length} chứng từ`);
+        summaryParts.push(`${importResult.transactions.length} chứng từ (đã làm sạch dữ liệu cũ năm ${importedYears.join(', ')})`);
       }
 
       // 2. Lưu bảng trích nộp tháng/quý
@@ -612,7 +712,7 @@ export default function App() {
             title="Kiểm tra phiên bản & Cập nhật phần mềm"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>v1.2.0 (Cập Nhật)</span>
+            <span>v1.2.7 (Cập Nhật)</span>
           </button>
 
           {/* Nút Báo Cáo Lỗi & Hỗ Trợ Trực Tiếp */}
@@ -715,14 +815,14 @@ export default function App() {
           <StatCard
             label="Tồn Quỹ Tiền Mặt"
             value={`${formatNumber(summary.cashBalance)} đ`}
-            subtext="Sổ Quỹ TM (Mẫu S11H)"
+            subtext={`Đầu kỳ: ${formatNumber(currentOpeningCash)} đ | Sổ S11H`}
             icon={Coins}
             variant="amber"
           />
           <StatCard
             label="Tồn Tiền Gửi NH"
             value={`${formatNumber(summary.bankBalance)} đ`}
-            subtext="Sổ Ngân Hàng (Mẫu S12-H)"
+            subtext={`Đầu kỳ: ${formatNumber(currentOpeningBank)} đ | Sổ S12-H`}
             icon={Landmark}
             variant="blue"
           />
@@ -797,6 +897,8 @@ export default function App() {
             onAddEmployee={handleAddEmployee}
             onUpdateEmployee={handleUpdateEmployee}
             onDeleteEmployee={handleDeleteEmployee}
+            openingBalances={openingBalances}
+            onSaveOpeningBalance={handleSaveOpeningBalance}
           />
         )}
 
@@ -1047,6 +1149,71 @@ export default function App() {
                   </>
                 )}
               </select>
+            </div>
+
+            {/* Ô Tìm Kiếm Nhanh Theo Mã / Tên Nhân Viên */}
+            <div className="bg-blue-50/60 p-2.5 rounded-lg border border-blue-100 space-y-1.5">
+              <label className="block text-blue-900 font-bold text-xs flex items-center justify-between">
+                <span>🔍 Tìm nhanh theo Mã / Tên Đoàn Viên:</span>
+                {employees.length > 0 && (
+                  <span className="text-[11px] font-normal text-blue-600">({employees.length} nhân viên trong danh bạ)</span>
+                )}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Gõ mã nhân viên (01, 02...) hoặc họ tên để tự động điền..."
+                  value={employeeSearchQuery}
+                  onChange={(e) => {
+                    const q = e.target.value;
+                    setEmployeeSearchQuery(q);
+                    const found = employees.find(
+                      emp => emp.code?.toLowerCase() === q.trim().toLowerCase() ||
+                             emp.fullName?.toLowerCase().includes(q.trim().toLowerCase())
+                    );
+                    if (found) {
+                      setFormData(prev => ({
+                        ...prev,
+                        personName: found.fullName,
+                        department: found.department || 'Đoàn viên CĐCS',
+                        reason: modalType === 'UNION_PAYMENT' && (!prev.reason || prev.reason.includes('Chi mừng'))
+                          ? `Chi mừng sinh nhật đoàn viên ${found.fullName}`
+                          : prev.reason
+                      }));
+                    }
+                  }}
+                  className="flex-1 bg-white border border-blue-300 rounded-md px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                {employees.length > 0 && (
+                  <select
+                    value={selectedEmployeeCode}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      setSelectedEmployeeCode(code);
+                      const found = employees.find(emp => emp.code === code);
+                      if (found) {
+                        setEmployeeSearchQuery(found.fullName);
+                        setFormData(prev => ({
+                          ...prev,
+                          personName: found.fullName,
+                          department: found.department || 'Đoàn viên CĐCS',
+                          reason: modalType === 'UNION_PAYMENT' && (!prev.reason || prev.reason.includes('Chi mừng'))
+                            ? `Chi mừng sinh nhật đoàn viên ${found.fullName}`
+                            : prev.reason
+                        }));
+                      }
+                    }}
+                    className="max-w-[180px] bg-white border border-blue-300 rounded-md px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
+                  >
+                    <option value="">-- Chọn danh bạ --</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.code}>
+                        {emp.code} - {emp.fullName}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

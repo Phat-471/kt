@@ -1,11 +1,11 @@
 import React from 'react';
 import { Client, NormalizedTransaction, ReconciliationPair } from '../../types/accounting';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  ShieldAlert, 
-  GitCompare, 
-  FileSpreadsheet, 
+import {
+  TrendingUp,
+  TrendingDown,
+  ShieldAlert,
+  GitCompare,
+  FileSpreadsheet,
   Building2,
   ArrowUpRight,
   ArrowDownRight,
@@ -100,7 +100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <StatCard
           label="DÒNG TIỀN THUẦN"
           value={`${formatCurrency(netBalance)} đ`}
-          subtext="Thu chênh lệch chi tiền mặt/NH"
+          subtext="Thu Còn chi tiền mặt/NH"
           icon={netBalance >= 0 ? ArrowUpRight : ArrowDownRight}
           variant={netBalance >= 0 ? 'blue' : 'rose'}
         />

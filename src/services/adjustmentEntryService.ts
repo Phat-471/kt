@@ -30,7 +30,7 @@ export const createAdjustmentEntry = (
       description: newDescription || `[ĐIỀU CHỈNH GHI ĐỎ] ${originalTx.description} (Sai lệch ${diffAmount.toLocaleString()} VNĐ)`,
       date: timestamp.split('T')[0],
     };
-    note = `Đã lập chứng từ điều chỉnh ghi đỏ chênh lệch ${diffAmount.toLocaleString()} VNĐ cho chứng từ gốc ${originalTx.voucherNo}.`;
+    note = `Đã lập chứng từ điều chỉnh ghi đỏ Còn ${diffAmount.toLocaleString()} VNĐ cho chứng từ gốc ${originalTx.voucherNo}.`;
   } else if (adjustmentMethod === 'POSITIVE_ADDITION') {
     // Ghi bổ sung giá trị thiếu
     const additionAmount = Math.max(0, newAmount - originalTx.amount);

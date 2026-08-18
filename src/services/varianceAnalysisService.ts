@@ -5,7 +5,7 @@ export interface VarianceItem {
   accountName: string;
   currentPeriodAmount: number;
   previousPeriodAmount: number;
-  varianceAmount: number; // Mức chênh lệch tuyệt đối
+  varianceAmount: number; // Mức Còn tuyệt đối
   variancePercent: number; // % Tăng/Giảm
   riskLevel: 'NORMAL' | 'WARNING' | 'ALERT'; // ALERT nếu tăng/giảm bất thường > 30%
   recommendation: string;

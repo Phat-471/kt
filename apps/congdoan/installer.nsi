@@ -1,4 +1,4 @@
-; =========================================================================
+﻿; =========================================================================
 ; NSIS INSTALLER SCRIPT FOR KE TOAN CONG DOAN (v1.2.0)
 ; =========================================================================
 
@@ -9,7 +9,7 @@ Unicode true
 
 ; General Settings
 Name "Kế Toán Tài Chính Công Đoàn"
-OutFile "release\KeToanCongDoan-Setup-v1.2.2.exe"
+OutFile "release\KeToanCongDoan-Setup-v1.2.7.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user
@@ -64,7 +64,7 @@ Section "KeToanCongDoan (required)" SecCore
   WriteRegStr HKCU "Software\KeToanCongDoan" "Install_Dir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayName" "Phần Mềm Kế Toán Tài Chính Công Đoàn"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayIcon" "$INSTDIR\KeToanCongDoan.exe,0"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.2.2"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.2.7"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "Publisher" "Công Đoàn Cơ Sở"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "NoModify" 1

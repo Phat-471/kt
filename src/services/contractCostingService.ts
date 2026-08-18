@@ -14,7 +14,7 @@ export interface ContractCostingItem {
   completionRatePercent: number;// Tỷ lệ tiến độ hoàn thành (%)
   isOverBudget: boolean;        // Cảnh báo vượt định mức chi phí
   materialBudget?: number;      // Định mức dự toán NVL (BOM)
-  materialVariance?: number;    // Chênh lệch thực tế vs dự toán NVL
+  materialVariance?: number;    // Còn thực tế vs dự toán NVL
   isBOMAlert?: boolean;         // Cảnh báo vượt định mức BOM > 5%
   transactions: NormalizedTransaction[];
 }

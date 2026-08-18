@@ -138,6 +138,48 @@ export const ContributionFeeTab: React.FC<ContributionFeeTabProps> = ({
     onSelectPeriodKey(currentMonthKey);
   };
 
+  // Tự động điền/tạo đủ 12 tháng từ tháng mẫu hoặc nhân viên
+  const handleAutoFill12Months = () => {
+    // Tìm tháng mẫu có sẵn trong năm hiện tại
+    const existingMonthInYear = periods.find(p => p.year === activeYear && p.members && p.members.length > 0);
+    const baseMembers: TradeUnionMemberContribution[] = existingMonthInYear?.members?.length
+      ? existingMonthInYear.members
+      : (employees.length > 0 ? employees : [
+          { id: '1', code: '01', fullName: 'Trần Minh Thắng', insuranceSalary: 5700000 },
+          { id: '2', code: '02', fullName: 'Lê Hoàng Sỹ', insuranceSalary: 5700000 },
+          { id: '3', code: '03', fullName: 'Dương Hồng Loan', insuranceSalary: 5700000 },
+        ]).map((emp: any, idx: number) => {
+          const isMaternity = (emp.fullName || '').includes('Sử Ngọc Quế');
+          return recalculateMemberContribution({
+            stt: idx + 1,
+            employeeId: emp.id || String(idx + 1),
+            employeeCode: emp.code || String(idx + 1).padStart(2, '0'),
+            fullName: emp.fullName || '',
+            insuranceSalary: isMaternity ? 0 : (emp.insuranceSalary || 5700000),
+            status: isMaternity ? 'MATERNITY' : 'ACTIVE',
+            notes: isMaternity ? 'Nghỉ thai sản' : '',
+          });
+        });
+
+    for (let m = 1; m <= 12; m++) {
+      const key = `${String(m).padStart(2, '0')}${activeYear}`;
+      const existing = periods.find(p => p.periodKey === key);
+      if (!existing || !existing.members || existing.members.length === 0) {
+        const p = recalculateContributionPeriod({
+          periodKey: key,
+          periodLabel: `Tháng ${String(m).padStart(2, '0')}/${activeYear}`,
+          periodType: 'MONTH',
+          year: activeYear,
+          month: m,
+          reportDate: `Ngày 01 tháng ${String(m).padStart(2, '0')} năm ${activeYear}`,
+          preparerName: signerSettings?.preparerName || 'Nguyễn Thị Cẩm Ly',
+          members: baseMembers.map(mb => ({ ...mb })),
+        });
+        onSavePeriod(p);
+      }
+    }
+  };
+
   // Cập nhật 1 trường của 1 nhân viên trong tháng
   const handleUpdateMember = (
     index: number,
@@ -725,7 +767,16 @@ export const ContributionFeeTab: React.FC<ContributionFeeTabProps> = ({
               <div className="text-xs text-slate-500">Tổng hợp 12 tháng kinh phí 2% và đoàn phí 0.5% đã đối soát</div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleAutoFill12Months}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold transition-all shadow-sm"
+                title="Tự động khởi tạo và điền dữ liệu đầy đủ cho các tháng chưa có từ nhân viên/tháng mẫu"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>⚡ Điền Đủ 12 Tháng</span>
+              </button>
+
               <button
                 onClick={() => handlePrintHTML(generateYearSummaryTCHTML(yearSummaryTC, signerSettings))}
                 className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-all"

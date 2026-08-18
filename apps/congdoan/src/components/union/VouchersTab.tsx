@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { TradeUnionTransaction, TradeUnionVoucherType, TradeUnionCategory, Client, UnionSignerSettings } from '../../types/accounting';
-import { 
-  Receipt, 
-  Printer, 
-  CheckSquare, 
-  Square, 
-  Calendar, 
-  Plus, 
-  Trash2, 
-  ArrowUpRight, 
+import {
+  Receipt,
+  Printer,
+  CheckSquare,
+  Square,
+  Calendar,
+  Plus,
+  Trash2,
+  ArrowUpRight,
   ArrowDownRight,
   Filter,
   RotateCcw,
@@ -44,7 +44,7 @@ interface VouchersTabProps {
   onPrintSingle: (tx: TradeUnionTransaction) => void;
   onPrintBatchSelected: () => void;
   onPrintMonth: (month: number | 'ALL') => void;
-  onDeleteSelected?: () => void;
+  onDeleteSelected?: (ids?: string[]) => void;
   client?: Client | null;
   signerSettings?: UnionSignerSettings | null;
   selectedYear?: number;
@@ -53,6 +53,80 @@ interface VouchersTabProps {
 type TimeFilterMode = 'MONTH' | 'QUARTER' | 'CUSTOM' | 'ALL';
 type SortField = 'DATE' | 'VOUCHER_NO' | 'PERSON_NAME' | 'AMOUNT' | 'CATEGORY';
 type SortOrder = 'ASC' | 'DESC';
+
+interface TransactionRowProps {
+  tx: TradeUnionTransaction;
+  idx: number;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  onPrintSingle: (tx: TradeUnionTransaction) => void;
+}
+
+const TransactionRow = React.memo<TransactionRowProps>(({
+  tx,
+  idx,
+  isSelected,
+  onToggleSelect,
+  onPrintSingle,
+}) => {
+  const isReceipt = tx.voucherType === 'UNION_RECEIPT';
+  return (
+    <tr className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
+      <td className="p-3 text-center">
+        <button onClick={() => onToggleSelect(tx.id)} className="text-slate-400 hover:text-slate-700">
+          {isSelected ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4" />}
+        </button>
+      </td>
+      <td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+      <td className="p-3 font-mono text-slate-600 whitespace-nowrap">{tx.date}</td>
+      <td className="p-3 font-bold font-mono text-blue-700 whitespace-nowrap">{tx.voucherNo}</td>
+      <td className="p-3 whitespace-nowrap">
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+            isReceipt
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'
+          }`}
+        >
+          {isReceipt ? 'Thu (C40)' : 'Chi (C41)'}
+        </span>
+      </td>
+      <td className="p-3">
+        <div className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
+          <span>{tx.personName}</span>
+          {tx.department && <span className="text-[10px] text-slate-400 font-normal">({tx.department})</span>}
+          <span className="text-[10px] text-slate-400 px-1.5 py-0.2 bg-slate-100 rounded">
+            {getTradeUnionCategoryLabel(tx.category)}
+          </span>
+        </div>
+        <div className="text-slate-500 line-clamp-1 mt-0.5">{tx.reason}</div>
+      </td>
+      <td className="p-3 text-center whitespace-nowrap">
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+            tx.paymentMethod === 'BANK'
+              ? 'bg-sky-50 text-sky-700 border border-sky-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+          }`}
+        >
+          {tx.paymentMethod === 'BANK' ? 'Ngân hàng' : 'Tiền mặt'}
+        </span>
+      </td>
+      <td className={`p-3 text-right font-mono font-bold text-sm whitespace-nowrap ${isReceipt ? 'text-emerald-700' : 'text-rose-700'}`}>
+        {formatNumber(tx.amount)}
+      </td>
+      <td className="p-3 text-center whitespace-nowrap">
+        <button
+          onClick={() => onPrintSingle(tx)}
+          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-all border border-blue-200"
+          title="In phiếu này"
+        >
+          <Printer className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  );
+});
 
 export const VouchersTab: React.FC<VouchersTabProps> = ({
   transactions,
@@ -121,7 +195,7 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
     setSortOrder('DESC');
   };
 
-  const hasActiveFilter = 
+  const hasActiveFilter =
     selectedYearFilter !== 'ALL' ||
     selectedMonth !== 'ALL' ||
     selectedQuarter !== 'ALL' ||
@@ -230,6 +304,28 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
     sortOrder
   ]);
 
+  // Lấy số dư đầu kỳ từ LocalStorage
+  const openingBalances = useMemo<{ [year: number]: { cash: number; bank: number } }>(() => {
+    try {
+      const saved = localStorage.getItem('ACCODESK_UNION_OPENING_BALANCES');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      2023: { cash: 15594300, bank: 26460 },
+      2024: { cash: 11149200, bank: 26510 },
+      2025: { cash: 2309760, bank: 4041874 },
+      2026: { cash: 438010, bank: 123430 },
+    };
+  }, []);
+
+  const activeYear = selectedYearFilter !== 'ALL' ? selectedYearFilter : selectedYear;
+  const currentOpening = useMemo(() => {
+    const ob = openingBalances[activeYear] || { cash: 0, bank: 0 };
+    if (paymentMethodFilter === 'CASH') return ob.cash;
+    if (paymentMethodFilter === 'BANK') return ob.bank;
+    return ob.cash + ob.bank;
+  }, [openingBalances, activeYear, paymentMethodFilter]);
+
   const summary = useMemo(() => {
     let thu = 0;
     let chi = 0;
@@ -246,17 +342,45 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
       }
     });
 
-    return { 
-      thu, 
-      chi, 
-      countThu, 
-      countChi, 
-      total: sortedList.length,
-      net: thu - chi
-    };
-  }, [sortedList]);
+    const net = thu - chi;
+    const closingBalance = currentOpening + net;
 
-  const isAllSelected = sortedList.length > 0 && selectedIds.length === sortedList.length;
+    return {
+      opening: currentOpening,
+      thu,
+      chi,
+      countThu,
+      countChi,
+      total: sortedList.length,
+      net,
+      closingBalance,
+    };
+  }, [sortedList, currentOpening]);
+
+  // Danh sách ID của các chứng từ đang hiển thị mà được chọn
+  const visibleSelectedIds = useMemo(() => {
+    const visibleSet = new Set(sortedList.map(t => t.id));
+    return selectedIds.filter(id => visibleSet.has(id));
+  }, [sortedList, selectedIds]);
+
+  const isAllSelected = sortedList.length > 0 && visibleSelectedIds.length === sortedList.length;
+
+  const handleToggleSelectAllVisible = () => {
+    if (sortedList.length === 0) return;
+    if (isAllSelected) {
+      // Bỏ chọn tất cả các phiếu đang hiển thị
+      const visibleSet = new Set(sortedList.map(t => t.id));
+      const remaining = selectedIds.filter(id => !visibleSet.has(id));
+      sortedList.forEach(t => {
+        if (selectedIds.includes(t.id)) onToggleSelectOne(t.id);
+      });
+    } else {
+      // Chọn tất cả các phiếu đang hiển thị
+      sortedList.forEach(t => {
+        if (!selectedIds.includes(t.id)) onToggleSelectOne(t.id);
+      });
+    }
+  };
 
   // Render Sort Indicator Icon
   const renderSortIcon = (field: SortField) => {
@@ -426,25 +550,22 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
             <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium">
               <button
                 onClick={() => setTimeMode('MONTH')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  timeMode === 'MONTH' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-2.5 py-1 rounded-md transition-all ${timeMode === 'MONTH' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Theo Tháng
               </button>
               <button
                 onClick={() => setTimeMode('QUARTER')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  timeMode === 'QUARTER' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-2.5 py-1 rounded-md transition-all ${timeMode === 'QUARTER' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Theo Quý
               </button>
               <button
                 onClick={() => setTimeMode('CUSTOM')}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  timeMode === 'CUSTOM' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-2.5 py-1 rounded-md transition-all ${timeMode === 'CUSTOM' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Khoảng Ngày
               </button>
@@ -477,11 +598,10 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
 
             <button
               onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                isAdvancedOpen || paymentMethodFilter !== 'ALL' || categoryFilter !== 'ALL' || amountRangeFilter !== 'ALL'
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isAdvancedOpen || paymentMethodFilter !== 'ALL' || categoryFilter !== 'ALL' || amountRangeFilter !== 'ALL'
                   ? 'bg-blue-50 text-blue-700 border-blue-300'
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Bộ Lọc Nâng Cao</span>
@@ -508,11 +628,10 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
           <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs">
             <button
               onClick={() => onSelectMonth('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all ${
-                selectedMonth === 'ALL'
+              className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all ${selectedMonth === 'ALL'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-              }`}
+                }`}
             >
               Cả Năm ({transactions.filter(t => selectedYearFilter === 'ALL' || new Date(t.date).getFullYear() === selectedYearFilter).length})
             </button>
@@ -528,17 +647,15 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                 <button
                   key={m}
                   onClick={() => onSelectMonth(m)}
-                  className={`px-2.5 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
-                    selectedMonth === m
+                  className={`px-2.5 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${selectedMonth === m
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <span>T{m}</span>
                   {countInMonth > 0 && (
-                    <span className={`text-[10px] px-1 py-0.2 rounded-full ${
-                      selectedMonth === m ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'
-                    }`}>
+                    <span className={`text-[10px] px-1 py-0.2 rounded-full ${selectedMonth === m ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}>
                       {countInMonth}
                     </span>
                   )}
@@ -552,9 +669,8 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
           <div className="flex items-center gap-2 text-xs">
             <button
               onClick={() => setSelectedQuarter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                selectedQuarter === 'ALL' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-              }`}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${selectedQuarter === 'ALL' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
             >
               Tất Cả Quý
             </button>
@@ -562,9 +678,8 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
               <button
                 key={q}
                 onClick={() => setSelectedQuarter(q as any)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                  selectedQuarter === q ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${selectedQuarter === q ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 Quý {q} (Tháng {q * 3 - 2} - {q * 3})
               </button>
@@ -605,25 +720,22 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs">
             <button
               onClick={() => onVoucherFilterChange('ALL')}
-              className={`px-3 py-1 rounded font-semibold transition-all ${
-                voucherFilter === 'ALL' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1 rounded font-semibold transition-all ${voucherFilter === 'ALL' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tất cả
             </button>
             <button
               onClick={() => onVoucherFilterChange('RECEIPT')}
-              className={`px-3 py-1 rounded font-semibold transition-all ${
-                voucherFilter === 'RECEIPT' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1 rounded font-semibold transition-all ${voucherFilter === 'RECEIPT' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Thu (C40)
             </button>
             <button
               onClick={() => onVoucherFilterChange('PAYMENT')}
-              className={`px-3 py-1 rounded font-semibold transition-all ${
-                voucherFilter === 'PAYMENT' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1 rounded font-semibold transition-all ${voucherFilter === 'PAYMENT' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Chi (C41)
             </button>
@@ -697,20 +809,40 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
 
         {/* Thanh Tổng Kết Dòng Tiền & Nút In */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-3 flex-wrap font-medium">
-            <span className="text-slate-600">
+          <div className="flex items-center gap-2.5 flex-wrap font-medium">
+            <span className="text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
               Kết quả: <strong className="text-slate-900">{summary.total} phiếu</strong>
             </span>
+
+            {summary.opening > 0 && (
+              <span className="flex items-center gap-1 text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 font-semibold" title="Số dư đầu kỳ của tài khoản và năm đang lọc">
+                <span>Đầu kỳ:</span>
+                <strong className="font-mono text-slate-900">{formatNumber(summary.opening)} đ</strong>
+              </span>
+            )}
+
             <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
               <ArrowUpRight className="w-3.5 h-3.5" />
               <span>Thu: {formatNumber(summary.thu)} đ ({summary.countThu})</span>
             </span>
+
             <span className="flex items-center gap-1 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 font-bold">
               <ArrowDownRight className="w-3.5 h-3.5" />
               <span>Chi: {formatNumber(summary.chi)} đ ({summary.countChi})</span>
             </span>
-            <span className={`px-2 py-0.5 rounded font-mono font-bold ${summary.net >= 0 ? 'text-blue-700 bg-blue-50' : 'text-amber-700 bg-amber-50'}`}>
-              Chênh lệch: {formatNumber(summary.net)} đ
+
+            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border font-bold ${
+              paymentMethodFilter === 'BANK'
+                ? 'text-blue-800 bg-blue-50 border-blue-200'
+                : 'text-amber-900 bg-amber-50 border-amber-300'
+            }`} title="Số dư cuối kỳ = Số dư đầu kỳ + Tổng Thu - Tổng Chi">
+              <span>{paymentMethodFilter === 'BANK' ? 'Số Dư Cuối NH:' : 'Tồn Quỹ Cuối Kỳ:'}</span>
+              <strong className="font-mono text-sm">{formatNumber(summary.closingBalance)} đ</strong>
+              {summary.opening > 0 && (
+                <span className="text-[10px] font-normal text-slate-500">
+                  (Thu-Chi: {summary.net >= 0 ? '+' : ''}{formatNumber(summary.net)} đ)
+                </span>
+              )}
             </span>
           </div>
 
@@ -725,23 +857,23 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
             </button>
 
             {/* Nút In Các Phiếu Được Tích Chọn */}
-            {selectedIds.length > 0 && (
+            {visibleSelectedIds.length > 0 && (
               <button
                 onClick={onPrintBatchSelected}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>In Đã Chọn ({selectedIds.length})</span>
+                <span>In Đã Chọn ({visibleSelectedIds.length})</span>
               </button>
             )}
 
-            {selectedIds.length > 0 && onDeleteSelected && (
+            {visibleSelectedIds.length > 0 && onDeleteSelected && (
               <button
-                onClick={onDeleteSelected}
+                onClick={() => onDeleteSelected(visibleSelectedIds)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-medium transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Xóa ({selectedIds.length})</span>
+                <span>Xóa ({visibleSelectedIds.length})</span>
               </button>
             )}
           </div>
@@ -755,14 +887,14 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
             <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm text-[11px] uppercase tracking-wider text-slate-600 font-bold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="p-3 w-10 text-center bg-slate-100">
-                  <button onClick={onToggleSelectAll} className="text-slate-400 hover:text-slate-700" title="Chọn tất cả">
+                  <button onClick={handleToggleSelectAllVisible} className="text-slate-400 hover:text-slate-700" title="Chọn tất cả phiếu đang lọc">
                     {isAllSelected ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
                 <th className="p-3 w-12 text-center bg-slate-100">STT</th>
-                
+
                 {/* Cột Ngày - Cho Phép Sắp Xếp */}
-                <th 
+                <th
                   onClick={() => handleSort('DATE')}
                   className="p-3 w-28 cursor-pointer hover:bg-slate-200/80 transition-colors select-none group bg-slate-100"
                   title="Nhấp để sắp xếp theo Ngày lập"
@@ -774,7 +906,7 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                 </th>
 
                 {/* Cột Số Phiếu - Cho Phép Sắp Xếp */}
-                <th 
+                <th
                   onClick={() => handleSort('VOUCHER_NO')}
                   className="p-3 w-28 cursor-pointer hover:bg-slate-200/80 transition-colors select-none group bg-slate-100"
                   title="Nhấp để sắp xếp theo Số phiếu"
@@ -789,7 +921,7 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                 <th className="p-3 w-28 bg-slate-100">Loại</th>
 
                 {/* Cột Người Nộp / Nhận - Cho Phép Sắp Xếp */}
-                <th 
+                <th
                   onClick={() => handleSort('PERSON_NAME')}
                   className="p-3 cursor-pointer hover:bg-slate-200/80 transition-colors select-none group bg-slate-100"
                   title="Nhấp để sắp xếp theo Tên người nộp/nhận"
@@ -804,7 +936,7 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                 <th className="p-3 w-28 text-center bg-slate-100">Hình Thức</th>
 
                 {/* Cột Số Tiền - Cho Phép Sắp Xếp */}
-                <th 
+                <th
                   onClick={() => handleSort('AMOUNT')}
                   className="p-3 w-36 text-right cursor-pointer hover:bg-slate-200/80 transition-colors select-none group bg-slate-100"
                   title="Nhấp để sắp xếp theo Số tiền"
@@ -837,62 +969,16 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
                   </td>
                 </tr>
               ) : (
-                sortedList.map((tx, idx) => {
-                  const isReceipt = tx.voucherType === 'UNION_RECEIPT';
-                  const isSelected = selectedIds.includes(tx.id);
-                  return (
-                    <tr key={tx.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
-                      <td className="p-3 text-center">
-                        <button onClick={() => onToggleSelectOne(tx.id)} className="text-slate-400 hover:text-slate-700">
-                          {isSelected ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4" />}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td>
-                      <td className="p-3 font-mono text-slate-600 whitespace-nowrap">{tx.date}</td>
-                      <td className="p-3 font-bold font-mono text-blue-700 whitespace-nowrap">{tx.voucherNo}</td>
-                      <td className="p-3 whitespace-nowrap">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
-                          isReceipt 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {isReceipt ? 'Thu (C40)' : 'Chi (C41)'}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <div className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                          <span>{tx.personName}</span>
-                          {tx.department && <span className="text-[10px] text-slate-400 font-normal">({tx.department})</span>}
-                          <span className="text-[10px] text-slate-400 px-1.5 py-0.2 bg-slate-100 rounded">
-                            {getTradeUnionCategoryLabel(tx.category)}
-                          </span>
-                        </div>
-                        <div className="text-slate-500 line-clamp-1 mt-0.5">{tx.reason}</div>
-                      </td>
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          tx.paymentMethod === 'BANK'
-                            ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {tx.paymentMethod === 'BANK' ? 'Ngân hàng' : 'Tiền mặt'}
-                        </span>
-                      </td>
-                      <td className={`p-3 text-right font-mono font-bold text-sm whitespace-nowrap ${isReceipt ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {formatNumber(tx.amount)}
-                      </td>
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => onPrintSingle(tx)}
-                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-all border border-blue-200"
-                          title="In phiếu này"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                sortedList.map((tx, idx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    tx={tx}
+                    idx={idx}
+                    isSelected={selectedIds.includes(tx.id)}
+                    onToggleSelect={onToggleSelectOne}
+                    onPrintSingle={onPrintSingle}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -982,11 +1068,10 @@ export const VouchersTab: React.FC<VouchersTabProps> = ({
               <button
                 disabled={selectedIds.length === 0}
                 onClick={() => handleExportExcel('SELECTED')}
-                className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${
-                  selectedIds.length > 0 
-                    ? 'border-amber-200 bg-amber-50/40 hover:border-amber-500 hover:bg-amber-50' 
+                className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${selectedIds.length > 0
+                    ? 'border-amber-200 bg-amber-50/40 hover:border-amber-500 hover:bg-amber-50'
                     : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="font-bold text-slate-800 text-xs flex items-center gap-1.5">

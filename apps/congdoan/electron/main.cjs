@@ -137,7 +137,48 @@ function downloadFileWithProgress(fileUrl, destPath, onProgress) {
   });
 }
 
-// IPC Handlers for Auto-Update
+// Helper: Validate installer file integrity
+function validateInstallerFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return { valid: false, error: 'File không tồn tại.' };
+    const stats = fs.statSync(filePath);
+    // Installer của app thường > 50MB, nếu < 20MB là file tải dở hoặc lỗi 404
+    if (stats.size < 20 * 1024 * 1024) {
+      return { valid: false, error: `File tải về không đầy đủ (chỉ có ${(stats.size / 1024 / 1024).toFixed(1)} MB). Vui lòng thử lại.` };
+    }
+    // Kiểm tra Windows PE Header "MZ"
+    const buffer = Buffer.alloc(2);
+    const fd = fs.openSync(filePath, 'r');
+    fs.readSync(fd, buffer, 0, 2, 0);
+    fs.closeSync(fd);
+    if (buffer[0] !== 0x4D || buffer[1] !== 0x5A) {
+      return { valid: false, error: 'File tải về không phải là bộ cài đặt Windows hợp lệ.' };
+    }
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, error: err.message };
+  }
+}
+
+// Backup current version info before update
+function createPreUpdateBackup() {
+  try {
+    const backupDir = path.join(app.getPath('userData'), 'version_backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const backupInfo = {
+      previousVersion: app.getVersion(),
+      timestamp: new Date().toISOString(),
+      appPath: app.getAppPath(),
+    };
+    fs.writeFileSync(path.join(backupDir, 'last_known_stable.json'), JSON.stringify(backupInfo, null, 2));
+  } catch (e) {
+    console.error('Failed to create pre-update backup', e);
+  }
+}
+
+// IPC Handlers for Auto-Update & Safe Rollback
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
@@ -154,6 +195,13 @@ ipcMain.handle('download-update', async (_event, downloadUrl) => {
       }
     });
 
+    // Kiểm tra tính toàn vẹn file ngay sau khi tải xong
+    const validation = validateInstallerFile(targetFile);
+    if (!validation.valid) {
+      try { fs.unlinkSync(targetFile); } catch (e) {}
+      return { success: false, error: validation.error };
+    }
+
     return { success: true, filePath: targetFile };
   } catch (err) {
     return { success: false, error: err.message };
@@ -163,9 +211,15 @@ ipcMain.handle('download-update', async (_event, downloadUrl) => {
 ipcMain.handle('install-update', async (_event, options = {}) => {
   try {
     const installerPath = downloadedInstallerPath || path.join(app.getPath('temp'), 'KeToanCongDoan-Update.exe');
-    if (!fs.existsSync(installerPath)) {
-      throw new Error('Không tìm thấy file cài đặt đã tải.');
+    
+    // Kiểm tra tính toàn vẹn trước khi chạy installer
+    const validation = validateInstallerFile(installerPath);
+    if (!validation.valid) {
+      throw new Error(validation.error);
     }
+
+    // Tạo bản snapshot phiên bản hiện tại trước khi ghi đè
+    createPreUpdateBackup();
 
     // Mặc định chạy ở chế độ Silent /S (cài đặt ngầm không hiện popup hỏi han)
     const isSilent = options.silent !== false;
@@ -178,6 +232,43 @@ ipcMain.handle('install-update', async (_event, options = {}) => {
     child.unref();
 
     // Thoát ứng dụng ngay để bộ cài tiến hành ghi đè và tự khởi động lại app mới
+    setTimeout(() => {
+      app.quit();
+    }, 500);
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC Handler: Khôi phục về phiên bản trước (Rollback)
+ipcMain.handle('rollback-version', async (_event, targetVersion) => {
+  try {
+    // Tải trực tiếp bộ cài của phiên bản chỉ định từ GitHub Releases
+    const targetUrl = `https://github.com/Phat-471/kt/releases/download/${targetVersion}/KeToanCongDoan-Setup-${targetVersion}.exe`;
+    const tempDir = app.getPath('temp');
+    const rollbackFile = path.join(tempDir, `KeToanCongDoan-Rollback-${targetVersion}.exe`);
+    
+    downloadedInstallerPath = rollbackFile;
+
+    await downloadFileWithProgress(targetUrl, rollbackFile, (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('download-progress', progress);
+      }
+    });
+
+    const validation = validateInstallerFile(rollbackFile);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    const child = spawn(rollbackFile, ['/S'], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+
     setTimeout(() => {
       app.quit();
     }, 500);
