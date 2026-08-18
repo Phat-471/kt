@@ -1,4 +1,4 @@
-﻿; =========================================================================
+; =========================================================================
 ; NSIS INSTALLER SCRIPT FOR KE TOAN CONG DOAN (v1.2.0)
 ; =========================================================================
 
@@ -9,7 +9,7 @@ Unicode true
 
 ; General Settings
 Name "Kế Toán Tài Chính Công Đoàn"
-OutFile "release\KeToanCongDoan-Setup-v1.2.7.exe"
+OutFile "release\KeToanCongDoan-Setup-v1.3.0.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user

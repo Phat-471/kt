@@ -34,8 +34,10 @@ import {
   Sparkles,
   MessageSquare,
   Search,
-  X
+  X,
+  Compass
 } from 'lucide-react';
+import { DrawingsManagerView } from './components/drawings/DrawingsManagerView';
 import { PageHeader, StatCard, SubTabNav, BaseModal, TabItem, FeedbackModal, UpdateCheckerModal } from './components/common';
 import { formatNumber } from './utils/formatters';
 import {
@@ -135,6 +137,7 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [activeWorkspace, setActiveWorkspace] = useState<'UNION_ACCOUNTING' | 'BLUEPRINT_MANAGER'>('UNION_ACCOUNTING');
 
   // Quick Employee Search in Voucher Modal
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
@@ -685,6 +688,11 @@ export default function App() {
     { id: 'SETTINGS', label: '4. Cài Đặt & Nhân Viên', icon: Settings },
   ];
 
+  // Nếu người dùng chọn chuyển sang Phân Hệ Quản Lý Bản Vẽ Công Trình (Demo)
+  if (activeWorkspace === 'BLUEPRINT_MANAGER') {
+    return <DrawingsManagerView onBackToAccounting={() => setActiveWorkspace('UNION_ACCOUNTING')} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col">
       {/* Top Navbar */}
@@ -711,8 +719,18 @@ export default function App() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-all shadow-sm"
             title="Kiểm tra phiên bản & Cập nhật phần mềm"
           >
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>v1.2.7 (Cập Nhật)</span>
+            <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+            <span>v1.3.0 (Cập Nhật)</span>
+          </button>
+
+          {/* Nút Chuyển Sang Phân Hệ Bản Vẽ (Demo) */}
+          <button
+            onClick={() => setActiveWorkspace('BLUEPRINT_MANAGER')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-indigo-300 border border-indigo-500/40 rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow active:scale-95"
+            title="Mở phân hệ Quản Lý Bản Vẽ & Hồ Sơ Công Trình (Demo)"
+          >
+            <Compass className="w-3.5 h-3.5 text-indigo-400" />
+            <span>📐 Bản Vẽ (Demo)</span>
           </button>
 
           {/* Nút Báo Cáo Lỗi & Hỗ Trợ Trực Tiếp */}

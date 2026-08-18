@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { TradeUnionTransaction, Client, UnionSignerSettings, UnionEmployee, TradeUnionContributionPeriod } from '../types/accounting';
+import { DrawingItem, DrawingProject, DrawingCompany } from '../types/drawings';
 
 export interface AuditLog {
   id: string;
@@ -25,10 +26,15 @@ export class UnionDatabase extends Dexie {
   unionContributionPeriods!: Table<TradeUnionContributionPeriod, string>;
   unionOpeningBalances!: Table<UnionOpeningBalance, number>;
   auditLogs!: Table<AuditLog, string>;
+  
+  // Phân hệ Quản Lý Bản Vẽ & Công Trình
+  drawingProjects!: Table<DrawingProject, string>;
+  drawings!: Table<DrawingItem, string>;
+  drawingCompanies!: Table<DrawingCompany, string>;
 
   constructor() {
     super('AccoDesk_Union_DB');
-    this.version(4).stores({
+    this.version(5).stores({
       unionTransactions: 'id, clientId, voucherType, voucherNo, date, category, paymentMethod',
       clients: 'id, name, taxCode',
       unionSignerSettings: 'id',
@@ -36,6 +42,9 @@ export class UnionDatabase extends Dexie {
       unionContributionPeriods: 'periodKey, year, periodType',
       unionOpeningBalances: 'year',
       auditLogs: 'id, timestamp, action, clientId',
+      drawingProjects: 'id, projectCode, status',
+      drawings: 'id, projectId, companyId, drawingNumber, discipline, stageType, issueNature, status',
+      drawingCompanies: 'id, role',
     });
   }
 }
@@ -221,5 +230,28 @@ export async function seedInitialUnionData(): Promise<void> {
   if (obCount === 0) {
     await db.unionOpeningBalances.bulkAdd(DEFAULT_OPENING_BALANCES);
   }
+
+  // Seed dữ liệu ban đầu cho Phân hệ Bản Vẽ
+  await seedInitialDrawingsData();
 }
+
+export async function seedInitialDrawingsData(): Promise<void> {
+  const { MOCK_PROJECTS, MOCK_COMPANIES, MOCK_DRAWINGS } = await import('./mockDrawingsData');
+  
+  const projCount = await db.drawingProjects.count();
+  if (projCount === 0) {
+    await db.drawingProjects.bulkAdd(MOCK_PROJECTS);
+  }
+
+  const compCount = await db.drawingCompanies.count();
+  if (compCount === 0) {
+    await db.drawingCompanies.bulkAdd(MOCK_COMPANIES);
+  }
+
+  const drawCount = await db.drawings.count();
+  if (drawCount === 0) {
+    await db.drawings.bulkAdd(MOCK_DRAWINGS);
+  }
+}
+
 
