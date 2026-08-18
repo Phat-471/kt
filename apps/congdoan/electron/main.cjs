@@ -20,7 +20,7 @@ function createWindow() {
     height: 860,
     minWidth: 1024,
     minHeight: 700,
-    title: 'Phần Mềm Kế Toán Tài Chính Công Đoàn Cơ Sở - v' + app.getVersion(),
+    title: 'KTCD HP - Kế Toán Tài Chính & Quản Trị Hồ Sơ (v' + app.getVersion() + ')',
     icon: path.join(__dirname, '../assets/icon.png'),
     webPreferences: {
       nodeIntegration: false,

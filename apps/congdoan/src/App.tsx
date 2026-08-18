@@ -773,16 +773,16 @@ export default function App() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-blue-500/20 border border-slate-200 bg-white flex items-center justify-center p-0.5">
-            <img src="./logo.png" alt="Logo Kế Toán Công Đoàn" className="w-full h-full object-contain rounded-lg" />
+            <img src="./logo.png" alt="Logo KTCD HP" className="w-full h-full object-contain rounded-lg" />
           </div>
           <div>
             <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <span>KẾ TOÁN TÀI CHÍNH CÔNG ĐOÀN</span>
+              <span className="font-black tracking-tight text-blue-950 text-base">KTCD HP</span>
               <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
-                BẢN CHUẨN
+                PRO v1.3.4
               </span>
             </div>
-            <div className="text-xs text-slate-500">Mẫu biểu C40-BB, C41-BB & Báo cáo B07-TLĐ</div>
+            <div className="text-xs text-slate-500">Kế toán Tài chính Công Đoàn & Quản trị Hồ sơ Hưng Phát</div>
           </div>
         </div>
 

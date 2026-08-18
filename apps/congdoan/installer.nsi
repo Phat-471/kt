@@ -1,5 +1,5 @@
 ; =========================================================================
-; NSIS INSTALLER SCRIPT FOR KE TOAN CONG DOAN (v1.3.3)
+; NSIS INSTALLER SCRIPT FOR KTCD HP (v1.3.4)
 ; =========================================================================
 
 Unicode true
@@ -8,8 +8,8 @@ Unicode true
 !include "LogicLib.nsh"
 
 ; General Settings
-Name "Ke Toan Tai Chinh Cong Doan"
-OutFile "release\KeToanCongDoan-Setup-v1.3.3.exe"
+Name "KTCD HP - Ke Toan Cong Doan Hung Phat"
+OutFile "release\KTCD-HP-Setup-v1.3.4.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user
