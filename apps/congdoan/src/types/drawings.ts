@@ -143,3 +143,45 @@ export interface MonthlyDrawingSummary {
   transmittalsCount: number;      // Số đợt bàn giao hồ sơ
   pendingApprovalsCount: number;  // Số bản vẽ đang chờ duyệt
 }
+
+// Trạng thái phê duyệt Đợt Phát Sinh (VO)
+export type VariationOrderStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'BILLED' | 'REJECTED';
+
+// Chi tiết từng bản vẽ / hạng mục trong đợt phát sinh
+export interface VariationItemLink {
+  drawingId: string;
+  drawingNumber: string;
+  title: string;
+  revision: string;
+  nature: string;
+  description: string;
+  amount: number;
+}
+
+// Đợt Phát Sinh Khối Lượng / Thiết Kế (Variation Order - VO)
+export interface DrawingVariationOrder {
+  id: string;
+  voNumber: string;               // 'VO-HP01-001', 'VO-HP01-002'
+  projectId: string;
+  projectName: string;
+  title: string;                  // 'Xử lý xung đột địa chất móng trục 3 & bổ sung dầm D2A'
+  issueDate: string;              // '2026-08-18'
+  requestedBy: 'INVESTOR' | 'SUPERVISION' | 'MAIN_CONTRACTOR' | 'SITE_CONDITION';
+  legalBasis: string;             // 'Văn bản số 12/CV-CĐT ngày 10/08/2026 & Biên bản hiện trường'
+  reasonCategory: 'CLIENT_REQUEST' | 'SITE_CONFLICT' | 'TECHNICAL_OPTIMIZATION' | 'SAFETY_REGULATION';
+  items: VariationItemLink[];
+  totalAmount: number;            // Tổng tiền phát sinh trước thuế (VNĐ)
+  vatRate: number;                // 8 hoặc 10%
+  vatAmount: number;
+  totalWithVat: number;           // Tổng tiền bao gồm thuế
+  timeExtensionDays: number;      // Gia hạn tiến độ thi công (ngày)
+  status: VariationOrderStatus;
+  signedByInvestor?: string;      // Đại diện CĐT ký
+  signedByConsultant?: string;    // Tư vấn giám sát ký
+  signedByContractor?: string;    // Nhà thầu Hưng Phát ký
+  approvedDate?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

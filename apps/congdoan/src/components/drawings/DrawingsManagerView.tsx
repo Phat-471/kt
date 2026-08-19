@@ -69,7 +69,8 @@ import {
   DrawingCompany,
   DrawingRevision,
   DrawingTransmittal,
-  MonthlyDrawingSummary
+  MonthlyDrawingSummary,
+  DrawingVariationOrder
 } from '../../types/drawings';
 import { db, seedInitialDrawingsData } from '../../services/storage';
 import { exportDrawingsToExcel } from '../../services/drawingsExportService';
@@ -86,13 +87,14 @@ import {
   TimelineLogItem,
   EmployeeProductivityStats
 } from '../../services/reconciliationService';
+import { VariationOrdersTab } from './VariationOrdersTab';
 import { APP_VERSION } from '../../constants/version';
 
 interface DrawingsManagerViewProps {
   onBackToAccounting: () => void;
 }
 
-type BlueprintMainTab = 'DRAWINGS_LIST' | 'RECONCILIATION_TIMELINE' | 'PROJECTS_LIST' | 'MONTHLY_REPORT' | 'SETTINGS';
+type BlueprintMainTab = 'DRAWINGS_LIST' | 'VARIATION_ORDERS' | 'RECONCILIATION_TIMELINE' | 'PROJECTS_LIST' | 'MONTHLY_REPORT' | 'SETTINGS';
 type DisplayMode = 'TABLE' | 'GRID';
 
 export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBackToAccounting }) => {
@@ -128,6 +130,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
   const [projects, setProjects] = useState<DrawingProject[]>([]);
   const [companies, setCompanies] = useState<DrawingCompany[]>([]);
   const [drawings, setDrawings] = useState<DrawingItem[]>([]);
+  const [variationOrders, setVariationOrders] = useState<DrawingVariationOrder[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   // Batch Selection State: Chọn nhiều bản vẽ cùng lúc
@@ -194,16 +197,36 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
       const projList = await db.drawingProjects.toArray();
       const compList = await db.drawingCompanies.toArray();
       const drawList = await db.drawings.toArray();
+      const voList = await db.drawingVariationOrders.toArray();
 
       setProjects(projList);
       setCompanies(compList);
       setDrawings(drawList);
+      setVariationOrders(voList);
 
       if (projList.length > 0 && !selectedProjectId) {
         setSelectedProjectId(projList[0].id);
       }
     } catch (err) {
       console.error('Lỗi tải CSDL bản vẽ:', err);
+    }
+  };
+
+  const handleSaveVO = async (vo: DrawingVariationOrder) => {
+    try {
+      await db.drawingVariationOrders.put(vo);
+      await loadDatabase();
+    } catch (err) {
+      console.error('Lỗi lưu đợt phát sinh VO:', err);
+    }
+  };
+
+  const handleDeleteVO = async (id: string) => {
+    try {
+      await db.drawingVariationOrders.delete(id);
+      await loadDatabase();
+    } catch (err) {
+      console.error('Lỗi xóa đợt phát sinh VO:', err);
     }
   };
 
@@ -923,6 +946,18 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
           </button>
 
           <button
+            onClick={() => setActiveMainTab('VARIATION_ORDERS')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              activeMainTab === 'VARIATION_ORDERS'
+                ? 'bg-white text-blue-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+            <span>2. Quản Lý Phát Sinh (VO)</span>
+          </button>
+
+          <button
             onClick={() => setActiveMainTab('RECONCILIATION_TIMELINE')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
               activeMainTab === 'RECONCILIATION_TIMELINE'
@@ -931,7 +966,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <Scale className="w-3.5 h-3.5 text-amber-600" />
-            <span>2. Nhật Ký & Đối Chiếu Khách Hàng</span>
+            <span>3. Nhật Ký & Đối Chiếu Khách Hàng</span>
           </button>
 
           <button
@@ -943,7 +978,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <FolderKanban className="w-3.5 h-3.5" />
-            <span>3. Công Trình / Dự Án ({projects.length})</span>
+            <span>4. Công Trình / Dự Án ({projects.length})</span>
           </button>
 
           <button
@@ -955,7 +990,7 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>4. Báo Cáo Tháng & Bàn Giao</span>
+            <span>5. Báo Cáo Tháng & Bàn Giao</span>
           </button>
 
           <button
@@ -1589,7 +1624,22 @@ export const DrawingsManagerView: React.FC<DrawingsManagerViewProps> = ({ onBack
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: NHẬT KÝ DÒNG THỜI GIAN & ĐỐI CHIẾU KHÁCH HÀNG (CORE FEATURE)       */}
+        {/* TAB 2: QUẢN LÝ PHÁT SINH HIỆN TRƯỜNG & BIÊN BẢN KÝ 3 BÊN (VO)             */}
+        {/* ========================================================================= */}
+        {activeMainTab === 'VARIATION_ORDERS' && (
+          <VariationOrdersTab
+            variationOrders={variationOrders}
+            projects={projects}
+            drawings={drawings}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            onSaveVO={handleSaveVO}
+            onDeleteVO={handleDeleteVO}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: NHẬT KÝ DÒNG THỜI GIAN & ĐỐI CHIẾU KHÁCH HÀNG (CORE FEATURE)       */}
         {/* ========================================================================= */}
         {activeMainTab === 'RECONCILIATION_TIMELINE' && (
           <div className="space-y-6">

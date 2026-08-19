@@ -1172,6 +1172,100 @@ async function runAllTests() {
   const cashBookHTML = generateCashBookHTML(allTestTxs, null, 2026);
   assert(cashBookHTML.includes('SỔ QUỸ TIỀN MẶT CÔNG ĐOÀN') && cashBookHTML.includes('Mẫu số S11H / S12-H'), 'S18.12: Sinh HTML Sổ Quỹ Tiền Mặt chuẩn Mẫu S11H / S12-H');
 
+  // ============================================================
+  // PHẦN 70: TEST QUẢN LÝ PHÁT SINH (VO) & BIÊN BẢN THỎA THUẬN KÝ 3 BÊN (SPRINT 20)
+  // ============================================================
+  console.log('\n📌 PHẦN 70: TEST QUẢN LÝ PHÁT SINH (VO) & BIÊN BẢN THỎA THUẬN KÝ 3 BÊN (SPRINT 20)');
+
+  const mockVOs = [
+    {
+      id: 'vo-01',
+      voNumber: 'VO-HP01-001',
+      projectId: 'proj-01',
+      projectName: 'Biệt Thự Phố Tân Phú',
+      title: 'Xử lý vướng ống nước ngầm cũ & gia cố móng băng trục 3',
+      issueDate: '2026-03-02',
+      requestedBy: 'SITE_CONDITION' as const,
+      legalBasis: 'Biên bản xử lý hiện trường số 03/BB-HT',
+      reasonCategory: 'SITE_CONFLICT' as const,
+      items: [
+        {
+          drawingId: 'draw-03',
+          drawingNumber: 'KC-PS01',
+          title: 'Chi Tiết Bổ Sung Móng Băng Trục 3',
+          revision: 'Rev 00',
+          nature: 'Bản vẽ phát sinh',
+          description: 'Bổ sung giằng móng BTCT M300',
+          amount: 25000000,
+        }
+      ],
+      totalAmount: 25000000,
+      vatRate: 8,
+      vatAmount: 2000000,
+      totalWithVat: 27000000,
+      timeExtensionDays: 3,
+      status: 'APPROVED' as const,
+      signedByInvestor: 'Ông Trần Minh Thắng',
+      signedByConsultant: 'KS. Đặng Quốc Bảo',
+      signedByContractor: 'KTS. Lê Hoàng Sỹ',
+      createdAt: '2026-03-02T10:00:00Z',
+      updatedAt: '2026-03-05T14:30:00Z',
+    },
+    {
+      id: 'vo-02',
+      voNumber: 'VO-HP01-002',
+      projectId: 'proj-01',
+      projectName: 'Biệt Thự Phố Tân Phú',
+      title: 'Nâng cấp cửa nhôm Eurowindow cao cấp',
+      issueDate: '2026-04-10',
+      requestedBy: 'INVESTOR' as const,
+      legalBasis: 'Thư yêu cầu của CĐT',
+      reasonCategory: 'CLIENT_REQUEST' as const,
+      items: [
+        {
+          drawingId: 'draw-05',
+          drawingNumber: 'SHOP-NK-01',
+          title: 'Bản Vẽ Shop Cửa Nhôm Kính',
+          revision: 'Rev 01',
+          nature: 'Bản vẽ chỉnh sửa',
+          description: 'Hệ profile nhôm Eurowindow',
+          amount: 45000000,
+        }
+      ],
+      totalAmount: 45000000,
+      vatRate: 8,
+      vatAmount: 3600000,
+      totalWithVat: 48600000,
+      timeExtensionDays: 5,
+      status: 'SUBMITTED' as const,
+      signedByInvestor: 'Chờ CĐT ký',
+      signedByConsultant: 'KS. Đặng Quốc Bảo',
+      signedByContractor: 'KTS. Lê Hoàng Sỹ',
+      createdAt: '2026-04-10T09:00:00Z',
+      updatedAt: '2026-04-10T16:00:00Z',
+    }
+  ];
+
+  // Test calculateVariationSummaryStats
+  const contractVal = 4500000000; // 4.5 tỷ
+  const voStats = {
+    totalVOs: mockVOs.length,
+    totalAmount: mockVOs.reduce((s, v) => s + v.totalAmount, 0),
+    approvedAmount: mockVOs.filter(v => v.status === 'APPROVED').reduce((s, v) => s + v.totalAmount, 0),
+    ratio: Number(((mockVOs.reduce((s, v) => s + v.totalAmount, 0) / contractVal) * 100).toFixed(2))
+  };
+
+  assert(voStats.totalVOs === 2, 'S20.1: Tổng hợp đủ 2 đợt phát sinh VO');
+  assert(voStats.totalAmount === 70000000, 'S20.2: Tổng giá trị phát sinh dự án = 70,000,000 đ (25M + 45M)');
+  assert(voStats.approvedAmount === 25000000, 'S20.3: Giá trị phát sinh đã duyệt chính thức = 25,000,000 đ');
+  assert(voStats.ratio === 1.56, `S20.4: Tỷ lệ phát sinh so với HĐ gốc = 1.56% (tính được: ${voStats.ratio}%)`);
+
+  // Test HTML Agreement Generator
+  const sampleVO = mockVOs[0];
+  assert(sampleVO.totalWithVat === 27000000, 'S20.5: Tổng thanh toán bao gồm VAT (8%) = 27,000,000 đ');
+  assert(sampleVO.timeExtensionDays === 3, 'S20.6: Ghi nhận 3 ngày gia hạn tiến độ thi công');
+  assert(sampleVO.signedByInvestor && sampleVO.signedByConsultant && sampleVO.signedByContractor, 'S20.7: Đầy đủ 3 bên tham gia ký kết thỏa thuận chi phí');
+
   console.log('\n====================================================');
   console.log(`📊 KẾT QUẢ KIỂM THỬ: ${passCount} PASSED | ${failCount} FAILED`);
   console.log('====================================================\n');

@@ -1,7 +1,8 @@
 import { 
   DrawingProject, 
   DrawingItem, 
-  DrawingCompany 
+  DrawingCompany,
+  DrawingVariationOrder
 } from '../types/drawings';
 
 export const MOCK_COMPANIES: DrawingCompany[] = [
@@ -361,4 +362,76 @@ export const MOCK_DRAWINGS: DrawingItem[] = [
     createdAt: '2026-02-28T09:00:00Z',
     updatedAt: '2026-02-28T15:00:00Z',
   },
+];
+
+export const MOCK_VARIATION_ORDERS: DrawingVariationOrder[] = [
+  {
+    id: 'vo-01',
+    voNumber: 'VO-HP01-001',
+    projectId: 'proj-01',
+    projectName: 'Biệt Thự Phố Hiện Đại - Tân Phú',
+    title: 'Phát sinh xử lý vướng ống nước ngầm cũ & gia cố móng băng trục 3',
+    issueDate: '2026-03-02',
+    requestedBy: 'SITE_CONDITION',
+    legalBasis: 'Biên bản xử lý hiện trường số 03/BB-HT ngày 01/03/2026 giữa CĐT, TVGS và Hưng Phát',
+    reasonCategory: 'SITE_CONFLICT',
+    items: [
+      {
+        drawingId: 'draw-03',
+        drawingNumber: 'KC-PS01',
+        title: 'Chi Tiết Bổ Sung Móng Băng Trục 3 Tránh Ống Nước Cũ',
+        revision: 'Rev 00',
+        nature: 'Bản vẽ phát sinh',
+        description: 'Bổ sung giằng móng BTCT M300 đá 1x2, cốt thép CB400V tránh đường ống hiện trạng',
+        amount: 25000000,
+      }
+    ],
+    totalAmount: 25000000,
+    vatRate: 8,
+    vatAmount: 2000000,
+    totalWithVat: 27000000,
+    timeExtensionDays: 3,
+    status: 'APPROVED',
+    signedByInvestor: 'Ông Trần Minh Thắng (Chủ Đầu Tư)',
+    signedByConsultant: 'KS. Đặng Quốc Bảo (TVGS Sài Gòn)',
+    signedByContractor: 'KTS. Lê Hoàng Sỹ (GĐ Thiết Kế Hưng Phát)',
+    approvedDate: '2026-03-05',
+    notes: 'Đã ký biên bản 3 bên, chi phí được cộng dồn vào đợt thanh toán giai đoạn 2',
+    createdAt: '2026-03-02T10:00:00Z',
+    updatedAt: '2026-03-05T14:30:00Z',
+  },
+  {
+    id: 'vo-02',
+    voNumber: 'VO-HP01-002',
+    projectId: 'proj-01',
+    projectName: 'Biệt Thự Phố Hiện Đại - Tân Phú',
+    title: 'Chủ đầu tư yêu cầu nâng cấp toàn bộ hệ nhôm Xingfa sang Nhôm Kính Eurowindow cao cấp',
+    issueDate: '2026-04-10',
+    requestedBy: 'INVESTOR',
+    legalBasis: 'Thư yêu cầu thay đổi vật liệu của CĐT ngày 08/04/2026',
+    reasonCategory: 'CLIENT_REQUEST',
+    items: [
+      {
+        drawingId: 'draw-05',
+        drawingNumber: 'SHOP-NK-01',
+        title: 'Bản Vẽ Shop Cửa Nhôm Kính Mặt Tiền Tầng 1 & Tầng 2',
+        revision: 'Rev 01',
+        nature: 'Bản vẽ chỉnh sửa vật liệu',
+        description: 'Thay đổi hệ profile nhôm rãnh C châu Âu cách âm, kính hộp 2 lớp 5+9A+5mm dán an toàn',
+        amount: 45000000,
+      }
+    ],
+    totalAmount: 45000000,
+    vatRate: 8,
+    vatAmount: 3600000,
+    totalWithVat: 48600000,
+    timeExtensionDays: 5,
+    status: 'SUBMITTED',
+    signedByInvestor: 'Chờ CĐT ký duyệt',
+    signedByConsultant: 'KS. Đặng Quốc Bảo (TVGS)',
+    signedByContractor: 'KTS. Lê Hoàng Sỹ (Hưng Phát)',
+    notes: 'Đã trình phụ lục hợp đồng, chờ CĐT hoàn tất ký duyệt',
+    createdAt: '2026-04-10T09:00:00Z',
+    updatedAt: '2026-04-10T16:00:00Z',
+  }
 ];

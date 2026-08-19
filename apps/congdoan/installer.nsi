@@ -1,5 +1,5 @@
 ; =========================================================================
-; NSIS INSTALLER SCRIPT FOR KTCD HP (v1.3.4)
+; NSIS INSTALLER SCRIPT FOR KTCD HP (v1.3.5)
 ; =========================================================================
 
 Unicode true
@@ -9,7 +9,7 @@ Unicode true
 
 ; General Settings
 Name "KTCD HP - Ke Toan Cong Doan Hung Phat"
-OutFile "release\KTCD-HP-Setup-v1.3.4.exe"
+OutFile "release\KTCD-HP-Setup-v1.3.5.exe"
 InstallDir "$LOCALAPPDATA\Programs\KeToanCongDoan"
 InstallDirRegKey HKCU "Software\KeToanCongDoan" "Install_Dir"
 RequestExecutionLevel user
@@ -64,7 +64,7 @@ Section "KeToanCongDoan (required)" SecCore
   WriteRegStr HKCU "Software\KeToanCongDoan" "Install_Dir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayName" "Ke Toan Tai Chinh"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayIcon" "$INSTDIR\KeToanCongDoan.exe,0"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.3.2"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "DisplayVersion" "1.3.5"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "Publisher" "Cong Doan Co So"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeToanCongDoan" "NoModify" 1

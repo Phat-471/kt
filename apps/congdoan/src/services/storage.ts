@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { TradeUnionTransaction, Client, UnionSignerSettings, UnionEmployee, TradeUnionContributionPeriod } from '../types/accounting';
-import { DrawingItem, DrawingProject, DrawingCompany } from '../types/drawings';
+import { DrawingItem, DrawingProject, DrawingCompany, DrawingVariationOrder } from '../types/drawings';
 
 export interface AuditLog {
   id: string;
@@ -31,10 +31,11 @@ export class UnionDatabase extends Dexie {
   drawingProjects!: Table<DrawingProject, string>;
   drawings!: Table<DrawingItem, string>;
   drawingCompanies!: Table<DrawingCompany, string>;
+  drawingVariationOrders!: Table<DrawingVariationOrder, string>;
 
   constructor() {
     super('AccoDesk_Union_DB');
-    this.version(5).stores({
+    this.version(6).stores({
       unionTransactions: 'id, clientId, voucherType, voucherNo, date, category, paymentMethod',
       clients: 'id, name, taxCode',
       unionSignerSettings: 'id',
@@ -45,6 +46,7 @@ export class UnionDatabase extends Dexie {
       drawingProjects: 'id, projectCode, status',
       drawings: 'id, projectId, companyId, drawingNumber, discipline, stageType, issueNature, status',
       drawingCompanies: 'id, role',
+      drawingVariationOrders: 'id, voNumber, projectId, status, issueDate',
     });
   }
 }
@@ -80,6 +82,7 @@ export interface UnionBackupPackage {
   drawingProjects?: DrawingProject[];
   drawingCompanies?: DrawingCompany[];
   drawings?: DrawingItem[];
+  drawingVariationOrders?: DrawingVariationOrder[];
 }
 
 export async function exportUnionBackupJSON(): Promise<void> {
@@ -91,9 +94,10 @@ export async function exportUnionBackupJSON(): Promise<void> {
   const drawingProjects = await db.drawingProjects.toArray();
   const drawingCompanies = await db.drawingCompanies.toArray();
   const drawings = await db.drawings.toArray();
+  const drawingVariationOrders = await db.drawingVariationOrders.toArray();
 
   const backupPkg: UnionBackupPackage = {
-    version: 5,
+    version: 6,
     exportedAt: new Date().toISOString(),
     transactions,
     employees,
@@ -103,13 +107,14 @@ export async function exportUnionBackupJSON(): Promise<void> {
     drawingProjects,
     drawingCompanies,
     drawings,
+    drawingVariationOrders,
   };
 
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPkg, null, 2));
   const downloadAnchor = document.createElement('a');
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `SaoLuu_ToanHeThong_KeToan_BanVe_${dateStr}.json`);
+  downloadAnchor.setAttribute("download", `SaoLuu_ToanHeThong_KTCD_HP_${dateStr}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
@@ -132,7 +137,8 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
       db.unionOpeningBalances,
       db.drawingProjects,
       db.drawingCompanies,
-      db.drawings
+      db.drawings,
+      db.drawingVariationOrders
     ], async () => {
       if (pkg.transactions.length > 0) {
         await db.unionTransactions.clear();
@@ -166,11 +172,15 @@ export async function importUnionBackupJSON(file: File): Promise<{ success: bool
         await db.drawings.clear();
         await db.drawings.bulkPut(pkg.drawings);
       }
+      if (pkg.drawingVariationOrders && pkg.drawingVariationOrders.length > 0) {
+        await db.drawingVariationOrders.clear();
+        await db.drawingVariationOrders.bulkPut(pkg.drawingVariationOrders);
+      }
     });
 
     return { 
       success: true, 
-      message: `Khôi phục thành công: ${pkg.transactions.length} chứng từ, ${pkg.employees?.length || 0} nhân viên, ${pkg.drawings?.length || 0} bản vẽ kỹ thuật.` 
+      message: `Khôi phục thành công: ${pkg.transactions.length} chứng từ, ${pkg.employees?.length || 0} nhân viên, ${pkg.drawings?.length || 0} bản vẽ, ${pkg.drawingVariationOrders?.length || 0} đợt phát sinh VO.` 
     };
   } catch (err: any) {
     return { success: false, message: `Lỗi đọc file sao lưu: ${err.message}` };
@@ -266,7 +276,7 @@ export async function seedInitialUnionData(): Promise<void> {
 }
 
 export async function seedInitialDrawingsData(): Promise<void> {
-  const { MOCK_PROJECTS, MOCK_COMPANIES, MOCK_DRAWINGS } = await import('./mockDrawingsData');
+  const { MOCK_PROJECTS, MOCK_COMPANIES, MOCK_DRAWINGS, MOCK_VARIATION_ORDERS } = await import('./mockDrawingsData');
   
   const projCount = await db.drawingProjects.count();
   if (projCount === 0) {
@@ -281,6 +291,11 @@ export async function seedInitialDrawingsData(): Promise<void> {
   const drawCount = await db.drawings.count();
   if (drawCount === 0) {
     await db.drawings.bulkAdd(MOCK_DRAWINGS);
+  }
+
+  const voCount = await db.drawingVariationOrders.count();
+  if (voCount === 0 && MOCK_VARIATION_ORDERS) {
+    await db.drawingVariationOrders.bulkAdd(MOCK_VARIATION_ORDERS);
   }
 }
 
